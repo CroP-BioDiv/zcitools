@@ -1,80 +1,89 @@
 #!/usr/bin/python3
 
+import os.path
+import sys
 import argparse
+from zcitools.utils.file_utils import ensure_directory, write_yaml
+from zcitools.command_classes import commands_map
 
 
-# Supported commnads
-def _init_project(*args, **kwargs):
-    if args:
-        from zcitools.init_project import init_project
-        init_project(args[0], *args[1:])
+def _get_parser(command, for_help):
+    cls = commands_map[command]
+
+    parser = argparse.ArgumentParser(description=cls._HELP)
+    if for_help:
+        parser.add_argument(command, help=command)
     else:
-        print('Directory is not set!')
+        parser.add_argument('command', help=command)
+    if command != 'init':
+        parser.add_argument('-N', '--step-num', type=int, help='Step num prefix')
+        parser.add_argument('-D', '--step-description', help='Step description')
+    cls.set_arguments(parser)
+    return parser
 
 
-_commands = dict(
-    init=_init_project,
-)
+if len(sys.argv) == 1 or sys.argv[1].lower() == 'help':
+    if len(sys.argv) > 2 and sys.argv[2] in commands_map:
+        parser = _get_parser(sys.argv[2], True)
+        parser.print_help()
+    else:
+        print(f"""Usage: python {sys.argv[0]} <command> <arguments>
+Help: python {sys.argv[0]} help <command>
 
-
-# Handling of commnad line params
-def _format_k(a):
-    assert a[0].isalpha()
-    a = a.lower()
-    a = re.sub('[^0-9a-zA-Z]+', '_', a)
-    return a
-
-
-def _format_kwarg(a):
-    if a.startswith('--'):
-        return _format_k(a[2:])
-    if a.startswith('-'):
-        return _format_k(a[1:])
-    return _format_k(a)
-
-
-def _format_value(v):
-    try:
-        return int(v)
-    except ValueError:
-        pass
-    try:
-        return float(v)
-    except ValueError:
-        pass
-    return v
-
-
-#
-parser = argparse.ArgumentParser(description='Runs zcitools command')
-
-parser.add_argument('command', help='Command, one of: ' + ', '.join(sorted(_commands.keys())))
-parser.add_argument('args', nargs='*', help='Arguments specific to command')
-
-args, unknownargs = parser.parse_known_args()
-
-if args.command not in _commands:
-    import sys
-    print(f'Command {args.command} is not supported!')
+Command is one of: {', '.join(sorted(commands_map.keys()))}""")
     sys.exit(0)
 
-# Process unknownargs
-all_args = list(args.args)
-kwargs = dict()
-in_kwarg = None
-for a in unknownargs:
-    if is_kwarg(a):
-        if in_kwarg:
-            kwargs[in_kwarg] = True
-        in_kwarg = _format_kwarg(a)
-    else:
-        a = _format_value(a)
-        if in_kwarg:
-            kwargs[in_kwarg] = a
-            in_kwarg = None
-        else:
-            all_args.append(a)
-if in_kwarg:
-    kwargs[in_kwarg] = True
+command = sys.argv[1].lower()
+if command not in commands_map:
+    print(f'Command "{command}" is not supported!')
+    sys.exit(0)
 
-_commands[args.command](*all_args, **kwargs)
+parser = _get_parser(command, False)
+args = parser.parse_args()
+cls = commands_map[command]
+if command == 'init':
+    cls.run(args, None)
+else:
+    # Check is command run inside a project
+    if not os.path.isfile('project_log.yml'):
+        print('Error: script is not called on valid project!')
+        sys.exit(0)
+    #
+    # Find step name. Format <num>_<command>[_<description>]
+    prev_steps = cls.prev_steps(args)
+    #
+    if args.step_num:
+        num = args.step_num
+    elif prev_steps:
+        num = max(int(s.split('_', 1)[0]) for s in prev_steps) + 1
+    else:
+        num = 1
+    #
+    desc = None
+    if args.step_description:
+        desc = args.step_description
+    elif prev_steps:
+        # Note: for now commands do not have '_'
+        for s in sorted(prev_steps, reverse=True):
+            d = s.split('_')[2:]
+            if d:
+                desc = '_'.join(d)
+                break
+    #
+    if desc:
+        sn = f'{num:02}_{command}_{desc}'
+    else:
+        sn = f'{num:02}_{command}'
+
+    # Store log data into project_log.yml
+    data = dict(step_name=sn,
+                prev_steps=prev_steps,
+                cmd=' '.join(sys.argv[1:]),
+                needs_editing=cls.needs_editing(args))
+    write_yaml([data], 'project_log.yml', mode='a')
+
+    # Run command
+    ensure_directory(sn)  # ToDo: remove directory content?
+    data = cls.run(args, sn)
+    assert data is not None
+    write_yaml(data, os.path.join(sn, 'description.yml'))
