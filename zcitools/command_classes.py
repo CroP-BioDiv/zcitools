@@ -1,23 +1,25 @@
 """
 Command classes.
 Class has to implement:
- - _COMMAND              : (class attribute) command argument to use
- - _HELP                 : (class attribute) command help text
+ - __init__(args)        : constructor
+ - _COMMAND              : (attribute) command argument to use
+ - _HELP                 : (attribute) command help text
  - set_arguments(parser) : (static method) sets command's arguments
- - run(args, step_name)  : (static method) runs command with given arguments.
+ - run(step_name)        : runs command with given arguments.
                            Returns data that will be stored into step description
- - prev_steps(args)      : (static method) returns list of input steps
- - needs_editing(args)   : (static method) returns True if step data needs editing
+ - prev_steps()          : returns list of input steps
+ - needs_editing()       : returns True if step data needs editing
 """
 
 
 class _Command:
-    @staticmethod
-    def prev_steps(args):
+    def __init__(self, args):
+        self.args = args
+
+    def prev_steps(self):
         return []
 
-    @staticmethod
-    def needs_editing(args):
+    def needs_editing(self):
         return False
 
 
@@ -30,10 +32,9 @@ class _InitProject(_Command):
         parser.add_argument('dirname', help='Directory name')
         parser.add_argument('-d', '--description', help='Project description text')
 
-    @staticmethod
-    def run(args, _):
+    def run(self, _):
         from .init_project import init_project
-        init_project(args.dirname, args.description)
+        init_project(self.args.dirname, self.args.description)
 
 
 class _TableStep(_Command):
@@ -45,14 +46,15 @@ Additional arguments specify how to interpret input data.
 
     @staticmethod
     def set_arguments(parser):
-        parser.add_argument('data', help='Input data')
+        parser.add_argument('filename', help='Input data')
         parser.add_argument('-f', '--format', help='Input data format (if needed). Values: excel, csv, txt')
-        parser.add_argument('-c', '--convert-method', help='Set convert method')
+        parser.add_argument('-c', '--columns', help='Columns. Format name1,type1:name2,type2:...')
+        # parser.add_argument('-m', '--convert-method', help='Set convert method')
 
-    @staticmethod
-    def run(args, step_name):
-        from .steps.input_file import create_table_step
-        return create_table_step(step_name, args.data, format=args.format, convert_method=args.convert_method)
+    def run(self, step_data):
+        from .create_step.input_file import create_table_step
+        args = self.args
+        return create_table_step(step_data, args.filename, data_format=args.format, columns=args.columns)
 
 
 commands_map = dict((cls._COMMAND, cls) for cls in locals().values() if hasattr(cls, '_COMMAND'))

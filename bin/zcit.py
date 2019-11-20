@@ -41,8 +41,9 @@ if command not in commands_map:
 parser = _get_parser(command, False)
 args = parser.parse_args()
 cls = commands_map[command]
+command_obj = cls(args)
 if command == 'init':
-    cls.run(args, None)
+    command_obj.run(None)
 else:
     # Check is command run inside a project
     if not os.path.isfile('project_log.yml'):
@@ -50,7 +51,7 @@ else:
         sys.exit(0)
     #
     # Find step name. Format <num>_<command>[_<description>]
-    prev_steps = cls.prev_steps(args)
+    prev_steps = command_obj.prev_steps()
     #
     if args.step_num:
         num = args.step_num
@@ -76,14 +77,12 @@ else:
         sn = f'{num:02}_{command}'
 
     # Store log data into project_log.yml
-    data = dict(step_name=sn,
-                prev_steps=prev_steps,
-                cmd=' '.join(sys.argv[1:]),
-                needs_editing=cls.needs_editing(args))
-    write_yaml([data], 'project_log.yml', mode='a')
+    step_data = dict(step_name=sn,
+                     prev_steps=prev_steps,
+                     cmd=' '.join(sys.argv[1:]),
+                     needs_editing=command_obj.needs_editing())
+    write_yaml([step_data], 'project_log.yml', mode='a')  # Appends yml list
 
     # Run command
     ensure_directory(sn)  # ToDo: remove directory content?
-    data = cls.run(args, sn)
-    assert data is not None
-    write_yaml(data, os.path.join(sn, 'description.yml'))
+    command_obj.run(step_data)

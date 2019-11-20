@@ -1,4 +1,3 @@
-
 import os
 import yaml
 
@@ -18,5 +17,26 @@ def ensure_directory(d, check_empty=False):
 
 
 def write_yaml(data, filename, mode='w'):
-    with open(filename, mode) as r:
+    with open(filename, mode, encoding='utf-8') as r:
         r.write(yaml.dump(data, default_flow_style=False))
+
+
+def read_yaml(filename):
+    with open(filename, 'r', encoding='utf-8') as r:
+        return yaml.load(r, Loader=yaml.CLoader)
+
+
+#
+_ext_to_filetype = dict(
+    txt='text', text='text',
+    csv='csv',
+    xlsx='excel',
+    # ...
+)
+
+
+def filetype_from_ext(filename):
+    _, ext = os.path.splitext(filename)
+    if ext:
+        ext = ext[1:]
+    return _ext_to_filetype.get(ext)
