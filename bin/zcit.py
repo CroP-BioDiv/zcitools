@@ -3,7 +3,7 @@
 import os.path
 import sys
 import argparse
-from zcitools.utils.file_utils import ensure_directory, write_yaml
+from zcitools.utils.file_utils import write_yaml
 from zcitools.command_classes import commands_map
 
 
@@ -40,17 +40,17 @@ if command not in commands_map:
 
 parser = _get_parser(command, False)
 args = parser.parse_args()
-cls = commands_map[command]
-command_obj = cls(args)
-if command == 'init':
-    command_obj.run(None)
+command_obj = commands_map[command](args)
+
+if not command_obj.STEP_COMMAND:
+    command_obj.run()
 else:
     # Check is command run inside a project
     if not os.path.isfile('project_log.yml'):
         print('Error: script is not called on valid project!')
         sys.exit(0)
     #
-    # Find step name. Format <num>_<command>[_<description>]
+    # Find step name. Format <num>_<step_base_name>[_<description>]
     prev_steps = command_obj.prev_steps()
     #
     if args.step_num:
@@ -71,18 +71,15 @@ else:
                 desc = '_'.join(d)
                 break
     #
+    sn = f'{num:02}_{command_obj.step_base_name()}'
     if desc:
-        sn = f'{num:02}_{command}_{desc}'
-    else:
-        sn = f'{num:02}_{command}'
+        sn += f'_{desc}'
 
     # Store log data into project_log.yml
     step_data = dict(step_name=sn,
                      prev_steps=prev_steps,
-                     cmd=' '.join(sys.argv[1:]),
-                     needs_editing=command_obj.needs_editing())
+                     cmd=' '.join(sys.argv[1:]))
     write_yaml([step_data], 'project_log.yml', mode='a')  # Appends yml list
 
     # Run command
-    ensure_directory(sn)  # ToDo: remove directory content?
-    command_obj.run(step_data)
+    step_obj = command_obj.run(step_data)

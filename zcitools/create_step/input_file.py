@@ -16,7 +16,6 @@ def create_table_step(step_data, filename, data_format=None, columns=None):
 
     if columns:
         columns = [x.split(',') for x in columns.split(':')]
-        TableStep.check_columns(columns)
 
     # Read data.
     data = None
@@ -30,7 +29,8 @@ def create_table_step(step_data, filename, data_format=None, columns=None):
     if not columns:
         raise ZCItoolsValueError(f"Columns are not specified for input table! Filename {filename}.")
 
-    # Store step data
-    step = TableStep(step_data, data=data, columns=columns, orig_filename=filename, data_format=data_format)
+    # Store (or overwrite) step data
+    step = TableStep(step_data, remove_data=True)
+    step.set_table_data(data, columns, orig_filename=filename, data_format=data_format)
     step.save()
     return step
