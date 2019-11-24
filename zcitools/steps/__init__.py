@@ -15,7 +15,7 @@ def read_step(step_name, check_data_type=None):
     data_type = desc_data['data_type']
 
     if check_data_type and check_data_type != data_type:
-        return None
+        raise ZCItoolsValueError(f"Step {ste_name} is not of data type '{check_data_type}'!")
 
     cls = _type_2_step_cls.get(data_type)
     if not cls:

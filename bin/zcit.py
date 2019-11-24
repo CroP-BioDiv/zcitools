@@ -42,7 +42,8 @@ parser = _get_parser(command, False)
 args = parser.parse_args()
 command_obj = commands_map[command](args)
 
-if not command_obj.STEP_COMMAND:
+#
+if not command_obj.CREATE_STEP_COMMAND:
     command_obj.run()
 else:
     # Check is command run inside a project
@@ -75,11 +76,15 @@ else:
     if desc:
         sn += f'_{desc}'
 
-    # Store log data into project_log.yml
+    # Run command
+    print('aaa', sn)
     step_data = dict(step_name=sn,
                      prev_steps=prev_steps,
                      cmd=' '.join(sys.argv[1:]))
-    write_yaml([step_data], 'project_log.yml', mode='a')  # Appends yml list
-
-    # Run command
     step_obj = command_obj.run(step_data)
+
+    if step_obj:
+        # Store log data into project_log.yml
+        write_yaml([step_data], 'project_log.yml', mode='a')  # Appends yml list
+    else:
+        print("Warning: create step command didn't return step object!")

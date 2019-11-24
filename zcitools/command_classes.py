@@ -14,7 +14,7 @@ from .utils.exceptions import ZCItoolsValueError
 
 
 class _Command:
-    STEP_COMMAND = False
+    CREATE_STEP_COMMAND = False
 
     def __init__(self, args):
         self.args = args
@@ -27,7 +27,7 @@ class _Command:
 
 
 class _StepCommand(_Command):
-    STEP_COMMAND = True
+    CREATE_STEP_COMMAND = True
     _STEP_BASE_NAME = None
 
     def run(self, step_data):
@@ -52,6 +52,21 @@ class _InitProject(_Command):
     def run(self):
         from .init_project import init_project
         init_project(self.args.dirname, self.args.description)
+
+
+class _CleanCache(_Command):
+    _COMMAND = 'cache'
+    _HELP = "Remove cache of given steps"
+
+    @staticmethod
+    def set_arguments(parser):
+        parser.add_argument('step', nargs='+', help='Directory name')
+
+    def run(self):
+        from .steps import read_step
+        for s in self.args.step:
+            step = read_step(s)
+            step.remove_cache_files()
 
 
 # --------------------------------------------------
@@ -79,6 +94,7 @@ Additional arguments specify how to interpret input data.
 class _NCBIStep(_StepCommand):
     _COMMAND = 'ncbi'
     _HELP = "Creates sequences step. Mandatory argument is a table step."
+    _STEP_BASE_NAME = 'NCBI'
 
     @staticmethod
     def set_arguments(parser):
@@ -92,9 +108,25 @@ class _NCBIStep(_StepCommand):
     def run(self, step_data):
         from .create_step.ncbi import download_ncbi
         step = read_step(self.args.step, check_data_type='table')
-        if not step:
-            raise ZCItoolsValueError(f"Step {self.args.step} is not of data type 'table'!")
         return download_ncbi(step_data, step, force_download=self.args.force_download)
+
+
+class _GeSeqStep(_StepCommand):
+    _COMMAND = 'ge_seq'
+    _HELP = "Annotates chloroplast sequences with GeSeq"
+    _STEP_BASE_NAME = 'GeSeq'
+
+    @staticmethod
+    def set_arguments(parser):
+        parser.add_argument('step', help='Input sequences step')
+
+    def prev_steps(self):
+        return [self.args.step]
+
+    def run(self, step_data):
+        from .create_step.ge_seq import create_ge_seq_data
+        step = read_step(self.args.step, check_data_type='sequences')
+        return create_ge_seq_data(step_data, step)
 
 
 #

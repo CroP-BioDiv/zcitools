@@ -1,19 +1,20 @@
 import os.path
 from collections import defaultdict
 from .step import Step
-from ..utils.file_utils import silent_remove_file
 from ..utils.exceptions import ZCItoolsValueError
+from Bio import SeqIO
 
 
 class SequencesStep(Step):
     """
-Stores data of list of (DNA) sequences.
+Stores list of (DNA) sequences.
 List of sequence identifier are stored in description.yml.
 Each sequence can be stored in one or more files in different formats.
 """
     ""
     _STEP_TYPE = 'sequences'
-    _KNOWN_EXTENSIONS = frozenset(['.gb', '.fa'])
+    _KNOWN_EXTENSIONS = ('.gb', '.fa')
+    _SeqIO_TYPES = ('genbank', 'fasta')
 
     # Init object
     def _init_data(self, type_description):
@@ -41,7 +42,7 @@ Each sequence can be stored in one or more files in different formats.
 
     def _find_existing_seqs(self):
         existing_seqs = defaultdict(list)
-        for f in self.step_files():
+        for f in self.step_files(not_cached=True):
             for e in self._KNOWN_EXTENSIONS:
                 if f.endswith(e):
                     existing_seqs[f[:-len(e)]].append(f)
@@ -63,6 +64,8 @@ Each sequence can be stored in one or more files in different formats.
                     silent_remove_file(self.step_file(old_f))
         else:
             self._sequences[seq_ident] = [f]
+        #
+        self.remove_cache_files()
 
     # Save/load data
     def save(self):
@@ -73,3 +76,23 @@ Each sequence can be stored in one or more files in different formats.
     # Retrieve data methods
     def sequence_exists(self, ident):
         return bool(self._sequences.get(ident))
+
+    # Cach files are prfixed with '_c_'
+    def _iterate_seq_records(self):
+        # Iterate through all sequences, returns Bio.SeqRecord objects.
+        for seq_ident, files in sorted(self._sequences.items()):
+            for ext, st in zip(self._KNOWN_EXTENSIONS, self._SeqIO_TYPES):
+                f = seq_ident + ext
+                if f in files:
+                    with open(self.step_file(f)) as in_s:
+                        yield from SeqIO.parse(in_s, st)
+                    break
+
+    def get_all_seqs_fa(self):
+        f = self.step_file('_c_all_seqs.fa')
+        if not os.path.isfile(f):
+            with open(f, 'w') as fa:
+                for seq_record in self._iterate_seq_records():
+                    fa.write(f">{seq_record.id}\n{seq_record.seq}\n")
+                    # fa.write(f">{seq_record.id} {seq_record.description}\n{seq_record.seq}\n")
+        return f

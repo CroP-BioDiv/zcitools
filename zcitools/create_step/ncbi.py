@@ -1,4 +1,3 @@
-import os.path
 from ..steps.sequences import SequencesStep
 from Bio import Entrez  # , SeqIO
 

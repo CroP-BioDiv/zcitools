@@ -52,6 +52,17 @@ def silent_remove_file(filename):
             raise
 
 
+def link_file(source, dest):
+    if sys.platform == "win32":
+        shutil.copyfile(source, dest)
+    else:
+        os.symlink(source, dest)
+
+
+def copy_file(source, dest):
+    shutil.copyfile(source, dest)
+
+
 # YAML
 def write_yaml(data, filename, mode='w'):
     with open(filename, mode, encoding='utf-8') as r:
