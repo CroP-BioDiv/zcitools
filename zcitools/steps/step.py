@@ -15,10 +15,10 @@ class Step:
     _COLUMN_TYPES = frozenset(['ncbi_ident', 'str', 'int'])
     _CACHE_PREFIX = '_c_'  # Cache files are prfixed with '_c_'
 
-    def __init__(self, step_data, remove_data=False, update=False):
+    def __init__(self, step_data, remove_data=False, update_mode=False):
         self._step_data = step_data
         self._step_name = step_data['step_name']
-        self._update = update
+        self._update_mode = update_mode
 
         # Call init data method
         if remove_data:
@@ -38,12 +38,22 @@ class Step:
         #
         self._init_data(type_desc)
 
+        # Check data if exists and step not set in update mode
+        if type_desc and not self._update_mode:
+            self._check_data()
+
     def _init_data(self, type_description):
         raise NotImplementedError(f'Method {self.__class__.__name__}._init_data() is not implemented!')
+
+    def _check_data(self):
+        print(f'Warning: method {self.__class__.__name__}._check_data() not implemented!')
 
     #
     def get_step_type(self):
         return self._STEP_TYPE
+
+    def get_step_command(self):
+        return self._step_data['command']
 
     # Description methods
     def save_description(self, type_description, create=True):

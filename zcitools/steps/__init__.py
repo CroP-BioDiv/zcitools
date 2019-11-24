@@ -1,13 +1,16 @@
 import os.path
 from ..utils.file_utils import read_yaml
+from ..utils.exceptions import ZCItoolsValueError
+
+# Step classes. Used for filling _type_2_step_cls dict
 from .table import TableStep
 from .sequences import SequencesStep
-from ..utils.exceptions import ZCItoolsValueError
+from .annotations import AnnotationsStep
 
 _type_2_step_cls = dict((cls._STEP_TYPE, cls) for cls in locals().values() if hasattr(cls, '_STEP_TYPE'))
 
 
-def read_step(step_name, check_data_type=None):
+def read_step(step_name, check_data_type=None, update_mode=False):
     desc_data = read_yaml(os.path.join(step_name, 'description.yml'))
     if not desc_data:
         raise ZCItoolsValueError(f"'{step_name}' is not a step!")
@@ -21,4 +24,4 @@ def read_step(step_name, check_data_type=None):
     if not cls:
         raise ZCItoolsValueError(f"No step class for data type {data_type}!")
 
-    return cls(desc_data['project'])
+    return cls(desc_data['project'], update_mode=update_mode)

@@ -19,8 +19,6 @@ Each annotation (with sequence) is stored in separate file?
         #     existing_seqs = self._find_existing_seqs()
         #     for seq_ident in type_description['sequences']:
         #         self._sequences[seq_ident] = existing_seqs.get(seq_ident, [])
-        #     #
-        #     self._check_data()
 
     def _check_data(self):
         pass

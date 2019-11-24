@@ -20,8 +20,6 @@ ToDo: store original file?
             self._columns = type_description['columns']
             self._orig_filename = type_description.get('orig_filename')
             self._data_format = type_description.get('data_format')
-            #
-            self._check_data()
         else:
             self._data = None
             self._columns = None

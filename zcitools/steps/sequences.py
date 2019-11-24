@@ -23,9 +23,6 @@ Each sequence can be stored in one or more files in different formats.
             existing_seqs = self._find_existing_seqs()
             for seq_ident in type_description['sequences']:
                 self._sequences[seq_ident] = existing_seqs.get(seq_ident, [])
-            #
-            if not self._update:
-                self._check_data()
 
     def _check_data(self):
         existing_seqs = self._find_existing_seqs()

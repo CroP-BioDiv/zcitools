@@ -5,7 +5,7 @@ from ..utils.import_methods import import_bio_entrez
 def download_ncbi(step_data, table_step, force_download=False):
     Entrez = import_bio_entrez()
 
-    step = SequencesStep(step_data, update=True)
+    step = SequencesStep(step_data, update_mode=True)
     for ni in table_step.get_column_by_type('ncbi_ident'):
         if force_download or not step.sequence_exists(ni):
             print(f"  fetching '{ni}' in GenBank format.")

@@ -4,7 +4,8 @@ Command classes. Class has to implement:
  - _COMMAND              : (attribute) command argument to use
  - _HELP                 : (attribute) command help text
  - set_arguments(parser) : (static method) sets command's arguments
- - run(step_data)        : runs command with given arguments. For create step method returns step object.
+ - run(step_data)        : runs command with given arguments. Create step methods return step object.
+ - finish(step_object)   : finish previously created step. Used when editing is neeed.
  - prev_steps()          : returns list of input steps
 """
 
@@ -24,6 +25,9 @@ class _Command:
 
     def run(self):
         raise NotImplementedError(f'Method {self.__class__.__name__}.run() is not implemented!')
+
+    def finish(self, step_obj):
+        pass
 
 
 class _StepCommand(_Command):
@@ -54,13 +58,28 @@ class _InitProject(_Command):
         init_project(self.args.dirname, self.args.description)
 
 
+class _Finish(_Command):
+    _COMMAND = 'finish'
+    _HELP = "Finish step that needed editing."
+
+    @staticmethod
+    def set_arguments(parser):
+        parser.add_argument('step', help='Step name')
+
+    def run(self):
+        from .steps import read_step
+        step = read_step(self.args.step, update_mode=True)  # Set to be in update mode
+        command_obj = commands_map[step.get_step_command()](None)
+        command_obj.finish(step)
+
+
 class _CleanCache(_Command):
     _COMMAND = 'cache'
     _HELP = "Remove cache of given steps"
 
     @staticmethod
     def set_arguments(parser):
-        parser.add_argument('step', nargs='+', help='Directory name')
+        parser.add_argument('step', nargs='+', help='Step name')
 
     def run(self):
         from .steps import read_step
@@ -127,6 +146,9 @@ class _GeSeqStep(_StepCommand):
         from .create_step.ge_seq import create_ge_seq_data
         step = read_step(self.args.step, check_data_type='sequences')
         return create_ge_seq_data(step_data, step)
+
+    def finish(self, step_obj):
+        print('aaaaaaaaa')
 
 
 #
