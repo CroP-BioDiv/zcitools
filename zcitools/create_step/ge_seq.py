@@ -49,5 +49,7 @@ def create_ge_seq_data(step_data, sequences_step):
     with open(step.step_file('INSTRUCTIONS.txt'), 'w') as out:
         out.write(_instructions.format(abspath=step.absolute_path(), step_name=step_data['step_name']))
 
+    #
+    step.set_sequences(sequences_step.all_sequences())
     step.save()
     return step

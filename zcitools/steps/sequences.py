@@ -2,7 +2,7 @@ import os.path
 from collections import defaultdict
 from .step import Step
 from ..utils.exceptions import ZCItoolsValueError
-from Bio import SeqIO
+from ..utils.import_methods import import_bio_seq_io
 
 
 class SequencesStep(Step):
@@ -24,7 +24,8 @@ Each sequence can be stored in one or more files in different formats.
             for seq_ident in type_description['sequences']:
                 self._sequences[seq_ident] = existing_seqs.get(seq_ident, [])
             #
-            self._check_data()
+            if not self._update:
+                self._check_data()
 
     def _check_data(self):
         existing_seqs = self._find_existing_seqs()
@@ -70,21 +71,28 @@ Each sequence can be stored in one or more files in different formats.
     # Save/load data
     def save(self):
         # Store description.yml
-        self._store_description(dict(sequences=sorted(self._sequences)))
+        self.save_description(dict(sequences=sorted(self._sequences)))
         # Data files are handled with add_sequence_file() method
 
     # Retrieve data methods
     def sequence_exists(self, ident):
         return bool(self._sequences.get(ident))
 
+    def all_sequences(self):
+        return self._sequences.keys()
+
     # Cach files are prfixed with '_c_'
     def _iterate_seq_records(self):
+        SeqIO = import_bio_seq_io()
+
         # Iterate through all sequences, returns Bio.SeqRecord objects.
         for seq_ident, files in sorted(self._sequences.items()):
+            print(seq_ident, files)
             for ext, st in zip(self._KNOWN_EXTENSIONS, self._SeqIO_TYPES):
                 f = seq_ident + ext
                 if f in files:
-                    with open(self.step_file(f)) as in_s:
+                    print('  eva', f)
+                    with open(self.step_file(f), 'r') as in_s:
                         yield from SeqIO.parse(in_s, st)
                     break
 

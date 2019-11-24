@@ -71,7 +71,7 @@ ToDo: store original file?
             if self._data_format:
                 desc['data_format'] = self._data_format
 
-        self._store_description(desc)
+        self.save_description(desc)
 
         # Write csv
         with open(self._get_table_filename(), 'w', newline='') as outcsv:

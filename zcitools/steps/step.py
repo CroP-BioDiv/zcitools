@@ -1,4 +1,5 @@
 import os.path
+import datetime
 from zcitools.utils.file_utils import ensure_directory, remove_directory, silent_remove_file, \
     write_yaml, read_yaml
 from ..utils.exceptions import ZCItoolsValueError
@@ -14,9 +15,10 @@ class Step:
     _COLUMN_TYPES = frozenset(['ncbi_ident', 'str', 'int'])
     _CACHE_PREFIX = '_c_'  # Cache files are prfixed with '_c_'
 
-    def __init__(self, step_data, remove_data=False):
+    def __init__(self, step_data, remove_data=False, update=False):
         self._step_data = step_data
         self._step_name = step_data['step_name']
+        self._update = update
 
         # Call init data method
         if remove_data:
@@ -44,8 +46,15 @@ class Step:
         return self._STEP_TYPE
 
     # Description methods
-    def _store_description(self, type_description):
-        write_yaml(dict(data_type=self.get_step_type(), data=type_description, project=self._step_data),
+    def save_description(self, type_description, create=True):
+        pd = dict(self._step_data)
+        if create:
+            pd['created'] = datetime.datetime.now().isoformat()
+            pd['updated'] = None
+        else:
+            pd['created'] = None
+            pd['updated'] = datetime.datetime.now().isoformat()
+        write_yaml(dict(data_type=self.get_step_type(), data=type_description, project=pd),
                    self.step_file('description.yml'))
 
     def get_desription(self):

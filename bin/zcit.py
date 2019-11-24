@@ -77,9 +77,9 @@ else:
         sn += f'_{desc}'
 
     # Run command
-    print('aaa', sn)
     step_data = dict(step_name=sn,
                      prev_steps=prev_steps,
+                     command=command,
                      cmd=' '.join(sys.argv[1:]))
     step_obj = command_obj.run(step_data)
 
