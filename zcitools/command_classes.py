@@ -148,7 +148,8 @@ class _GeSeqStep(_StepCommand):
         return create_ge_seq_data(step_data, step)
 
     def finish(self, step_obj):
-        print('aaaaaaaaa')
+        from .create_step.ge_seq import finish_ge_seq_data
+        finish_ge_seq_data(step_obj)
 
 
 #

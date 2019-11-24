@@ -11,7 +11,6 @@ Stores list of (DNA) sequences.
 List of sequence identifier are stored in description.yml.
 Each sequence can be stored in one or more files in different formats.
 """
-    ""
     _STEP_TYPE = 'sequences'
     _KNOWN_EXTENSIONS = ('.gb', '.fa')
     _SeqIO_TYPES = ('genbank', 'fasta')

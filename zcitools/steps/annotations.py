@@ -5,11 +5,12 @@ class AnnotationsStep(Step):
     """
 Stores list of (DNA) sequences with there annotations.
 List of sequence identifier are stored in description.yml.
-Each annotation (with sequence) is stored in separate file?
+Annotations are stored:
+ - in file annotations.gb, for whole sequnece set,
+ - or in files <seq_ident>.gb for each sequence separately.
 """
-    ""
     _STEP_TYPE = 'annotations'
-    # _KNOWN_EXTENSIONS = frozenset(['.gb', '.fa'])
+    _ALL_FILENAME = 'annotations.gb'
 
     # Init object
     def _init_data(self, type_description):
@@ -21,6 +22,7 @@ Each annotation (with sequence) is stored in separate file?
         #         self._sequences[seq_ident] = existing_seqs.get(seq_ident, [])
 
     def _check_data(self):
+        # if self.step_file('annotations.gb')
         pass
 
     # Set data
@@ -28,6 +30,9 @@ Each annotation (with sequence) is stored in separate file?
         self._sequences.update(seqs)
 
     # Save/load data
-    def save(self):
+    def get_all_annotation_filename(self):
+        return self.step_file(self._ALL_FILENAME)
+
+    def save(self, needs_editing=False):
         # Store description.yml
-        self.save_description(dict(sequences=sorted(self._sequences)))
+        self.save_description(dict(sequences=sorted(self._sequences)), needs_editing=needs_editing)

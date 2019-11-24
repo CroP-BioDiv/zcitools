@@ -56,8 +56,9 @@ class Step:
         return self._step_data['command']
 
     # Description methods
-    def save_description(self, type_description, create=True):
+    def save_description(self, type_description, create=True, needs_editing=False):
         pd = dict(self._step_data)
+        pd['needs_editing'] = needs_editing
         if create:
             pd['created'] = datetime.datetime.now().isoformat()
             pd['updated'] = None

@@ -51,5 +51,20 @@ def create_ge_seq_data(step_data, sequences_step):
 
     #
     step.set_sequences(sequences_step.all_sequences())
-    step.save()
+    step.save(needs_editing=True)
     return step
+
+
+def finish_ge_seq_data(step_obj):
+    # Check file named: GeSeqJob-<num>-<num>_GLOBAL_multi-GenBank.gbff
+    for f in step_obj.step_files():
+        if f.startswith('GeSeqJob') and f.endswith('_GLOBAL_multi-GenBank.gbff'):
+            filename = f
+            break
+    else:
+        print("Warning: can't find GeSeq output file!")
+        return
+
+    # Leave original file
+    copy_file(step_obj.step_file(filename), step_obj.get_all_annotation_filename())
+    step_obj.save()

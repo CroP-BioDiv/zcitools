@@ -3,7 +3,7 @@
 import os.path
 import sys
 import argparse
-from zcitools.utils.file_utils import write_yaml
+from zcitools.utils.file_utils import write_yaml, read_yaml
 from zcitools.command_classes import commands_map
 
 
@@ -85,6 +85,9 @@ else:
 
     if step_obj:
         # Store log data into project_log.yml
-        write_yaml([step_data], 'project_log.yml', mode='a')  # Appends yml list
+        # Do not store if step_data is equal as from last command?
+        log = read_yaml('project_log.yml')
+        if log and log[-1] != step_data:
+            write_yaml([step_data], 'project_log.yml', mode='a')  # Appends yml list
     else:
         print("Warning: create step command didn't return step object!")
