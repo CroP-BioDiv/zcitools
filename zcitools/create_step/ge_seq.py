@@ -66,5 +66,8 @@ def finish_ge_seq_data(step_obj):
         return
 
     # Leave original file
+    # ToDo: repair and filter data???
+    # ToDo: inverted_region 126081..1 !!! To_ind > from_ind!!!
     copy_file(step_obj.step_file(filename), step_obj.get_all_annotation_filename())
+    step_obj._check_data()
     step_obj.save()

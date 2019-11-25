@@ -88,6 +88,21 @@ class _CleanCache(_Command):
             step.remove_cache_files()
 
 
+class _Show(_Command):
+    _COMMAND = 'show'
+    _HELP = "Print step(s) data"
+
+    @staticmethod
+    def set_arguments(parser):
+        parser.add_argument('step', help='Step name')
+        parser.add_argument('-f', '--format', help='Additional format option (free format, depends on step type)')
+
+    def run(self):
+        from .steps import read_step
+        step = read_step(self.args.step)
+        step.show_data(format=self.args.format)
+
+
 # --------------------------------------------------
 # Step commands
 # --------------------------------------------------

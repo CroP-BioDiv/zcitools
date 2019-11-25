@@ -1,6 +1,7 @@
 import csv
 from .step import Step
 from ..utils.exceptions import ZCItoolsValueError
+from ..utils.terminal_layout import StringColumns
 
 
 class TableStep(Step):
@@ -89,3 +90,15 @@ ToDo: store original file?
         if idx is None:
             raise ZCItoolsValueError(f"No column with data_type {data_type}! Columns: {self._columns}")
         return (row[idx] for row in self._data)
+
+    # Show data
+    def show_data(self, format=None):
+        print('Columns:')
+        print(StringColumns(self._columns))
+
+        print('\nData:')
+        if len(self._data) <= 15:
+            rows = self._data
+        else:
+            rows = self._data[:4] + [['...'] * len(self._columns)] + self._data[-4:]
+        print(StringColumns(rows, header=[c for c, _ in self._columns]))

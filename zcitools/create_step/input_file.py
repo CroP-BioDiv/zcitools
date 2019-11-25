@@ -23,6 +23,7 @@ def create_table_step(step_data, filename, data_format=None, columns=None):
         # ToDo: separator for more columns. For now only list supported
         with open(filename, 'r') as r:
             data = [[line] for line in filter(None, (_l.strip() for _l in r.readlines()))]
+        data = sorted(data)
     else:
         raise ZCItoolsValueError(f'Data format {data_format} is not supported!')
 

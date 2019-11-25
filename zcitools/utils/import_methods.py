@@ -53,6 +53,12 @@ def import_bio_seq_io():
 
 
 @_import_method(_missing_bio)
+def import_bio_align_io():
+    from Bio import AlignIO
+    return AlignIO
+
+
+@_import_method(_missing_bio)
 def import_bio_entrez():
     from Bio import Entrez
     return Entrez

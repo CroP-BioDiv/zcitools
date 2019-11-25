@@ -1,6 +1,6 @@
 import os.path
 import datetime
-from zcitools.utils.file_utils import ensure_directory, remove_directory, silent_remove_file, \
+from zcitools.utils.file_utils import ensure_directory, remove_directory, silent_remove, \
     write_yaml, read_yaml
 from ..utils.exceptions import ZCItoolsValueError
 
@@ -78,7 +78,7 @@ class Step:
 
     # Commonn file methods
     @classmethod
-    def _is_cach_file(cls, f):
+    def _is_cache_file(cls, f):
         return f.startswith(cls._CACHE_PREFIX)
 
     def absolute_path(self):
@@ -90,10 +90,14 @@ class Step:
     def step_files(self, not_cached=False):
         # Returns list of step's filenames relative to step subdirectory
         if not_cached:
-            return [f for f in os.listdir(self._step_name) if not self._is_cach_file(f)]
+            return [f for f in os.listdir(self._step_name) if not self._is_cache_file(f)]
         return os.listdir(self._step_name)
 
     def remove_cache_files(self):
         for f in self.step_files():
-            if self._is_cach_file(f):
-                silent_remove_file(self.step_file(f))
+            if self._is_cache_file(f):
+                silent_remove(self.step_file(f))
+
+    #
+    def show_data(self, format=None):
+        print(f'{self.__class__.__name__}.show_data() not implemented!')

@@ -1,4 +1,7 @@
+import os.path
 from .step import Step
+from ..utils.import_methods import import_bio_seq_io
+from ..utils.terminal_layout import StringColumns
 
 
 class AnnotationsStep(Step):
@@ -17,13 +20,18 @@ Annotations are stored:
         self._sequences = set()  # seq_ident
         if type_description:
             self._sequences.update(type_description['sequences'])
-        #     existing_seqs = self._find_existing_seqs()
-        #     for seq_ident in type_description['sequences']:
-        #         self._sequences[seq_ident] = existing_seqs.get(seq_ident, [])
 
     def _check_data(self):
-        # if self.step_file('annotations.gb')
-        pass
+        exist_seq_idents = set(seq_ident for seq_ident, _ in self._iterate_records())
+        # Are all sequences presented
+        not_exist = self._sequences - exist_seq_idents
+        if not_exist:
+            raise ZCItoolsValueError(f"Sequence data not presented for: {', '.join(sorted(not_exist))}")
+
+        # Is there more sequences
+        more_data = exist_seq_idents - self._sequences
+        if more_data:
+            raise ZCItoolsValueError(f"Data exists for not listed sequence(s): {', '.join(sorted(more_data))}")
 
     # Set data
     def set_sequences(self, seqs):
@@ -36,3 +44,22 @@ Annotations are stored:
     def save(self, needs_editing=False):
         # Store description.yml
         self.save_description(dict(sequences=sorted(self._sequences)), needs_editing=needs_editing)
+
+    # Retrieve data methods
+    def _iterate_records(self):
+        SeqIO = import_bio_seq_io()
+
+        all_f = self.get_all_annotation_filename()
+        if os.path.isfile(all_f):
+            with open(all_f, 'r') as in_s:
+                for seq_record in SeqIO.parse(in_s, 'genbank'):
+                    yield seq_record.id, seq_record
+        else:
+            raise 'Not implemented!!!'
+
+    # Show data
+    def show_data(self, format=None):
+        header = ['seq_ident', 'Record ID', 'Length', 'Num features']
+        rows = [[seq_ident, seq_record.id, len(seq_record.seq), len(seq_record.features)]
+                for seq_ident, seq_record in self._iterate_records()]
+        print(StringColumns(rows, header=header))

@@ -3,6 +3,7 @@ from collections import defaultdict
 from .step import Step
 from ..utils.exceptions import ZCItoolsValueError
 from ..utils.import_methods import import_bio_seq_io
+from ..utils.terminal_layout import StringColumns
 
 
 class SequencesStep(Step):
@@ -77,26 +78,31 @@ Each sequence can be stored in one or more files in different formats.
     def all_sequences(self):
         return self._sequences.keys()
 
-    # Cach files are prfixed with '_c_'
-    def _iterate_seq_records(self):
+    def _iterate_records(self):
         SeqIO = import_bio_seq_io()
 
         # Iterate through all sequences, returns Bio.SeqRecord objects.
         for seq_ident, files in sorted(self._sequences.items()):
-            print(seq_ident, files)
             for ext, st in zip(self._KNOWN_EXTENSIONS, self._SeqIO_TYPES):
                 f = seq_ident + ext
                 if f in files:
-                    print('  eva', f)
                     with open(self.step_file(f), 'r') as in_s:
-                        yield from SeqIO.parse(in_s, st)
+                        for seq_record in SeqIO.parse(in_s, st):
+                            yield seq_ident, seq_record
                     break
 
     def get_all_seqs_fa(self):
-        f = self.step_file('_c_all_seqs.fa')
+        f = self.step_file(self._CACHE_PREFIX + 'all_seqs.fa')
         if not os.path.isfile(f):
             with open(f, 'w') as fa:
-                for seq_record in self._iterate_seq_records():
-                    fa.write(f">{seq_record.id}\n{seq_record.seq}\n")
-                    # fa.write(f">{seq_record.id} {seq_record.description}\n{seq_record.seq}\n")
+                for seq_ident, seq_record in self._iterate_records():
+                    # Note: sequences are named by initial seq_ident (not seq_record.id)!
+                    fa.write(f">{seq_ident}\n{seq_record.seq}\n")
         return f
+
+    # Show data
+    def show_data(self, format=None):
+        header = ['seq_ident', 'Record ID', 'Length', 'Num features']
+        rows = [[seq_ident, seq_record.id, len(seq_record.seq), len(seq_record.features)]
+                for seq_ident, seq_record in self._iterate_records()]
+        print(StringColumns(rows, header=header))

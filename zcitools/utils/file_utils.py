@@ -52,6 +52,13 @@ def silent_remove_file(filename):
             raise
 
 
+def silent_remove(filename):
+    if os.path.isfile(filename):
+        silent_remove_file(filename)
+    elif os.path.isdir(filename):
+        remove_directory(filename)
+
+
 def link_file(source, dest):
     if sys.platform == "win32":
         shutil.copyfile(source, dest)
