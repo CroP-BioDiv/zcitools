@@ -4,6 +4,7 @@ from .step import Step
 from ..utils.import_methods import import_bio_seq_io
 from ..utils.terminal_layout import StringColumns
 from ..utils.genbank import feature_qualifiers_to_desc
+from ..utils.bio_helpers import feature_location_desc
 
 
 class AnnotationsStep(Step):
@@ -60,11 +61,10 @@ Annotations are stored:
         else:
             raise 'Not implemented!!!'
 
-    def _get_genes(self, filter_seqs=None):
-        data = dict()  # seq_ident -> set of genes
-        for seq_ident, seq_record in self._iterate_records(filter_seqs=filter_seqs):
-            data[seq_ident] = set(feature_qualifiers_to_desc(f) for f in seq_record.features if f.type == 'gene')
-        return data
+    def _get_genes_desc(self, filter_seqs=None):
+        # Returns seq_ident -> set of genes
+        return dict((seq_ident, set(feature_qualifiers_to_desc(f) for f in seq_record.features if f.type == 'gene'))
+                    for seq_ident, seq_record in self._iterate_records(filter_seqs=filter_seqs))
 
     # Show data
     def show_data(self, params=None):
@@ -74,7 +74,7 @@ Annotations are stored:
             filter_seqs = self._sequences & set(params)
             params = [p for p in params if p not in filter_seqs]  # Remove processed params
 
-        cmd = params[0] if params else 'by_type'  # Default print
+        cmd = params[0].lower() if params else 'by_type'  # Default print
         if params:
             params = params[1:]
 
@@ -103,12 +103,12 @@ Annotations are stored:
             print(StringColumns(sorted(rows), header=header))
 
         elif cmd == 'genes':
-            data = self._get_genes(filter_seqs=filter_seqs)
+            data = self._get_genes_desc(filter_seqs=filter_seqs)
             for seq_ident, genes in sorted(data.items()):
                 print(f"{seq_ident} ({len(genes)}): {', '.join(sorted(genes))}")
 
         elif cmd == 'shared_genes':
-            data = self._get_genes(filter_seqs=filter_seqs)
+            data = self._get_genes_desc(filter_seqs=filter_seqs)
             if len(data) > 1:
                 same_genes = set.intersection(*data.values())
                 print('Genes not shared by all sequences:')
@@ -119,3 +119,12 @@ Annotations are stored:
                 print(f"Shared ({len(same_genes)}): {', '.join(sorted(same_genes))}")
             else:
                 print('Not enough data to find same ganes!')
+
+        elif cmd == 'ir':
+            # seq_ident -> list of feature locations
+            data = dict((seq_ident,
+                         [feature_location_desc(f.location) for f in seq_record.features if f.type == 'repeat_region'])
+                        for seq_ident, seq_record in self._iterate_records(filter_seqs=filter_seqs))
+
+            for seq_ident, locations in sorted(data.items()):
+                print(f"{seq_ident} ({len(locations)}): {', '.join(map(str, sorted(locations)))}")
