@@ -79,20 +79,23 @@ Each sequence can be stored in one or more files in different formats.
         return self._sequences.keys()
 
     def _iterate_records(self):
-        SeqIO = import_bio_seq_io()
-
         # Iterate through all sequences, returns Bio.SeqRecord objects.
         for seq_ident, files in sorted(self._sequences.items()):
-            for ext, st in zip(self._KNOWN_EXTENSIONS, self._SeqIO_TYPES):
-                f = seq_ident + ext
-                if f in files:
-                    with open(self.step_file(f), 'r') as in_s:
-                        for seq_record in SeqIO.parse(in_s, st):
-                            yield seq_ident, seq_record
-                    break
+            seq_record = self._read_record(seq_ident, files=files)
+            if seq_record is not None:
+                yield seq_ident, seq_record
+
+    def _read_record(self, seq_ident, files=None):
+        if files is None:
+            files = self._sequences[seq_ident]
+        for ext, st in zip(self._KNOWN_EXTENSIONS, self._SeqIO_TYPES):
+            f = seq_ident + ext
+            if f in files:
+                with open(self.step_file(f), 'r') as in_s:
+                    return import_bio_seq_io().read(in_s, st)
 
     def get_all_seqs_fa(self):
-        f = self.step_file(self._CACHE_PREFIX + 'all_seqs.fa')
+        f = self.cache_file('all_seqs.fa')
         if not os.path.isfile(f):
             with open(f, 'w') as fa:
                 for seq_ident, seq_record in self._iterate_records():
@@ -101,7 +104,7 @@ Each sequence can be stored in one or more files in different formats.
         return f
 
     # Show data
-    def show_data(self, format=None):
+    def show_data(self, params=None):
         header = ['seq_ident', 'Record ID', 'Length', 'Num features']
         rows = [[seq_ident, seq_record.id, len(seq_record.seq), len(seq_record.features)]
                 for seq_ident, seq_record in self._iterate_records()]

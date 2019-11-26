@@ -95,12 +95,12 @@ class _Show(_Command):
     @staticmethod
     def set_arguments(parser):
         parser.add_argument('step', help='Step name')
-        parser.add_argument('-f', '--format', help='Additional format option (free format, depends on step type)')
+        parser.add_argument('params', nargs='*', help='Additional format option (free format, depends on step type)')
 
     def run(self):
         from .steps import read_step
         step = read_step(self.args.step)
-        step.show_data(format=self.args.format)
+        step.show_data(params=self.args.params)
 
 
 # --------------------------------------------------

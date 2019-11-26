@@ -77,15 +77,18 @@ class Step:
             return d['data']
 
     # Commonn file methods
-    @classmethod
-    def _is_cache_file(cls, f):
-        return f.startswith(cls._CACHE_PREFIX)
-
     def absolute_path(self):
         return os.path.abspath(self._step_name)
 
     def step_file(self, f):
         return os.path.join(self._step_name, f)
+
+    @classmethod
+    def _is_cache_file(cls, f):
+        return f.startswith(cls._CACHE_PREFIX)
+
+    def cache_file(self, f):
+        return self.step_file(self._CACHE_PREFIX + f)
 
     def step_files(self, not_cached=False):
         # Returns list of step's filenames relative to step subdirectory
@@ -99,5 +102,5 @@ class Step:
                 silent_remove(self.step_file(f))
 
     #
-    def show_data(self, format=None):
+    def show_data(self, params=None):
         print(f'{self.__class__.__name__}.show_data() not implemented!')

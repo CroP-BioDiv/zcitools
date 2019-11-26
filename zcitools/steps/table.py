@@ -92,7 +92,7 @@ ToDo: store original file?
         return (row[idx] for row in self._data)
 
     # Show data
-    def show_data(self, format=None):
+    def show_data(self, params=None):
         print('Columns:')
         print(StringColumns(self._columns))
 
