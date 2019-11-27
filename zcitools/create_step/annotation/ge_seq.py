@@ -1,5 +1,5 @@
-from ..steps.annotations import AnnotationsStep
-from ..utils.file_utils import copy_file  # link_file
+from zcitools.steps.annotations import AnnotationsStep
+from zcitools.utils.file_utils import copy_file  # link_file
 
 _instructions = """
 Open web page: https://chlorobox.mpimp-golm.mpg.de/geseq.html
@@ -30,7 +30,7 @@ Actions
 
 When job is finished:
  - download Global multi-GenBank file into job directory ({abspath})
- - run zcit command: zcit finish {step_name}
+ - run zcit command: zcit.py finish {step_name}
 
 Documentation:
 https://chlorobox.mpimp-golm.mpg.de/gs_documentation.html

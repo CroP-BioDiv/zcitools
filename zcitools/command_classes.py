@@ -145,6 +145,7 @@ class _NCBIStep(_StepCommand):
         return download_ncbi(step_data, step, force_download=self.args.force_download)
 
 
+# Annotations
 class _GeSeqStep(_StepCommand):
     _COMMAND = 'ge_seq'
     _HELP = "Annotates chloroplast sequences with GeSeq"
@@ -158,13 +159,28 @@ class _GeSeqStep(_StepCommand):
         return [self.args.step]
 
     def run(self, step_data):
-        from .create_step.ge_seq import create_ge_seq_data
+        from .create_step.annotation.ge_seq import create_ge_seq_data
         step = read_step(self.args.step, check_data_type='sequences')
         return create_ge_seq_data(step_data, step)
 
     def finish(self, step_obj):
-        from .create_step.ge_seq import finish_ge_seq_data
+        from .create_step.annotation.ge_seq import finish_ge_seq_data
         finish_ge_seq_data(step_obj)
+
+
+class _GeSeqStep(_GeSeqStep):
+    _COMMAND = 'cpgavas'
+    _HELP = "Annotates chloroplast sequences with CPGAVAS"
+    _STEP_BASE_NAME = 'CPGAVAS'
+
+    def run(self, step_data):
+        from .create_step.annotation.cpgavas import create_cpgavas_data
+        step = read_step(self.args.step, check_data_type='sequences')
+        return create_cpgavas_data(step_data, step)
+
+    def finish(self, step_obj):
+        from .create_step.annotation.ge_seq import finish_cpgavas_data
+        finish_cpgavas_data(step_obj)
 
 
 #

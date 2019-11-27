@@ -14,3 +14,9 @@ def feature_location_desc(location):
         # return (int(location.start), int(location.end))
 
     assert False, (f'Not supported type {cls_name}!', location)
+
+
+def write_fasta(filename, data):
+    with open(filename, 'w') as fa:
+        for ident, seq in data:
+            fa.write(f">{ident}\n{seq}\n")

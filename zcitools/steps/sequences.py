@@ -4,6 +4,7 @@ from .step import Step
 from ..utils.exceptions import ZCItoolsValueError
 from ..utils.import_methods import import_bio_seq_io
 from ..utils.terminal_layout import StringColumns
+from ..utils.bio_helpers import write_fasta
 
 
 class SequencesStep(Step):
@@ -13,8 +14,10 @@ List of sequence identifier are stored in description.yml.
 Each sequence can be stored in one or more files in different formats.
 """
     _STEP_TYPE = 'sequences'
-    _KNOWN_EXTENSIONS = ('.gb', '.fa')
-    _SeqIO_TYPES = ('genbank', 'fasta')
+    _TYPE_LOAD_PRIORITY = (('.gb', 'genbank'), ('.fa', 'fasta'))
+    _KNOWN_EXTENSIONS = tuple(e for e, _ in _TYPE_LOAD_PRIORITY)
+    _EXT_2_TYPE = dict(_TYPE_LOAD_PRIORITY)
+    _TYPE_2_EXT = dict(x[::-1] for x in _TYPE_LOAD_PRIORITY)
 
     # Init object
     def _init_data(self, type_description):
@@ -88,7 +91,7 @@ Each sequence can be stored in one or more files in different formats.
     def _read_record(self, seq_ident, files=None):
         if files is None:
             files = self._sequences[seq_ident]
-        for ext, st in zip(self._KNOWN_EXTENSIONS, self._SeqIO_TYPES):
+        for ext, st in self._TYPE_LOAD_PRIORITY:
             f = seq_ident + ext
             if f in files:
                 with open(self.step_file(f), 'r') as in_s:
@@ -97,11 +100,30 @@ Each sequence can be stored in one or more files in different formats.
     def get_all_seqs_fa(self):
         f = self.cache_file('all_seqs.fa')
         if not os.path.isfile(f):
-            with open(f, 'w') as fa:
-                for seq_ident, seq_record in self._iterate_records():
-                    # Note: sequences are named by initial seq_ident (not seq_record.id)!
-                    fa.write(f">{seq_ident}\n{seq_record.seq}\n")
+            # Note: sequences are named by initial seq_ident (not seq_record.id)!
+            write_fasta(f, ((seq_ident, seq_record.seq) for seq_ident, seq_record in self._iterate_records()))
         return f
+
+    def get_sequence(self, seq_ident):
+        # Returns sequence as a string
+        seq_record = self._read_record(seq_ident)
+        return str(seq_record.seq)
+
+    def get_sequence_file(self, seq_ident, file_type):
+        # Returns sequence of given file type
+        # First check does it exist
+        ext = self._TYPE_2_EXT[file_type]
+        for f in self._sequences[seq_ident]:
+            if f.endswith(ext):
+                return self.step_file(f)
+
+        # If not, than make convertion
+        seq_record = self._read_record(seq_ident)
+        seq_f = self.step_file(seq_ident + ext)
+        with open(seq_f, 'w') as output_handle:
+            count = import_bio_seq_io().write(seq_record, output_handle, file_type)
+        self._sequences[seq_ident].append(seq_ident + ext)
+        return seq_f
 
     # Show data
     def show_data(self, params=None):
