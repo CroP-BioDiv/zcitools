@@ -1,12 +1,14 @@
 """
 Command classes, called from zcit script.
-There are few different types of commands, depending on needed data to run and return value.
- - commands to create new step
-   receive data of step to create, return None or step object,
- - commnads to make calculation on existing step:
-   receive step object, return bool if calculation was successfully
- - commnads to make general work
-   no input arguments, return None
+There are few different types (groups) of commands, depending on needed data to run and return value.
+Commands:
+ - to create new step.
+   Receive data of step to create, return None or step object.
+ - to make calculation on existing step.
+   Receive step object, return bool if calculation finished.
+   Note: calculation can be called more times. It should test calculation state and continue from where it stopped.
+ - to make general work.
+   No input arguments, return None.
 
 Class has to implement:
  - __init__(args)        : constructor
@@ -14,6 +16,8 @@ Class has to implement:
  - _HELP                 : (attribute) command help text
  - set_arguments(parser) : (static method) sets command's arguments
  - run(step_data/step/-) : runs command with given arguments
+
+Create new step command also has to implement:
  - finish(step_object)   : finish previously created step. Used when editing is neeed.
  - prev_steps()          : returns list of input steps
 """
@@ -30,28 +34,8 @@ class _Command:
     def __init__(self, args):
         self.args = args
 
-    def prev_steps(self):
-        return [os.path.normpath(p) for p in self._prev_steps()]
-
-    def _prev_steps(self):
-        return []
-
     def run(self):
         raise NotImplementedError(f'Method {self.__class__.__name__}.run() is not implemented!')
-
-    def finish(self, step_obj):
-        pass
-
-
-class _CreateStepCommand(_Command):
-    _COMMAND_TYPE = 'new_step'
-    _STEP_BASE_NAME = None
-
-    def run(self, step_data):
-        raise NotImplementedError(f'Method {self.__class__.__name__}.run(step_data) is not implemented!')
-
-    def step_base_name(self):
-        return self._STEP_BASE_NAME or self._COMMAND
 
 
 class _CalculateCommand(_Command):
@@ -62,9 +46,31 @@ class _CalculateCommand(_Command):
     @staticmethod
     def set_arguments(parser):
         parser.add_argument('step', help='Step name')
+        parser.add_argument(
+            '-f', '--force', action='store_true', help='Force recalculation (removes existing directory data)')
 
     def run(self, step):
         raise NotImplementedError(f'Method {self.__class__.__name__}.run(step) is not implemented!')
+
+
+class _CreateStepCommand(_Command):
+    _COMMAND_TYPE = 'new_step'
+    _STEP_BASE_NAME = None
+
+    def prev_steps(self):
+        return [os.path.normpath(p) for p in self._prev_steps()]
+
+    def _prev_steps(self):
+        return []
+
+    def run(self, step_data):
+        raise NotImplementedError(f'Method {self.__class__.__name__}.run(step_data) is not implemented!')
+
+    def step_base_name(self):
+        return self._STEP_BASE_NAME or self._COMMAND
+
+    def finish(self, step_obj):
+        pass
 
 
 # --------------------------------------------------
@@ -72,7 +78,7 @@ class _CalculateCommand(_Command):
 # --------------------------------------------------
 class _InitProject(_Command):
     _COMMAND = 'init'
-    _HELP = "Initialize project in given direcotry name."
+    _HELP = "Initialize project in given directory name."
 
     @staticmethod
     def set_arguments(parser):
@@ -136,7 +142,14 @@ class _Show(_Command):
 # Calculation commands
 # --------------------------------------------------
 class _OGDRAW(_CalculateCommand):
-    pass
+    _COMMAND = 'ogdraw'
+    _STEP_DATA_TYPE = 'annotations'
+    _CALCULATION_DIRECTORY = 'OGDraw'
+    _HELP = "Create OGDraw images of annotations"
+
+    def run(self, step):
+        from .processing.annotation.ogdraw import calculate_ogdraw
+        calculate_ogdraw(step, self._CALCULATION_DIRECTORY)
 
 
 # --------------------------------------------------

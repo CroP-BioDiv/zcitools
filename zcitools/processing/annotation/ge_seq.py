@@ -5,7 +5,7 @@ _instructions = """
 Open web page: https://chlorobox.mpimp-golm.mpg.de/geseq.html
 
 FASTA file(s) to annotate
- * Upload file: sequences.fa
+ * Upload file: {step_name}/sequences.fa
  * (check) Circular
  * (check) Sequence source: Plastid
 
@@ -29,7 +29,7 @@ Actions
  * Submit
 
 When job is finished:
- - download Global multi-GenBank file into job directory ({abspath})
+ - download Global multi-GenBank file into job directory ({step_name})
  - run zcit command: zcit.py finish {step_name}
 
 Documentation:
@@ -47,7 +47,7 @@ def create_ge_seq_data(step_data, sequences_step):
 
     # Store instructions
     with open(step.step_file('INSTRUCTIONS.txt'), 'w') as out:
-        out.write(_instructions.format(abspath=step.absolute_path(), step_name=step_data['step_name']))
+        out.write(_instructions.format(step_name=step_data['step_name']))
 
     #
     step.set_sequences(sequences_step.all_sequences())

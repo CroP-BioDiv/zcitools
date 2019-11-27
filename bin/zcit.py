@@ -3,8 +3,9 @@
 import os.path
 import sys
 import argparse
-from zcitools.utils.file_utils import write_yaml, read_yaml
+from zcitools.utils.file_utils import write_yaml, read_yaml, remove_directory, ensure_directory
 from zcitools.command_classes import commands_map
+from zcitools.steps import read_step
 
 
 def _get_parser(command, for_help):
@@ -79,20 +80,36 @@ parser = _get_parser(command, False)
 args = parser.parse_args()
 command_obj = commands_map[command](args)
 
-#
-if not command_obj._COMMAND_TYPE:               # General work
+
+# General work
+if not command_obj._COMMAND_TYPE:
     if command != 'init':
         _check_is_project_valid()
     command_obj.run()
 
-elif command_obj._COMMAND_TYPE == 'calculate':  # Calculation on existing step
+# Calculation on existing step
+elif command_obj._COMMAND_TYPE == 'calculate':
     if command_obj._STEP_DATA_TYPE:
-        step = read_step(self.args.step, check_data_type=command_obj._STEP_DATA_TYPE)
-        command_obj.run(step)
+        step = read_step(args.step, check_data_type=command_obj._STEP_DATA_TYPE)
+        if step.get_step_needs_editing():
+            print(f"Error: data of step {args.step} is not complete (finished)!")
+        else:
+            _dir = step.step_file(command_obj._CALCULATION_DIRECTORY)
+            if args.force:
+                remove_directory(_dir, create=True)
+            else:
+                ensure_directory(_dir)
+            #
+            if command_obj.run(step):
+                print(f"Calculation {command} finished!")
+            else:
+                print(f"Calculation {command} is not yet finished. Check directory {_dir} for instructions.")
+
     else:
         print(f"Error: calculation class {type(command_obj)} doesn't have specified step type it works on!")
 
-elif command_obj._COMMAND_TYPE == 'new_step':   # Create new step
+# Create new step
+elif command_obj._COMMAND_TYPE == 'new_step':
     _check_is_project_valid()
 
     # Run command
@@ -104,8 +121,8 @@ elif command_obj._COMMAND_TYPE == 'new_step':   # Create new step
 
     if step_obj:
         # Store log data into project_log.yml
-        # Do not store if step_data is equal as from last command?
         step_data = dict((k, v) for k, v in step_data.items() if k in ('cmd', 'step_name'))
+        # Do not store if step_data is equal as from last command?
         log = read_yaml('project_log.yml')
         if not log or log[-1] != step_data:
             write_yaml([step_data], 'project_log.yml', mode='a')  # Appends yml list

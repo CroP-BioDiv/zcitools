@@ -86,6 +86,9 @@ class Step:
     def step_file(self, f):
         return os.path.join(self._step_name, f)
 
+    def step_calc_file(self, calc_d, f):
+        return os.path.join(self._step_name, calc_d, f)
+
     @classmethod
     def _is_cache_file(cls, f):
         return f.startswith(cls._CACHE_PREFIX)
