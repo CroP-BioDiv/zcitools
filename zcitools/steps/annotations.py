@@ -4,7 +4,7 @@ from .step import Step
 from ..utils.import_methods import import_bio_seq_io
 from ..utils.terminal_layout import StringColumns
 from ..utils.genbank import feature_qualifiers_to_desc
-from ..utils.bio_helpers import feature_location_desc
+from ..utils.helpers import feature_location_desc
 
 
 class AnnotationsStep(Step):

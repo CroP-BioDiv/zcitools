@@ -1,3 +1,5 @@
+# Methods for this and that
+
 
 def feature_location_desc(location):
     # Returns tuple of indices for describing location as simple as possible
