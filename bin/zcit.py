@@ -22,38 +22,17 @@ def _get_parser(command, for_help):
     return parser
 
 
-if len(sys.argv) == 1 or sys.argv[1].lower() == 'help':
-    if len(sys.argv) > 2 and sys.argv[2] in commands_map:
-        parser = _get_parser(sys.argv[2], True)
-        parser.print_help()
-    else:
-        print(f"""Usage: python {sys.argv[0]} <command> <arguments>
-Help: python {sys.argv[0]} help <command>
-
-Command is one of: {', '.join(sorted(commands_map.keys()))}""")
-    sys.exit(0)
-
-command = sys.argv[1].lower()
-if command not in commands_map:
-    print(f'Command "{command}" is not supported!')
-    sys.exit(0)
-
-parser = _get_parser(command, False)
-args = parser.parse_args()
-command_obj = commands_map[command](args)
-
-#
-if not command_obj.CREATE_STEP_COMMAND:
-    command_obj.run()
-else:
+def _check_is_project_valid():
     # Check is command run inside a project
     if not os.path.isfile('project_log.yml'):
         print('Error: script is not called on valid project!')
         sys.exit(0)
-    #
+
+
+def _new_step_name(command_obj, args):
     # Find step name. Format <num>_<step_base_name>[_<description>]
     prev_steps = command_obj.prev_steps()
-    #
+
     if args.step_num:
         num = args.step_num
     elif prev_steps:
@@ -76,9 +55,49 @@ else:
     if desc:
         sn += f'_{desc}'
 
+    return sn
+
+
+# ---------------------------------------------------------
+if len(sys.argv) == 1 or sys.argv[1].lower() == 'help':
+    if len(sys.argv) > 2 and sys.argv[2] in commands_map:
+        parser = _get_parser(sys.argv[2], True)
+        parser.print_help()
+    else:
+        print(f"""Usage: python {sys.argv[0]} <command> <arguments>
+Help: python {sys.argv[0]} help <command>
+
+Command is one of: {', '.join(sorted(commands_map.keys()))}""")
+    sys.exit(0)
+
+command = sys.argv[1].lower()
+if command not in commands_map:
+    print(f'Command "{command}" is not supported!')
+    sys.exit(0)
+
+parser = _get_parser(command, False)
+args = parser.parse_args()
+command_obj = commands_map[command](args)
+
+#
+if not command_obj._COMMAND_TYPE:               # General work
+    if command != 'init':
+        _check_is_project_valid()
+    command_obj.run()
+
+elif command_obj._COMMAND_TYPE == 'calculate':  # Calculation on existing step
+    if command_obj._STEP_DATA_TYPE:
+        step = read_step(self.args.step, check_data_type=command_obj._STEP_DATA_TYPE)
+        command_obj.run(step)
+    else:
+        print(f"Error: calculation class {type(command_obj)} doesn't have specified step type it works on!")
+
+elif command_obj._COMMAND_TYPE == 'new_step':   # Create new step
+    _check_is_project_valid()
+
     # Run command
-    step_data = dict(step_name=sn,
-                     prev_steps=prev_steps,
+    step_data = dict(step_name=_new_step_name(command_obj, args),
+                     prev_steps=command_obj.prev_steps(),
                      command=command,
                      cmd=' '.join(sys.argv[1:]))
     step_obj = command_obj.run(step_data)
@@ -86,8 +105,9 @@ else:
     if step_obj:
         # Store log data into project_log.yml
         # Do not store if step_data is equal as from last command?
+        step_data = dict((k, v) for k, v in step_data.items() if k in ('cmd', 'step_name'))
         log = read_yaml('project_log.yml')
-        if log and log[-1] != step_data:
+        if not log or log[-1] != step_data:
             write_yaml([step_data], 'project_log.yml', mode='a')  # Appends yml list
     else:
         print("Warning: create step command didn't return step object!")

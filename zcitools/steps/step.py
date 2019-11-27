@@ -55,6 +55,9 @@ class Step:
     def get_step_command(self):
         return self._step_data['command']
 
+    def get_step_needs_editing(self):
+        return self._step_data['needs_editing']
+
     # Description methods
     def save_description(self, type_description, create=True, needs_editing=False):
         pd = dict(self._step_data)
