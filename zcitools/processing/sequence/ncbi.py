@@ -1,5 +1,5 @@
-from ..steps.sequences import SequencesStep
-from ..utils.import_methods import import_bio_entrez
+from zcitools.steps.sequences import SequencesStep
+from zcitools.utils.import_methods import import_bio_entrez
 
 
 def download_ncbi(step_data, table_step, force_download=False):

@@ -25,6 +25,8 @@ def _import_method(error_msg):
                 raise
 
             if args:
+                if len(args) == 1:
+                    return getattr(lib, args[0])  # No unpacking!
                 return [getattr(lib, a) for a in args]
             return lib
 
@@ -38,12 +40,9 @@ Biopython library (https://biopython.org/) is missing.
 
 For installation instruction check web page:
 https://biopython.org/wiki/Download
-"""
 
-# @_import_method(_missing_bio)
-# def import_bio():
-#     import Bio
-#     return Bio
+Short: pip install biopython
+"""
 
 
 @_import_method(_missing_bio)
@@ -62,3 +61,19 @@ def import_bio_align_io():
 def import_bio_entrez():
     from Bio import Entrez
     return Entrez
+
+
+_missing_cai = """
+Codon Adaptation Index (CAI) is missing.
+
+For installation instruction check web page:
+https://github.com/Benjamin-Lee/CodonAdaptationIndex
+
+Short: pip install cai
+"""
+
+
+@_import_method(_missing_cai)
+def import_CAI():
+    import CAI
+    return CAI

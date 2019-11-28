@@ -9,10 +9,11 @@ def feature_qualifiers_to_desc(feature):
     #   As of Biopython 1.69 this is an ordered dictionary.
 
     qualifiers = feature.qualifiers
-    if feature.type == 'gene':
+    if feature.type in ('gene', 'CDS'):
         genes = qualifiers['gene']
         assert len(genes) == 1, genes
         return genes[0]
+
     if feature.type == 'repeat_region':
         r_type = qualifiers['rpt_type']
         assert len(r_type) == 1, r_type

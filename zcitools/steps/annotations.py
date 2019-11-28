@@ -61,10 +61,48 @@ Annotations are stored:
         else:
             raise 'Not implemented!!!'
 
+    #
+    def _extract_features(self, iter_features):
+        for seq_ident, seq_record, features in iter_features:
+            # ToDo: how to sort them. For now by name, it is possible to sort by location
+            features = sorted(features, key=feature_qualifiers_to_desc)
+            seq = ''.join(str(f.extract(seq_record).seq) for f in features)
+            # if len(seq) % 3:
+            #     print(seq_ident, len(seq))
+            #     # print([len(s) for s in (f.extract(seq_record).seq for f in features) if len(s) % 3])
+            #     for f in features:
+            #         if 'translation_input' in f.qualifiers:
+            #             t = ''.join(f.qualifiers['translation_input']).replace(' ', '')
+            #             print(feature_qualifiers_to_desc(f), len(f.extract(seq_record).seq), len(t))
+            #             print(t)
+            #             # print(f.qualifiers['translation_input'])
+            yield seq_ident, seq
+
+    def get_genes(self, filter_seqs=None):
+        # Iterate through sequences and there genes
+        for seq_ident, seq_record in self._iterate_records(filter_seqs=filter_seqs):
+            yield seq_ident, seq_record, (f for f in seq_record.features if f.type == 'gene')
+
     def _get_genes_desc(self, filter_seqs=None):
-        # Returns seq_ident -> set of genes
-        return dict((seq_ident, set(feature_qualifiers_to_desc(f) for f in seq_record.features if f.type == 'gene'))
-                    for seq_ident, seq_record in self._iterate_records(filter_seqs=filter_seqs))
+        # Returns dict seq_ident -> set of gene names
+        return dict((seq_ident, set(feature_qualifiers_to_desc(f) for f in features))
+                    for seq_ident, _, features in self.get_genes(filter_seqs=filter_seqs))
+
+    def extract_all_genes(self, filter_seqs=None):
+        return self._extract_features(self.get_genes(filter_seqs=filter_seqs))
+
+    def get_cds(self, filter_seqs=None):
+        # Iterate through sequences and there genes
+        for seq_ident, seq_record in self._iterate_records(filter_seqs=filter_seqs):
+            yield seq_ident, seq_record, (f for f in seq_record.features if f.type == 'CDS')
+
+    def _get_cds_desc(self, filter_seqs=None):
+        # Returns dict seq_ident -> set of gene names
+        return dict((seq_ident, set(feature_qualifiers_to_desc(f) for f in features))
+                    for seq_ident, _, features in self.get_cds(filter_seqs=filter_seqs))
+
+    def extract_all_cds(self, filter_seqs=None):
+        return self._extract_features(self.get_cds(filter_seqs=filter_seqs))
 
     # Show data
     def show_data(self, params=None):
@@ -103,22 +141,16 @@ Annotations are stored:
             print(StringColumns(sorted(rows), header=header))
 
         elif cmd == 'genes':
-            data = self._get_genes_desc(filter_seqs=filter_seqs)
-            for seq_ident, genes in sorted(data.items()):
-                print(f"{seq_ident} ({len(genes)}): {', '.join(sorted(genes))}")
+            self._all_features(self._get_genes_desc(filter_seqs=filter_seqs).items())
 
         elif cmd == 'shared_genes':
-            data = self._get_genes_desc(filter_seqs=filter_seqs)
-            if len(data) > 1:
-                same_genes = set.intersection(*data.values())
-                print('Genes not shared by all sequences:')
-                for seq_ident, genes in sorted(data.items()):
-                    rest_genes = genes - same_genes
-                    print(f"    {seq_ident} ({len(rest_genes)}): {', '.join(sorted(rest_genes))}")
+            self._shared_features(self._get_genes_desc(filter_seqs=filter_seqs))
 
-                print(f"Shared ({len(same_genes)}): {', '.join(sorted(same_genes))}")
-            else:
-                print('Not enough data to find same ganes!')
+        elif cmd == 'cds':
+            self._all_features(self._get_cds_desc(filter_seqs=filter_seqs).items())
+
+        elif cmd == 'shared_cds':
+            self._shared_features(self._get_cds_desc(filter_seqs=filter_seqs))
 
         elif cmd == 'ir':
             # seq_ident -> list of feature locations
@@ -128,3 +160,19 @@ Annotations are stored:
 
             for seq_ident, locations in sorted(data.items()):
                 print(f"{seq_ident} ({len(locations)}): {', '.join(map(str, sorted(locations)))}")
+
+    def _all_features(self, data):
+        for seq_ident, genes in sorted(data):
+            print(f"{seq_ident} ({len(genes)}): {', '.join(sorted(genes))}")
+
+    def _shared_features(self, data):
+        if len(data) > 1:
+            same_genes = set.intersection(*data.values())
+            print('Genes not shared by all sequences:')
+            for seq_ident, genes in sorted(data.items()):
+                rest_genes = genes - same_genes
+                print(f"    {seq_ident} ({len(rest_genes)}): {', '.join(sorted(rest_genes))}")
+
+            print(f"Shared ({len(same_genes)}): {', '.join(sorted(same_genes))}")
+        else:
+            print('Not enough data to find same ganes!')

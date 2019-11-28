@@ -41,7 +41,9 @@ class _Command:
 class _CalculateCommand(_Command):
     _COMMAND_TYPE = 'calculate'
     _STEP_DATA_TYPE = None         # Type of step commnad works on
-    _CALCULATION_DIRECTORY = None  # Name of subdirectory
+    # Only one of these should be set
+    _CALCULATION_DIRECTORY = None  # Name of subdirectory result
+    _CALCULATION_FILENAME = None   # Name of file result
 
     @staticmethod
     def set_arguments(parser):
@@ -141,6 +143,17 @@ class _Show(_Command):
 # --------------------------------------------------
 # Calculation commands
 # --------------------------------------------------
+class _RSCU(_CalculateCommand):
+    _COMMAND = 'rscu'
+    _STEP_DATA_TYPE = 'annotations'
+    _CALCULATION_DIRECTORY = 'RSCU'
+    _HELP = "Calculates sequence RSCUs"
+
+    def run(self, step):
+        from .processing.sequence.cai import calcualte_rscu
+        calcualte_rscu(step, self._CALCULATION_DIRECTORY)
+
+
 class _OGDRAW(_CalculateCommand):
     _COMMAND = 'ogdraw'
     _STEP_DATA_TYPE = 'annotations'
@@ -189,7 +202,7 @@ class _NCBIStep(_CreateStepCommand):
         return [self.args.step]
 
     def run(self, step_data):
-        from .processing.ncbi import download_ncbi
+        from .processing.sequence.ncbi import download_ncbi
         step = read_step(self.args.step, check_data_type='table')
         return download_ncbi(step_data, step, force_download=self.args.force_download)
 

@@ -94,16 +94,21 @@ elif command_obj._COMMAND_TYPE == 'calculate':
         if step.get_step_needs_editing():
             print(f"Error: data of step {args.step} is not complete (finished)!")
         else:
-            _dir = step.step_file(command_obj._CALCULATION_DIRECTORY)
-            if args.force:
-                remove_directory(_dir, create=True)
-            else:
-                ensure_directory(_dir)
+            _dir = None
+            if command_obj._CALCULATION_DIRECTORY:
+                _dir = step.step_file(command_obj._CALCULATION_DIRECTORY)
+                if args.force:
+                    remove_directory(_dir, create=True)
+                else:
+                    ensure_directory(_dir)
             #
             if command_obj.run(step):
                 print(f"Calculation {command} finished!")
             else:
-                print(f"Calculation {command} is not yet finished. Check directory {_dir} for instructions.")
+                mess = f"Calculation {command} not yet finished."
+                if _dir:
+                    mess += f" Check directory {_dir} for instructions."
+                print(mess)
 
     else:
         print(f"Error: calculation class {type(command_obj)} doesn't have specified step type it works on!")
