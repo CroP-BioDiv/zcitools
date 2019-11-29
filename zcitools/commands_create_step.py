@@ -50,10 +50,10 @@ Additional arguments specify how to interpret input data.
         return create_table_step(step_data, args.filename, data_format=args.format, columns=args.columns)
 
 
-class NCBIStep(_CreateStepCommand):
-    _COMMAND = 'ncbi'
+class FetchSequencesStep(_CreateStepCommand):
+    _COMMAND = 'fetch_seqs'
     _HELP = "Creates sequences step. Mandatory argument is a table step."
-    _STEP_BASE_NAME = 'NCBI'
+    _STEP_BASE_NAME = 'seqs'
 
     @staticmethod
     def set_arguments(parser):
@@ -65,12 +65,12 @@ class NCBIStep(_CreateStepCommand):
         return [self.args.step]
 
     def cache_identifier(self):
-        return dict(static=True, data_identifier=['NCBI'])
+        return dict(static=True, data_identifier=['sequences'])
 
     def run(self, step_data):
-        from .processing.sequence.ncbi import download_ncbi
+        from .processing.sequence.fetch import fetch_sequences
         step = read_step(self.args.step, check_data_type='table')
-        return download_ncbi(step_data, step, force_download=self.args.force_download)
+        return fetch_sequences(step_data, step, force_download=self.args.force_download)
 
 
 # Annotations
@@ -85,6 +85,10 @@ class GeSeqStep(_CreateStepCommand):
 
     def _prev_steps(self):
         return [self.args.step]
+
+    def cache_identifier(self):
+        self.args.step
+        return dict(static=True, data_identifier=['NCBI'])
 
     def run(self, step_data):
         from .processing.annotation.ge_seq import create_ge_seq_data

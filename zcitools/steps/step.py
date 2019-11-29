@@ -26,7 +26,7 @@ description.yml contains data:
 
 class Step:
     _STEP_TYPE = None
-    _COLUMN_TYPES = frozenset(['ncbi_ident', 'str', 'int'])
+    _COLUMN_TYPES = frozenset(['seq_ident', 'str', 'int'])
     _CACHE_PREFIX = '_c_'  # Cache files are prfixed with '_c_'
     _CACHE_DIR_PROJECT = '_project_cache_'
     _CACHE_DIR_GLOBAL = os.path.join('..', '_global_cache_')  # Note: not so global cache :-)

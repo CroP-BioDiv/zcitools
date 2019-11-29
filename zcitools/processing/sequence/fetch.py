@@ -2,12 +2,14 @@ from zcitools.steps.sequences import SequencesStep
 from zcitools.utils.import_methods import import_bio_entrez
 
 
-def download_ncbi(step_data, table_step, force_download=False):
+def fetch_sequences(step_data, table_step, force_download=False):
     Entrez = import_bio_entrez()
 
     step = SequencesStep(step_data, update_mode=True)
     cache = step.get_cache_object()
-    for ni in table_step.get_column_by_type('ncbi_ident'):
+    for ni in table_step.get_column_by_type('seq_ident'):
+        assert ni.startswith('NC_'), 'For now only NCBI donwload is supported!!!'  # ToDo:
+
         if force_download or not step.sequence_exists(ni):
             ni_filename = ni + '.gb'
             if cache and cache.has_record(ni):
