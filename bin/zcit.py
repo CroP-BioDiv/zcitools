@@ -7,6 +7,8 @@ from zcitools.utils.file_utils import write_yaml, read_yaml, remove_directory, e
 from zcitools.command_classes import commands_map
 from zcitools.steps import read_step
 
+# Note: this script is called from project main directory, all used filenames are relative to it!
+
 
 def _get_parser(command, for_help):
     cls = commands_map[command]
@@ -87,8 +89,8 @@ if not command_obj._COMMAND_TYPE:
         _check_is_project_valid()
     command_obj.run()
 
-# Calculation on existing step
-elif command_obj._COMMAND_TYPE == 'calculate':
+# Presentation data of existing step
+elif command_obj._COMMAND_TYPE == 'presentation':
     if command_obj._STEP_DATA_TYPE:
         step = read_step(args.step, check_data_type=command_obj._STEP_DATA_TYPE)
         if step.get_step_needs_editing():
@@ -120,6 +122,7 @@ elif command_obj._COMMAND_TYPE == 'new_step':
     # Run command
     step_data = dict(step_name=_new_step_name(command_obj, args),
                      prev_steps=command_obj.prev_steps(),
+                     cache=command_obj.cache_identifier(),
                      command=command,
                      cmd=' '.join(sys.argv[1:]))
     step_obj = command_obj.run(step_data)

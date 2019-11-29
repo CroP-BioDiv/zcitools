@@ -4,8 +4,10 @@ from zcitools.utils.import_methods import import_bio_seq_io
 _instructions = """
 Open web page: https://chlorobox.mpimp-golm.mpg.de/OGDraw.html
 
+For each GenBank file {calc_dir}/*.gb do:
+
 FASTA file(s) to annotate
- * Upload files: {calc_dir}/*.gb
+ * Upload file
  * (check) Circular
  * (check) Plastid
  * (check) Tidy up annotation
@@ -20,12 +22,10 @@ Actions
  * Submit
 
 When job is finished:
- - Download all results as zip (small disk icon in Results header)
- - run zcit command: zcit.py ogdraw {step_name}
+ - Download all results as zip (small disk icon in Results header) into {calc_dir}
 
-Note: if it is not possible to submit all of sequences once in OGDraw,
-split them in groups and repeat described procedure for each group except running
-zcit command which is needed to run only once when all data is downloaded.
+When all files are processed:
+ - run zcit command: zcit.py ogdraw {step_name}
 """
 
 

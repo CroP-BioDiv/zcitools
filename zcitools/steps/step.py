@@ -3,10 +3,24 @@ import datetime
 from zcitools.utils.file_utils import ensure_directory, remove_directory, silent_remove, \
     write_yaml, read_yaml
 from ..utils.exceptions import ZCItoolsValueError
+from ..utils.cache import Cache
 
 """
 Step object is created with step data that specfies step subdirectory and other environment info.
 Subdirectory doesn't have to exist. In that case base class will create it.
+
+Step subdirectory contains file description.yml which describes data step contains and environment project data.
+description.yml contains data:
+ - data_type : Step class type identifier. Value from <step class>._STEP_TYPE's
+ - data      : Contains specific data description. Depends on step data type.
+ - project   : Environment data, propagated from zcit.py script.
+   - step_name  : Subdirectory name
+   - prev_steps : List of step names used to produce (calculate) step's data
+   - command    : zcit.py script command used to produce the step
+   - cmd        : Arguments part of shell command (after zcit.py) used to produce the step.
+   - cache      : cache_identifier, None or dict(static=bool, data_identifier=list of strings)
+                  Uniquelly specify how step data is created from project start.
+                  Used for caching data.
 """
 
 
@@ -14,6 +28,8 @@ class Step:
     _STEP_TYPE = None
     _COLUMN_TYPES = frozenset(['ncbi_ident', 'str', 'int'])
     _CACHE_PREFIX = '_c_'  # Cache files are prfixed with '_c_'
+    _CACHE_DIR_PROJECT = '_project_cache_'
+    _CACHE_DIR_GLOBAL = os.path.join('..', '_global_cache_')  # Note: not so global cache :-)
 
     def __init__(self, step_data, remove_data=False, update_mode=False):
         self._step_data = step_data
@@ -88,6 +104,13 @@ class Step:
 
     def step_calc_file(self, calc_d, f):
         return os.path.join(self._step_name, calc_d, f)
+
+    def get_cache_object(self):
+        d = self._step_data['cache']
+        if d:
+            _dir = self._CACHE_DIR_GLOBAL if d['static'] else self._CACHE_DIR_PROJECT
+            if _dir:
+                return Cache(os.path.join(_dir, '-'.join(d['data_identifier'])))
 
     @classmethod
     def _is_cache_file(cls, f):
