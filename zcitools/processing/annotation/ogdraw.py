@@ -22,7 +22,7 @@ Actions
  * Submit
 
 When job is finished:
- - Download all results as zip (small disk icon in Results header) into {calc_dir}
+ - Download all results as zip (small disk icon in Results header) into {step_name}
 
 When all files are processed:
  - run zcit command: zcit.py ogdraw {step_name}

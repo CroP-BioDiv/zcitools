@@ -4,6 +4,7 @@ There are few different types (groups) of commands, depending on needed data to 
 Commands:
  - to create new step.
    Receive data of step to create, return None or step object.
+   Step can be presentation step, which means that it a
  - to make presentation data of existing step.
    Receive step object, return bool if calculation finished.
    Note: calculation can be called more times. It should test calculation state and continue from where it stopped.
@@ -66,7 +67,7 @@ class _Finish(_Command):
 
     def run(self):
         step = read_step(self.args.step, update_mode=True)  # Set to be in update mode
-        if not step.get_step_needs_editing():
+        if step.get_step_needs_editing():
             command_obj = commands_map[step.get_step_command()](None)
             command_obj.finish(step)
         else:

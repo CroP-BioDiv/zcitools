@@ -58,8 +58,6 @@ class FetchSequencesStep(_CreateStepCommand):
     @staticmethod
     def set_arguments(parser):
         parser.add_argument('step', help='Input table step')
-        parser.add_argument(
-            '-f', '--force-download', action='store_true', help='Download even if step already contains data.')
 
     def _prev_steps(self):
         return [self.args.step]
@@ -70,10 +68,12 @@ class FetchSequencesStep(_CreateStepCommand):
     def run(self, step_data):
         from .processing.sequence.fetch import fetch_sequences
         step = read_step(self.args.step, check_data_type='table')
-        return fetch_sequences(step_data, step, force_download=self.args.force_download)
+        return fetch_sequences(step_data, step)
 
 
+# ---------------------------------------------------------
 # Annotations
+# ---------------------------------------------------------
 class GeSeqStep(_CreateStepCommand):
     _COMMAND = 'ge_seq'
     _HELP = "Annotates chloroplast sequences with GeSeq"
@@ -100,7 +100,7 @@ class GeSeqStep(_CreateStepCommand):
         finish_ge_seq_data(step_obj)
 
 
-class GeSeqStep(GeSeqStep):
+class CPGAVAS(GeSeqStep):
     _COMMAND = 'cpgavas'
     _HELP = "Annotates chloroplast sequences with CPGAVAS"
     _STEP_BASE_NAME = 'CPGAVAS'

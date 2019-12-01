@@ -1,5 +1,6 @@
 import os.path
 import datetime
+import re
 from zcitools.utils.file_utils import ensure_directory, remove_directory, silent_remove, \
     write_yaml, read_yaml
 from ..utils.exceptions import ZCItoolsValueError
@@ -105,13 +106,6 @@ class Step:
     def step_calc_file(self, calc_d, f):
         return os.path.join(self._step_name, calc_d, f)
 
-    def get_cache_object(self):
-        d = self._step_data['cache']
-        if d:
-            _dir = self._CACHE_DIR_GLOBAL if d['static'] else self._CACHE_DIR_PROJECT
-            if _dir:
-                return Cache(os.path.join(_dir, '-'.join(d['data_identifier'])))
-
     @classmethod
     def _is_cache_file(cls, f):
         return f.startswith(cls._CACHE_PREFIX)
@@ -119,16 +113,34 @@ class Step:
     def cache_file(self, f):
         return self.step_file(self._CACHE_PREFIX + f)
 
-    def step_files(self, not_cached=False):
+    def step_files(self, not_cached=False, matches=None):
         # Returns list of step's filenames relative to step subdirectory
         if not_cached:
-            return [f for f in os.listdir(self._step_name) if not self._is_cache_file(f)]
-        return os.listdir(self._step_name)
+            files = [f for f in os.listdir(self._step_name) if not self._is_cache_file(f)]
+        else:
+            files = os.listdir(self._step_name)
+        if matches:
+            pattern = re.compile(matches)
+            files = [f for f in files if pattern.search(f)]
+        return files
 
     def remove_cache_files(self):
         for f in self.step_files():
             if self._is_cache_file(f):
                 silent_remove(self.step_file(f))
+
+    # Global caching
+    def get_cache_object(self):
+        d = self._step_data['cache']
+        if d:
+            _dir = self._CACHE_DIR_GLOBAL if d['static'] else self._CACHE_DIR_PROJECT
+            if _dir:
+                return Cache(os.path.join(_dir, '-'.join(d['data_identifier'])))
+
+    def get_cached_records(self, cache, record_idents, info=False):
+        if cache:
+            return cache.get_records(record_idents, self._step_name, info=info)
+        return record_idents
 
     #
     def show_data(self, params=None):

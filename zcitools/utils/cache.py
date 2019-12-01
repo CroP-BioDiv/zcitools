@@ -49,7 +49,7 @@ class Cache:
         return self._dir_exists and os.path.isfile(os.path.join(self.cache_dir, record_ident))
 
     def get_record(self, record_ident, save_location, info=False):
-        # Returns tuples (filename, file content)
+        # Extract record data into given location.
         zip_filename = os.path.join(self.cache_dir, record_ident)
         if os.path.isfile(zip_filename):
             with ZipFile(zip_filename, 'r') as zip_f:
@@ -58,6 +58,15 @@ class Cache:
                         save_filename = os.path.join(save_location, z_i.filename)
                         ensure_directory(os.path.dirname(save_filename))
                         if info:
-                            print(f"  cache copy: {zip_filename} / {z_i.filename} -> {save_filename}")
+                            print(f"  cache fetch: {zip_filename}[{z_i.filename}] -> {save_filename}")
                         with open(save_filename, 'wb') as save_f:
                             save_f.write(zip_f.read(z_i.filename))
+            return True
+        return False
+
+    def get_records(self, record_idents, save_location, info=False):
+        not_found = []
+        for record_ident in record_idents:
+            if not self.get_record(record_ident, save_location, info=info):
+                not_found.append(record_ident)
+        return not_found

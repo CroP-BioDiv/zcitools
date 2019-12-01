@@ -97,12 +97,15 @@ Each sequence can be stored in one or more files in different formats.
                 with open(self.step_file(f), 'r') as in_s:
                     return import_bio_seq_io().read(in_s, st)
 
-    def get_all_seqs_fa(self):
-        f = self.cache_file('all_seqs.fa')
-        if not os.path.isfile(f):
-            # Note: sequences are named by initial seq_ident (not seq_record.id)!
-            write_fasta(f, ((seq_ident, seq_record.seq) for seq_ident, seq_record in self._iterate_records()))
-        return f
+    # def get_all_seqs_fa(self):
+    #     f = self.cache_file('all_seqs.fa')
+    #     if not os.path.isfile(f):
+    #         # Note: sequences are named by initial seq_ident (not seq_record.id)!
+    #         write_fasta(f, ((seq_ident, seq_record.seq) for seq_ident, seq_record in self._iterate_records()))
+    #     return f
+
+    def concatenate_seqs_fa(self, filename, seq_idents):
+        write_fasta(filename, ((seq_ident, self._read_record(seq_ident).seq) for seq_ident in seq_idents))
 
     def get_sequence(self, seq_ident):
         # Returns sequence as a string

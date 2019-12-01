@@ -16,7 +16,6 @@ Annotations are stored:
  - or in files <seq_ident>.gb for each sequence separately.
 """
     _STEP_TYPE = 'annotations'
-    _ALL_FILENAME = 'annotations.gb'
 
     # Init object
     def _init_data(self, type_description):
@@ -41,8 +40,8 @@ Annotations are stored:
         self._sequences.update(seqs)
 
     # Save/load data
-    def get_all_annotation_filename(self):
-        return self.step_file(self._ALL_FILENAME)
+    # def get_all_annotation_filename(self):
+    #     return self.step_file(self._ALL_FILENAME)
 
     def save(self, needs_editing=False):
         # Store description.yml
@@ -51,15 +50,12 @@ Annotations are stored:
     # Retrieve data methods
     def _iterate_records(self, filter_seqs=None):
         SeqIO = import_bio_seq_io()
-
-        all_f = self.get_all_annotation_filename()
-        if os.path.isfile(all_f):
-            with open(all_f, 'r') as in_s:
-                for seq_record in SeqIO.parse(in_s, 'genbank'):
-                    if not filter_seqs or seq_record.id in filter_seqs:
+        for seq_ident in sorted(self._sequences):
+            if not filter_seqs or seq_ident in filter_seqs:
+                with open(self.step_file(seq_ident + '.gb'), 'r') as in_s:
+                    for seq_record in SeqIO.parse(in_s, 'genbank'):
+                        assert seq_ident == seq_record.id, (seq_ident, seq_record.id)
                         yield seq_record.id, seq_record
-        else:
-            raise 'Not implemented!!!'
 
     #
     def _extract_features(self, iter_features):

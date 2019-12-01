@@ -1,5 +1,10 @@
+import re
+from zipfile import ZipFile
 from zcitools.steps.annotations import AnnotationsStep
 from zcitools.utils.file_utils import copy_file  # link_file
+from zcitools.utils.import_methods import import_bio_seq_io
+
+_re_zip_genbank = re.compile('GeSeqJob-[0-9]*-[0-9]*_(.*)_GenBank.gb')
 
 _instructions = """
 Open web page: https://chlorobox.mpimp-golm.mpg.de/geseq.html
@@ -12,7 +17,6 @@ FASTA file(s) to annotate
 Options
  * (check) Generate multi-GenBank
  * uncheck other
- * ?(check) Generate multi-GFF3
 
 Annotation
  BLAT search
@@ -29,7 +33,8 @@ Actions
  * Submit
 
 When job is finished:
- - download Global multi-GenBank file into job directory ({step_name})
+ - download all results as zip (small disk icon in Results header) into job directory ({step_name})
+   - alternatively if OGDraw images not needed, download Global multi-GenBank file into job directory ({step_name})
  - run zcit command: zcit.py finish {step_name}
 
 Documentation:
@@ -39,35 +44,54 @@ https://chlorobox.mpimp-golm.mpg.de/gs_documentation.html
 
 def create_ge_seq_data(step_data, sequences_step):
     step = AnnotationsStep(step_data, remove_data=True)
+    cache = step.get_cache_object()
+    all_sequences = list(sequences_step.all_sequences())
+
+    # Fetch cached sequences
+    to_fetch = step.get_cached_records(cache, all_sequences, info=True)
 
     # Store sequence
-    all_seqs_fa = sequences_step.get_all_seqs_fa()
-    # Note: browser uploading sometimes do not work with links :-/
-    copy_file(all_seqs_fa, step.step_file('sequences.fa'))
+    if to_fetch:
+        sequences_step.concatenate_seqs_fa(step.step_file('sequences.fa'), to_fetch)
 
-    # Store instructions
-    with open(step.step_file('INSTRUCTIONS.txt'), 'w') as out:
-        out.write(_instructions.format(step_name=step_data['step_name']))
+        # Store instructions
+        with open(step.step_file('INSTRUCTIONS.txt'), 'w') as out:
+            out.write(_instructions.format(step_name=step_data['step_name']))
 
     #
-    step.set_sequences(sequences_step.all_sequences())
+    step.set_sequences(all_sequences)
     step.save(needs_editing=True)
     return step
 
 
 def finish_ge_seq_data(step_obj):
-    # Check file named: GeSeqJob-<num>-<num>_GLOBAL_multi-GenBank.gbff
-    for f in step_obj.step_files():
-        if f.startswith('GeSeqJob') and f.endswith('_GLOBAL_multi-GenBank.gbff'):
-            filename = f
-            break
-    else:
-        print("Warning: can't find GeSeq output file!")
-        return
-
-    # Leave original file
-    # ToDo: repair and filter data???
+    # Note: original files are left in directory
     # ToDo: inverted_region 126081..1 !!! To_ind > from_ind!!!
-    copy_file(step_obj.step_file(filename), step_obj.get_all_annotation_filename())
+    # First check job-results-<num>.zip file
+    job_files = step_obj.step_files(matches='^job-results-[0-9]*.zip')
+    if job_files:
+        # Extract GenBank files named job-results-<num>/GeSeqJob-<num>-<num>_<seq_ident>_GenBank.gb
+        for filename in job_files:
+            with ZipFile(step_obj.step_file(filename), 'r') as zip_f:
+                for z_i in zip_f.infolist():
+                    m = _re_zip_genbank.search(z_i.filename)
+                    if m:
+                        seq_ident = m.group(1)
+                        with open(step_obj.step_file(seq_ident + '.gb'), 'wb') as save_f:
+                            save_f.write(zip_f.read(z_i.filename))
+
+    else:
+        # Check file named: GeSeqJob-<num>-<num>_GLOBAL_multi-GenBank.gbff
+        job_files = step_files(matches='^GeSeqJob-.*_GLOBAL_multi-GenBank.gbff')
+        if not job_files:
+            print("Warning: can't find any GeSeq output file! Nor job-results-*.zip, nor GeSeqJob-.*.gbff file(s).")
+            return
+
+        SeqIO = import_bio_seq_io()
+        for filename in job_files:
+            with open(filename, 'r') as seqs:
+                for rec in SeqIO.parse(seqs, 'genbank'):
+                    SeqIO.write([rec], open(rec.id + '.gb', 'w'), 'genbank')
+
     step_obj._check_data()
     step_obj.save()
