@@ -2,12 +2,14 @@ import re
 from zipfile import ZipFile
 from zcitools.steps.annotations import AnnotationsStep
 from zcitools.utils.file_utils import copy_file  # link_file
-from zcitools.utils.import_methods import import_bio_seq_io
+from zcitools.utils.helpers import split_sequences, split_list
 
 _re_zip_genbank = re.compile('GeSeqJob-[0-9]*-[0-9]*_(.*)_GenBank.gb')
 
 _instructions = """
 Open web page: https://chlorobox.mpimp-golm.mpg.de/geseq.html
+
+For each FASTA file {calc_dir}/sequences_<num>.fa do:
 
 FASTA file(s) to annotate
  * Upload file: {step_name}/sequences.fa
@@ -35,10 +37,12 @@ Actions
 When job is finished:
  - download all results as zip (small disk icon in Results header) into job directory ({step_name})
    - alternatively if OGDraw images not needed, download Global multi-GenBank file into job directory ({step_name})
+
+When all files are processed:
  - run zcit command: zcit.py finish {step_name}
 
-Documentation:
-https://chlorobox.mpimp-golm.mpg.de/gs_documentation.html
+-----
+Documentation: https://chlorobox.mpimp-golm.mpg.de/gs_documentation.html
 """
 
 
@@ -52,7 +56,8 @@ def create_ge_seq_data(step_data, sequences_step):
 
     # Store sequence
     if to_fetch:
-        sequences_step.concatenate_seqs_fa(step.step_file('sequences.fa'), to_fetch)
+        for i, d in enumerate(split_list(to_fetch, 30)):
+            sequences_step.concatenate_seqs_fa(step.step_file(f'sequences_{i + 1}.fa'), d)
 
         # Store instructions
         with open(step.step_file('INSTRUCTIONS.txt'), 'w') as out:
@@ -87,11 +92,8 @@ def finish_ge_seq_data(step_obj):
             print("Warning: can't find any GeSeq output file! Nor job-results-*.zip, nor GeSeqJob-.*.gbff file(s).")
             return
 
-        SeqIO = import_bio_seq_io()
         for filename in job_files:
-            with open(filename, 'r') as seqs:
-                for rec in SeqIO.parse(seqs, 'genbank'):
-                    SeqIO.write([rec], open(rec.id + '.gb', 'w'), 'genbank')
+            split_sequences(filename, '.gb')
 
     step_obj._check_data()
     step_obj.save()

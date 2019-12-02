@@ -6,6 +6,7 @@ from ..utils.exceptions import ZCItoolsValueError
 from .table import TableStep
 from .sequences import SequencesStep
 from .annotations import AnnotationsStep
+from .images import ImagesStep
 
 _type_2_step_cls = dict((cls._STEP_TYPE, cls) for cls in locals().values() if hasattr(cls, '_STEP_TYPE'))
 

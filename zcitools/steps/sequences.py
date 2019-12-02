@@ -59,7 +59,6 @@ Each sequence can be stored in one or more files in different formats.
 
         if seq_ident in self._sequences:
             # Remove other (old) files of same sequence
-            si = seq_ident + '.'
             for old_f in self._sequences[seq_ident]:
                 if old_f != f:
                     silent_remove_file(self.step_file(old_f))

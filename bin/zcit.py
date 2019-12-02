@@ -4,7 +4,7 @@ import os.path
 import sys
 import argparse
 from zcitools.utils.file_utils import write_yaml, read_yaml, remove_directory, ensure_directory
-from zcitools.command_classes import commands_map
+from zcitools.commands import commands_map
 from zcitools.steps import read_step
 
 # Note: this script is called from project main directory, all used filenames are relative to it!
@@ -35,6 +35,12 @@ def _check_is_project_valid():
 def _new_step_name(command_obj, args):
     # Find step name. Format <num>_<step_base_name>[_<description>]
     prev_steps = command_obj.prev_steps()
+
+    if command_obj._PRESENTATION:
+        # For presentation just add description
+        assert prev_steps
+        max_st = max(prev_steps)
+        return f'{max_st}-{command_obj.step_base_name()}'
 
     if args.step_num:
         num = args.step_num
@@ -88,32 +94,6 @@ if not command_obj._COMMAND_TYPE:
     if command != 'init':
         _check_is_project_valid()
     command_obj.run()
-
-# Presentation data of existing step
-elif command_obj._COMMAND_TYPE == 'presentation':
-    if command_obj._STEP_DATA_TYPE:
-        step = read_step(args.step, check_data_type=command_obj._STEP_DATA_TYPE)
-        if step.get_step_needs_editing():
-            print(f"Error: data of step {args.step} is not complete (finished)!")
-        else:
-            _dir = None
-            if command_obj._CALCULATION_DIRECTORY:
-                _dir = step.step_file(command_obj._CALCULATION_DIRECTORY)
-                if args.force:
-                    remove_directory(_dir, create=True)
-                else:
-                    ensure_directory(_dir)
-            #
-            if command_obj.run(step):
-                print(f"Calculation {command} finished!")
-            else:
-                mess = f"Calculation {command} not yet finished."
-                if _dir:
-                    mess += f" Check directory {_dir} for instructions."
-                print(mess)
-
-    else:
-        print(f"Error: calculation class {type(command_obj)} doesn't have specified step type it works on!")
 
 # Create new step
 elif command_obj._COMMAND_TYPE == 'new_step':

@@ -3,8 +3,7 @@ from collections import defaultdict
 from .step import Step
 from ..utils.import_methods import import_bio_seq_io
 from ..utils.terminal_layout import StringColumns
-from ..utils.genbank import feature_qualifiers_to_desc
-from ..utils.helpers import feature_location_desc
+from ..utils.helpers import feature_qualifiers_to_desc, feature_location_desc, concatenate_sequences
 
 
 class AnnotationsStep(Step):
@@ -40,22 +39,29 @@ Annotations are stored:
         self._sequences.update(seqs)
 
     # Save/load data
-    # def get_all_annotation_filename(self):
-    #     return self.step_file(self._ALL_FILENAME)
-
     def save(self, needs_editing=False):
         # Store description.yml
         self.save_description(dict(sequences=sorted(self._sequences)), needs_editing=needs_editing)
 
     # Retrieve data methods
-    def _iterate_records(self, filter_seqs=None):
-        SeqIO = import_bio_seq_io()
+    def all_sequences(self):
+        return self._sequences
+
+    def concatenate_seqs_genbank(self, filename, seq_idents):
+        concatenate_sequences(filename, [f for _, f in self._iterate_files(filter_seqs=seq_idents)])
+
+    def _iterate_files(self, filter_seqs=None):
         for seq_ident in sorted(self._sequences):
             if not filter_seqs or seq_ident in filter_seqs:
-                with open(self.step_file(seq_ident + '.gb'), 'r') as in_s:
-                    for seq_record in SeqIO.parse(in_s, 'genbank'):
-                        assert seq_ident == seq_record.id, (seq_ident, seq_record.id)
-                        yield seq_record.id, seq_record
+                yield seq_ident, self.step_file(seq_ident + '.gb')
+
+    def _iterate_records(self, filter_seqs=None):
+        SeqIO = import_bio_seq_io()
+        for seq_ident, seq_filename in self._iterate_files(filter_seqs=filter_seqs):
+            with open(seq_filename, 'r') as in_s:
+                for seq_record in SeqIO.parse(in_s, 'genbank'):
+                    assert seq_ident == seq_record.id, (seq_ident, seq_record.id)
+                    yield seq_record.id, seq_record
 
     #
     def _extract_features(self, iter_features):

@@ -1,10 +1,11 @@
 import os.path
-from zcitools.utils.import_methods import import_bio_seq_io
+from zcitools.steps.images import ImagesStep
+from zcitools.utils.helpers import split_list
 
 _instructions = """
 Open web page: https://chlorobox.mpimp-golm.mpg.de/OGDraw.html
 
-For each GenBank file {calc_dir}/*.gb do:
+For each GenBank file {step_name}/*.gbff do:
 
 FASTA file(s) to annotate
  * Upload file
@@ -26,23 +27,37 @@ When job is finished:
 
 When all files are processed:
  - run zcit command: zcit.py ogdraw {step_name}
+
+-----
+FAQ: https://chlorobox.mpimp-golm.mpg.de/OGDraw-FAQ.html
 """
 
 
-def calculate_ogdraw(step, calc_directory):
-    # Check are instructions set
-    i_f = step.step_calc_file(calc_directory, 'INSTRUCTIONS.txt')
-    if not os.path.isfile(i_f):
-        # Create gb files
-        SeqIO = import_bio_seq_io()
-        for seq_ident, seq_record in step._iterate_records():
-            with open(step.step_calc_file(calc_directory, seq_ident + '.gb'), 'w') as out:
-                SeqIO.write([seq_record], out, 'genbank')
-        # Write instructions
-        with open(i_f, 'w') as out:
-            out.write(_instructions.format(calc_dir=step.step_file(calc_directory),
-                                           step_name=step._step_name))
-        return False
+def calculate_ogdraw(step_data, annotations_step):
+    step = ImagesStep(step_data, remove_data=True)
+    # cache = step.get_cache_object()
+    all_images = sorted(annotations_step.all_sequences())
 
-    # ToDo: unzip or not
-    return True
+    # Fetch cached sequences
+    # to_fetch = step.get_cached_records(cache, all_images, info=True)
+    to_fetch = all_images
+
+    # Store sequence
+    if to_fetch:
+        # Note: it is important that file has extension gbff (multiple sequence data)
+        for i, d in enumerate(split_list(to_fetch, 30)):
+            annotations_step.concatenate_seqs_genbank(step.step_file(f'sequences_{i + 1}.gbff'), d)
+
+        # Store instructions
+        with open(step.step_file('INSTRUCTIONS.txt'), 'w') as out:
+            out.write(_instructions.format(step_name=step_data['step_name']))
+
+    #
+    step.set_images(all_images)
+    step.save(needs_editing=True)
+    return step
+
+
+def finish_ogdraw(step_obj):
+    print('FIFFIIFAISFI')
+    pass
