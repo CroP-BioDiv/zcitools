@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from .general import *
 from .table import *
 from .sequences import *
@@ -21,7 +22,8 @@ class Finish:  # (_Command):
         from ..steps import read_step
         step = read_step(self.args.step, update_mode=True)  # Set to be in update mode
         if step.get_step_needs_editing():
-            command_obj = commands_map[step.get_step_command()](None)
+            orig_args = SimpleNamespace(**step._step_data['command_args'])
+            command_obj = commands_map[step.get_step_command()](orig_args)
             command_obj.finish(step)
         else:
             print(f"Info: step {self.args.step} is already finished!")

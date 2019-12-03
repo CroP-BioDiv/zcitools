@@ -100,9 +100,11 @@ elif command_obj._COMMAND_TYPE == 'new_step':
     _check_is_project_valid()
 
     # Run command
+    command_args = dict((k, v) for k, v in vars(args).items() if k not in ('command', 'step_num', 'step_description'))
     step_data = dict(step_name=_new_step_name(command_obj, args),
                      prev_steps=command_obj.prev_steps(),
                      command=command,
+                     command_args=command_args,
                      cmd=' '.join(sys.argv[1:]))
     step_obj = command_obj.run(step_data)
 

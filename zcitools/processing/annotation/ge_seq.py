@@ -1,7 +1,7 @@
 import re
 from zipfile import ZipFile
 from zcitools.steps.annotations import AnnotationsStep
-from zcitools.utils.file_utils import copy_file  # link_file
+from zcitools.utils.file_utils import copy_file, extract_from_zip
 from zcitools.utils.helpers import split_sequences, split_list
 
 _re_zip_genbank = re.compile('GeSeqJob-[0-9]*-[0-9]*_(.*)_GenBank.gb')
@@ -83,8 +83,7 @@ def finish_ge_seq_data(step_obj, cache):
                     if m:
                         seq_ident = m.group(1)
                         added_seqs.append(seq_ident)
-                        with open(step_obj.step_file(seq_ident + '.gb'), 'wb') as save_f:
-                            save_f.write(zip_f.read(z_i.filename))
+                        extract_from_zip(zip_f, z_i.filename, step_obj.step_file(seq_ident + '.gb'))
 
     else:
         # Check file named: GeSeqJob-<num>-<num>_GLOBAL_multi-GenBank.gbff

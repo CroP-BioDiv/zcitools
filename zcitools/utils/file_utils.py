@@ -70,6 +70,22 @@ def copy_file(source, dest):
     shutil.copyfile(source, dest)
 
 
+# Simple read/write from a file
+def write_str_in_file(filename, s):
+    with open(filename, 'w') as r:
+        r.write(s)
+
+
+def read_file_as_str(filename):
+    with open(filename, 'r') as r:
+        return r.read()
+
+
+def read_file_as_list(filename):
+    with open(filename, 'r') as r:
+        return [line.strip() for line in r.readlines()]
+
+
 # YAML
 def write_yaml(data, filename, mode='w'):
     with open(filename, mode, encoding='utf-8') as r:
@@ -80,6 +96,12 @@ def read_yaml(filename):
     if os.path.isfile(filename):
         with open(filename, 'r', encoding='utf-8') as r:
             return yaml.load(r, Loader=yaml.CLoader)
+
+
+# ZipFile
+def extract_from_zip(zip_f, zip_filename, output_filename):
+    with open(output_filename, 'wb') as save_f:
+        save_f.write(zip_f.read(zip_filename))
 
 
 #

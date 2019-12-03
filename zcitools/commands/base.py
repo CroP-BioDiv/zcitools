@@ -74,7 +74,7 @@ class _CreateStepCommand(_Command):
         if d:
             _dir = self._CACHE_DIR_GLOBAL if d['static'] else self._CACHE_DIR_PROJECT
             if _dir:
-                return Cache(os.path.join(_dir, '-'.join(d['data_identifier'])))
+                return Cache(os.path.join(_dir, *d['data_identifier']))
 
 
 class _CreateStepFromStepCommand(_CreateStepCommand):

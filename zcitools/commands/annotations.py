@@ -52,7 +52,7 @@ class OGDRAW(_CreateStepFromStepCommand):
     @staticmethod
     def set_arguments(parser):
         parser.add_argument('step', help='Input sequences step')
-        parser.add_argument('-f', 'image_format', default='ps', help='One of: svg, pdf, ps, png, jpg, tif, gif')
+        parser.add_argument('-f', '--image_format', default='ps', help='One of: svg, pdf, ps, png, jpg, tif, gif')
 
     def cache_identifier(self):
         return dict(static=True, data_identifier=['OGDraw', self.args.image_format])

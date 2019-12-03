@@ -1,7 +1,9 @@
 import os.path
 import re
+from zipfile import ZipFile
 from zcitools.steps.images import ImagesStep
 from zcitools.utils.helpers import split_list
+from zcitools.utils.file_utils import write_str_in_file, read_file_as_str, read_file_as_list, extract_from_zip
 
 _instructions = """
 Open web page: https://chlorobox.mpimp-golm.mpg.de/OGDraw.html
@@ -47,12 +49,13 @@ def calculate_ogdraw(step_data, image_format, annotations_step, cache):
         for i, d in enumerate(split_list(to_fetch, 30)):
             annotations_step.concatenate_seqs_genbank(step.step_file(f'sequences_{i + 1}.gbff'), d)
             # Write sequences for finish command
-            with open(step.step_file(f'list_sequences_{i + 1}.txt'), 'w') as r:
-                r.write('\n'.join(d))
+            write_str_in_file(step.step_file(f'_list_sequences_{i + 1}.txt'), '\n'.join(d))
 
         # Store instructions
-        with open(step.step_file('INSTRUCTIONS.txt'), 'w') as out:
-            out.write(_instructions.format(step_name=step_data['step_name'], image_format=image_format))
+        write_str_in_file(step.step_file('INSTRUCTIONS.txt'),
+                          _instructions.format(step_name=step_data['step_name'], image_format=image_format))
+        # Store image format used
+        write_str_in_file(step.step_file('_image_format.txt'), image_format)
 
     #
     step.set_images(all_images)
@@ -62,30 +65,45 @@ def calculate_ogdraw(step_data, image_format, annotations_step, cache):
 
 def finish_ogdraw(step_obj, cache):
     # Note: original files are left in directory
-    # Collect sequence idents submited
-    seq_ident_map = dict()  # (sequence file idx, line idx) -> seq_ident
-    for f in step.step_files(matches=r'^list_sequences_\d+.txt'):
-        seq_idx = int(re.findall(r'\d+', f)[0])
-        # Note: line idx starts from 1, since files in zip has that numbering
-        seq_ident_map.update(((seq_idx, i + 1), seq_ident) for i, seq_ident in enumerate(open(self.step_file(f))))
+    image_format = read_file_as_str(step_obj.step_file('_image_format.txt'))
+    assert image_format
 
     # Check files ogdraw-result-<num>-<hash>.zip
-    # ogdraw-result-<num>-<hash>/sequences_<num>ff_<num>/ogdraw_job_<hash>-outfile.pdf
-    # ogdraw-result-2019122110023-C6bn53/sequences_1ff_4/ogdraw_job_304c33c65de489abed74dfdf80f2b9fd-outfile.ps
+    zip_files = step_obj.step_files(matches='^ogdraw-result-[0-9]+-.*.zip')
+    if not zip_files:
+        print("Warning: can't find any OGDraw output file (ogdraw-result-*.zip)!")
+        return
+
+    # Collect sequence idents submited
+    seq_ident_map = dict()  # (sequence file idx, line idx) -> seq_ident
+    for f in step_obj.step_files(matches=r'^_list_sequences_\d+.txt'):
+        file_idx = int(re.findall(r'\d+', f)[0])
+        # Note: line idx starts from 1, since files in zip has that numbering
+        seq_ident_map.update(((file_idx, i + 1), seq_ident)
+                             for i, seq_ident in enumerate(read_file_as_list(step_obj.step_file(f))))
+
+    # extract ogdraw-result-<num>-<hash>/sequences_<num>ff_<num>/ogdraw_job_<hash>-outfile.<image_format>
+    # Zip subdirectory naming depends on naming of OGDraw input files (sequences_<num>.gbff)
+    f_end = f'-outfile.{image_format}'
     added_images = []
-    for filename in step_obj.step_files(matches='^ogdraw-result-[0-9]-.*.zip'):
+    for filename in zip_files:
         with ZipFile(step_obj.step_file(filename), 'r') as zip_f:
-            files_in_zip = defaultdict(list)  # (sequence file idx, line idx) -> list of image files
-            # Collect what is in the zip
             for z_i in zip_f.infolist():
+                if z_i.filename.endswith(f_end):
+                    # Find sequence id of that file
+                    rest = z_i.filename.split('sequences_')[1]
+                    nums = re.findall(r'\d+', rest)
+                    file_idx = int(nums[0])
+                    line_idx = int(nums[1])
+                    seq_ident = seq_ident_map[(file_idx, line_idx)]
+                    #
+                    added_images.append(seq_ident)
+                    extract_from_zip(zip_f, z_i.filename, step_obj.step_file(f'{seq_ident}.{image_format}'))
 
+    step_obj._check_data()
+    step_obj.save(create=False)
 
-
-                m = _re_zip_genbank.search(z_i.filename)
-                if m:
-                    seq_ident = m.group(1)
-                    added_seqs.append(seq_ident)
-                    with open(step_obj.step_file(seq_ident + '.gb'), 'wb') as save_f:
-                        save_f.write(zip_f.read(z_i.filename))
-    # create=False
-    pass
+    # Set into the cache
+    if cache:
+        for image_ident in added_images:
+            cache.set_record(image_ident, step_obj.step_file(f'{image_ident}.{image_format}'))
