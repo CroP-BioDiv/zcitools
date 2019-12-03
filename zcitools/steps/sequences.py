@@ -3,7 +3,7 @@ from collections import defaultdict
 from .step import Step
 from ..utils.exceptions import ZCItoolsValueError
 from ..utils.import_methods import import_bio_seq_io
-from ..utils.terminal_layout import StringColumns
+from ..utils.show import print_table
 from ..utils.helpers import write_fasta
 
 
@@ -129,7 +129,6 @@ Each sequence can be stored in one or more files in different formats.
 
     # Show data
     def show_data(self, params=None):
-        header = ['seq_ident', 'Record ID', 'Length', 'Num features']
-        rows = [[seq_ident, seq_record.id, len(seq_record.seq), len(seq_record.features)]
-                for seq_ident, seq_record in self._iterate_records()]
-        print(StringColumns(rows, header=header))
+        print_table(['seq_ident', 'Record ID', 'Length', 'Num features'],
+                    [[seq_ident, seq_record.id, len(seq_record.seq), len(seq_record.features)]
+                     for seq_ident, seq_record in self._iterate_records()])

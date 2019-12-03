@@ -1,7 +1,7 @@
 import csv
 from .step import Step
 from ..utils.exceptions import ZCItoolsValueError
-from ..utils.terminal_layout import StringColumns
+from ..utils.show import print_table
 
 
 class TableStep(Step):
@@ -94,11 +94,7 @@ ToDo: store original file?
     # Show data
     def show_data(self, params=None):
         print('Columns:')
-        print(StringColumns(self._columns))
+        print_table(None, self._columns)
 
         print('\nData:')
-        if len(self._data) <= 15:
-            rows = self._data
-        else:
-            rows = self._data[:4] + [['...'] * len(self._columns)] + self._data[-4:]
-        print(StringColumns(rows, header=[c for c, _ in self._columns]))
+        print_table([c for c, _ in self._columns], self._data, show_limit=7)

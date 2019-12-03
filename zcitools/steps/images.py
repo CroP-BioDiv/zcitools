@@ -1,6 +1,7 @@
 import os.path
 from collections import defaultdict
 from .step import Step
+from ..utils.show import print_table
 from ..utils.exceptions import ZCItoolsValueError
 
 # ToDo: very similar to SequencesStep. Stores some files for some identifiers. Make it general?
@@ -80,6 +81,5 @@ Each image can be stored in one or more files in different formats.
 
     # Show data
     def show_data(self, params=None):
-        header = ['image_ident', 'Files']
-        rows = [[ident, ', '.join(sorted(fs))] for ident, fs in sorted(self._images.items())]
-        print(StringColumns(rows, header=header))
+        print_table(['image_ident', 'Files'],
+                    [[ident, ', '.join(sorted(fs))] for ident, fs in sorted(self._images.items())])

@@ -2,7 +2,7 @@ import os.path
 from collections import defaultdict
 from .step import Step
 from ..utils.import_methods import import_bio_seq_io
-from ..utils.terminal_layout import StringColumns
+from ..utils.show import print_table
 from ..utils.helpers import feature_qualifiers_to_desc, feature_location_desc, concatenate_sequences
 
 
@@ -137,10 +137,9 @@ Annotations are stored:
                 data[seq_ident] = d
 
             all_types = sorted(all_types)
-            header = ['seq_ident', 'Length', 'Features'] + all_types
-            rows = [[seq_ident, d['length'], d['features']] + [d.get(t, 0) for t in all_types]
-                    for seq_ident, d in sorted(data.items())]
-            print(StringColumns(sorted(rows), header=header))
+            print_table(['seq_ident', 'Length', 'Features'] + all_types,
+                        sorted([seq_ident, d['length'], d['features']] + [d.get(t, 0) for t in all_types]
+                               for seq_ident, d in sorted(data.items())))
 
         elif cmd == 'genes':
             self._all_features(self._get_genes_desc(filter_seqs=filter_seqs).items())
@@ -162,6 +161,8 @@ Annotations are stored:
 
             for seq_ident, locations in sorted(data.items()):
                 print(f"{seq_ident} ({len(locations)}): {', '.join(map(str, sorted(locations)))}")
+        else:
+            print(f'Wrong show command ({cmd})!')
 
     def _all_features(self, data):
         for seq_ident, genes in sorted(data):
