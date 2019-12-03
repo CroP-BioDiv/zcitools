@@ -59,10 +59,17 @@ def write_fasta(filename, data):
 def split_sequences(input_filename, output_ext):
     SeqIO = import_bio_seq_io()
     input_type = _bio_ext_2_type[os.path.splitext(input_filename)[1]]
+    input_dir = os.path.dirname(input_filename)
     output_type = _bio_ext_2_type[output_ext]
+    sequence_ids = []
     with open(input_filename, 'r') as seqs:
         for rec in SeqIO.parse(seqs, input_type):
-            SeqIO.write([rec], open(rec.id + output_ext, 'w'), output_type)
+            out_f = rec.id + output_ext
+            if input_dir:
+                out_f = os.path.join(input_dir, out_f)
+            SeqIO.write([rec], open(out_f, 'w'), output_type)
+            sequence_ids.append(rec.id)
+    return sequence_ids
 
 
 def concatenate_sequences(output_filename, input_filenames):

@@ -13,7 +13,7 @@ List of image identifier are stored in description.yml.
 Each image can be stored in one or more files in different formats.
 """
     _STEP_TYPE = 'images'
-    _SUPPORTED_TYPES = ('.jpg', '.jpeg')
+    _SUPPORTED_TYPES = ('.jpg', '.jpeg', '.png', '.gif', '.tif', '.tiff', '.ps', '.pdf', '.svg')
 
     def _init_data(self, type_description):
         self._images = dict()  # seq_ident -> list of files
@@ -67,9 +67,9 @@ Each image can be stored in one or more files in different formats.
                 self._images[iden] = []
 
     # Save/load data
-    def save(self, needs_editing=False):
+    def save(self, create=True, needs_editing=False):
         # Store description.yml
-        self.save_description(dict(images=sorted(self._images)), needs_editing=needs_editing)
+        self.save_description(dict(images=sorted(self._images)), create=create, needs_editing=needs_editing)
 
     # Retrieve data methods
     def image_exists(self, ident):

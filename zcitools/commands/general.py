@@ -2,7 +2,7 @@
 from .base import _Command
 
 
-class _InitProject(_Command):
+class InitProject(_Command):
     _COMMAND = 'init'
     _HELP = "Initialize project in given directory name."
 
@@ -12,29 +12,11 @@ class _InitProject(_Command):
         parser.add_argument('-d', '--description', help='Project description text')
 
     def run(self):
-        from .init_project import init_project
+        from ..processing.init_project import init_project
         init_project(self.args.dirname, self.args.description)
 
 
-class _Finish(_Command):
-    _COMMAND = 'finish'
-    _HELP = "Finish step that needed editing."
-
-    @staticmethod
-    def set_arguments(parser):
-        parser.add_argument('step', help='Step name')
-
-    def run(self):
-        from ..steps import read_step
-        step = read_step(self.args.step, update_mode=True)  # Set to be in update mode
-        if step.get_step_needs_editing():
-            command_obj = commands_map[step.get_step_command()](None)
-            command_obj.finish(step)
-        else:
-            print("Info: step {self.args.step} is already finished!")
-
-
-class _CleanCache(_Command):
+class CleanCache(_Command):
     _COMMAND = 'cache'
     _HELP = "Remove cache of given steps"
 
@@ -49,7 +31,7 @@ class _CleanCache(_Command):
             step.remove_cache_files()
 
 
-class _Show(_Command):
+class Show(_Command):
     _COMMAND = 'show'
     _HELP = "Print step(s) data"
 

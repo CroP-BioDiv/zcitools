@@ -24,6 +24,7 @@ class Cache:
         zip_f.write(f, arcname=zip_name)
 
     def _save_directory(self, zip_f, d):
+        # ToDo: is it needed to save directory into the zip?
         for f in os.listdir(d):
             f = os.path.join(d, f)
             if os.path.isfile(f):

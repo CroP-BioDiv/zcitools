@@ -22,4 +22,4 @@ class FetchSequencesStep(_CreateStepCommand):
         from ..processing.sequence.fetch import fetch_sequences
         from ..steps import read_step
         step = read_step(self.args.step, check_data_type='table')
-        return fetch_sequences(step_data, step)
+        return fetch_sequences(step_data, step, self.get_cache_object())

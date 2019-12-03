@@ -68,9 +68,9 @@ Each sequence can be stored in one or more files in different formats.
         self.remove_cache_files()
 
     # Save/load data
-    def save(self):
+    def save(self, create=True, needs_editing=False):
         # Store description.yml
-        self.save_description(dict(sequences=sorted(self._sequences)))
+        self.save_description(dict(sequences=sorted(self._sequences)), create=create, needs_editing=needs_editing)
         # Data files are handled with add_sequence_file() method
 
     # Retrieve data methods

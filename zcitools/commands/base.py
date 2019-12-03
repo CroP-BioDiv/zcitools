@@ -1,4 +1,5 @@
 import os.path
+from ..utils.cache import Cache
 
 """
 Command classes, called from zcit script.
@@ -26,6 +27,8 @@ Create new step command also has to implement:
  - finish(step_object)   : finish previously created step. Used when editing is neeed.
  - prev_steps()          : returns list of input steps
  - cache_identifier()    : returns None or dict(static=bool, data_identifier=list of strings)
+                           Uniquelly specify how step data is created from project start.
+                           Used for caching data.
 """
 
 
@@ -44,6 +47,8 @@ class _CreateStepCommand(_Command):
     _COMMAND_TYPE = 'new_step'
     _PRESENTATION = False
     _STEP_BASE_NAME = None
+    _CACHE_DIR_PROJECT = '_project_cache_'
+    _CACHE_DIR_GLOBAL = os.path.join('..', '_global_cache_')  # Note: not so global cache :-)
 
     def prev_steps(self):
         return [os.path.normpath(p) for p in self._prev_steps()]
@@ -62,6 +67,14 @@ class _CreateStepCommand(_Command):
 
     def finish(self, step_obj):
         pass
+
+    # Caching
+    def get_cache_object(self):
+        d = self.cache_identifier()
+        if d:
+            _dir = self._CACHE_DIR_GLOBAL if d['static'] else self._CACHE_DIR_PROJECT
+            if _dir:
+                return Cache(os.path.join(_dir, '-'.join(d['data_identifier'])))
 
 
 class _CreateStepFromStepCommand(_CreateStepCommand):

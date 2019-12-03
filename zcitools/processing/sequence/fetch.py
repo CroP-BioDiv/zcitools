@@ -2,9 +2,8 @@ from zcitools.steps.sequences import SequencesStep
 from zcitools.utils.import_methods import import_bio_entrez
 
 
-def fetch_sequences(step_data, table_step):
+def fetch_sequences(step_data, table_step, cache):
     step = SequencesStep(step_data, update_mode=True)
-    cache = step.get_cache_object()
     all_sequences = [ni for ni in table_step.get_column_by_type('seq_ident') if not step.sequence_exists(ni)]
 
     # Fetch cached sequences

@@ -102,7 +102,6 @@ elif command_obj._COMMAND_TYPE == 'new_step':
     # Run command
     step_data = dict(step_name=_new_step_name(command_obj, args),
                      prev_steps=command_obj.prev_steps(),
-                     cache=command_obj.cache_identifier(),
                      command=command,
                      cmd=' '.join(sys.argv[1:]))
     step_obj = command_obj.run(step_data)

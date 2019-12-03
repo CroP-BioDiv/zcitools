@@ -1,4 +1,5 @@
 from .base import _CreateStepFromStepCommand
+from ..utils.exceptions import ZCItoolsValueError
 
 # Check base.py for description
 
@@ -10,15 +11,15 @@ class GeSeqStep(_CreateStepFromStepCommand):
     _INPUT_STEP_DATA_TYPE = 'sequences'
 
     def cache_identifier(self):
-        return dict(static=True, data_identifier=['NCBI'])
+        return dict(static=True, data_identifier=['GeSeq'])
 
     def run(self, step_data):
         from ..processing.annotation.ge_seq import create_ge_seq_data
-        return create_ge_seq_data(step_data, self._input_step())
+        return create_ge_seq_data(step_data, self._input_step(), self.get_cache_object())
 
     def finish(self, step_obj):
         from ..processing.annotation.ge_seq import finish_ge_seq_data
-        finish_ge_seq_data(step_obj)
+        finish_ge_seq_data(step_obj, self.get_cache_object())
 
 
 class CPGAVAS(_CreateStepFromStepCommand):
@@ -46,17 +47,26 @@ class OGDRAW(_CreateStepFromStepCommand):
     _STEP_BASE_NAME = 'OGDraw'
     _PRESENTATION = True
     _INPUT_STEP_DATA_TYPE = 'annotations'
+    _IMAGE_FORMATS = ('svg', 'pdf', 'ps', 'png', 'jpg', 'tif', 'gif')
+
+    @staticmethod
+    def set_arguments(parser):
+        parser.add_argument('step', help='Input sequences step')
+        parser.add_argument('-f', 'image_format', default='ps', help='One of: svg, pdf, ps, png, jpg, tif, gif')
 
     def cache_identifier(self):
-        return dict(static=True, data_identifier=['OGDraw'])
+        return dict(static=True, data_identifier=['OGDraw', self.args.image_format])
 
     def run(self, step_data):
         from ..processing.annotation.ogdraw import calculate_ogdraw
-        return calculate_ogdraw(step_data, self._input_step())
+        img_f = self.args.image_format.lower()
+        if img_f not in self._IMAGE_FORMATS:
+            raise ZCItoolsValueError(f'Given format {img_f} is not supported!')
+        return calculate_ogdraw(step_data, img_f, self._input_step(), self.get_cache_object())
 
     def finish(self, step_obj):
         from ..processing.annotation.ogdraw import finish_ogdraw
-        finish_ogdraw(step_obj)
+        finish_ogdraw(step_obj, self.get_cache_object())
 
 
 # class RSCU(_PresentationCommand):

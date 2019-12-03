@@ -9,7 +9,7 @@ _re_zip_genbank = re.compile('GeSeqJob-[0-9]*-[0-9]*_(.*)_GenBank.gb')
 _instructions = """
 Open web page: https://chlorobox.mpimp-golm.mpg.de/geseq.html
 
-For each FASTA file {calc_dir}/sequences_<num>.fa do:
+For each FASTA file sequences_<num>.fa do:
 
 FASTA file(s) to annotate
  * Upload file: {step_name}/sequences.fa
@@ -46,9 +46,8 @@ Documentation: https://chlorobox.mpimp-golm.mpg.de/gs_documentation.html
 """
 
 
-def create_ge_seq_data(step_data, sequences_step):
+def create_ge_seq_data(step_data, sequences_step, cache):
     step = AnnotationsStep(step_data, remove_data=True)
-    cache = step.get_cache_object()
     all_sequences = list(sequences_step.all_sequences())
 
     # Fetch cached sequences
@@ -69,11 +68,12 @@ def create_ge_seq_data(step_data, sequences_step):
     return step
 
 
-def finish_ge_seq_data(step_obj):
+def finish_ge_seq_data(step_obj, cache):
     # Note: original files are left in directory
     # ToDo: inverted_region 126081..1 !!! To_ind > from_ind!!!
     # First check job-results-<num>.zip file
     job_files = step_obj.step_files(matches='^job-results-[0-9]*.zip')
+    added_seqs = []
     if job_files:
         # Extract GenBank files named job-results-<num>/GeSeqJob-<num>-<num>_<seq_ident>_GenBank.gb
         for filename in job_files:
@@ -82,18 +82,24 @@ def finish_ge_seq_data(step_obj):
                     m = _re_zip_genbank.search(z_i.filename)
                     if m:
                         seq_ident = m.group(1)
+                        added_seqs.append(seq_ident)
                         with open(step_obj.step_file(seq_ident + '.gb'), 'wb') as save_f:
                             save_f.write(zip_f.read(z_i.filename))
 
     else:
         # Check file named: GeSeqJob-<num>-<num>_GLOBAL_multi-GenBank.gbff
-        job_files = step_files(matches='^GeSeqJob-.*_GLOBAL_multi-GenBank.gbff')
+        job_files = step_obj.step_files(matches='^GeSeqJob-.*_GLOBAL_multi-GenBank.gbff')
         if not job_files:
             print("Warning: can't find any GeSeq output file! Nor job-results-*.zip, nor GeSeqJob-.*.gbff file(s).")
             return
 
         for filename in job_files:
-            split_sequences(filename, '.gb')
+            added_seqs.extend(split_sequences(step_obj.step_file(filename), '.gb'))
 
     step_obj._check_data()
-    step_obj.save()
+    step_obj.save(create=False)
+
+    # Set into the cache
+    if cache:
+        for seq_ident in added_seqs:
+            cache.set_record(seq_ident, step_obj.step_file(seq_ident + '.gb'))

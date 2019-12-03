@@ -4,7 +4,6 @@ import re
 from zcitools.utils.file_utils import ensure_directory, remove_directory, silent_remove, \
     write_yaml, read_yaml
 from ..utils.exceptions import ZCItoolsValueError
-from ..utils.cache import Cache
 
 """
 Step object is created with step data that specfies step subdirectory and other environment info.
@@ -19,9 +18,6 @@ description.yml contains data:
    - prev_steps : List of step names used to produce (calculate) step's data
    - command    : zcit.py script command used to produce the step
    - cmd        : Arguments part of shell command (after zcit.py) used to produce the step.
-   - cache      : cache_identifier, None or dict(static=bool, data_identifier=list of strings)
-                  Uniquelly specify how step data is created from project start.
-                  Used for caching data.
 """
 
 
@@ -29,8 +25,6 @@ class Step:
     _STEP_TYPE = None
     _COLUMN_TYPES = frozenset(['seq_ident', 'str', 'int'])
     _CACHE_PREFIX = '_c_'  # Cache files are prfixed with '_c_'
-    _CACHE_DIR_PROJECT = '_project_cache_'
-    _CACHE_DIR_GLOBAL = os.path.join('..', '_global_cache_')  # Note: not so global cache :-)
 
     def __init__(self, step_data, remove_data=False, update_mode=False):
         self._step_data = step_data
@@ -83,7 +77,6 @@ class Step:
             pd['created'] = datetime.datetime.now().isoformat()
             pd['updated'] = None
         else:
-            pd['created'] = None
             pd['updated'] = datetime.datetime.now().isoformat()
         write_yaml(dict(data_type=self.get_step_type(), data=type_description, project=pd),
                    self.step_file('description.yml'))
@@ -128,14 +121,6 @@ class Step:
         for f in self.step_files():
             if self._is_cache_file(f):
                 silent_remove(self.step_file(f))
-
-    # Global caching
-    def get_cache_object(self):
-        d = self._step_data['cache']
-        if d:
-            _dir = self._CACHE_DIR_GLOBAL if d['static'] else self._CACHE_DIR_PROJECT
-            if _dir:
-                return Cache(os.path.join(_dir, '-'.join(d['data_identifier'])))
 
     def get_cached_records(self, cache, record_idents, info=False):
         if cache:
