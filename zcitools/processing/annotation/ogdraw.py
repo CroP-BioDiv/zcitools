@@ -5,6 +5,8 @@ from zcitools.steps.images import ImagesStep
 from zcitools.utils.helpers import split_list
 from zcitools.utils.file_utils import write_str_in_file, read_file_as_str, read_file_as_list, extract_from_zip
 
+_re_zip_jpg = re.compile('GeSeqJob-[0-9]*-[0-9]*_(.*)_OGDRAW.jpg')
+
 _instructions = """
 Open web page: https://chlorobox.mpimp-golm.mpg.de/OGDraw.html
 
@@ -43,6 +45,19 @@ def calculate_ogdraw(step_data, image_format, annotations_step, cache):
     # Fetch cached sequences
     to_fetch = step.get_cached_records(cache, all_images, info=True)
 
+    # If OGDraw is done on GeSeq data, than jpg images are already in
+    if image_format == 'jpg':
+        # Extract jpg files job-results-<num>/GeSeqJob-<num>-<num>_<seq_ident>_OGDRAW.jpg
+        for filename in annotations_step.step_files(matches='^job-results-[0-9]*.zip'):
+            with ZipFile(annotations_step.step_file(filename), 'r') as zip_f:
+                for z_i in zip_f.infolist():
+                    m = _re_zip_jpg.search(z_i.filename)
+                    if m:
+                        seq_ident = m.group(1)
+                        if seq_ident in to_fetch:
+                            to_fetch.remove(seq_ident)
+                            extract_from_zip(zip_f, z_i.filename, step.step_file(seq_ident + '.jpg'))
+
     # Store sequence
     if to_fetch:
         # Note: it is important that file has extension gbff (multiple sequence data)
@@ -59,7 +74,7 @@ def calculate_ogdraw(step_data, image_format, annotations_step, cache):
 
     #
     step.set_images(all_images)
-    step.save(needs_editing=True)
+    step.save(needs_editing=bool(to_fetch))
     return step
 
 

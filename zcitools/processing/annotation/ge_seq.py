@@ -64,7 +64,7 @@ def create_ge_seq_data(step_data, sequences_step, cache):
 
     #
     step.set_sequences(all_sequences)
-    step.save(needs_editing=True)
+    step.save(needs_editing=bool(to_fetch))
     return step
 
 
