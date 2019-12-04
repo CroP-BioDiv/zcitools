@@ -1,5 +1,5 @@
 import os.path
-from collections import defaultdict
+from collections import defaultdict, Counter
 from .step import Step
 from ..utils.import_methods import import_bio_seq_io
 from ..utils.show import print_table
@@ -86,8 +86,8 @@ Annotations are stored:
             yield seq_ident, seq_record, (f for f in seq_record.features if f.type == 'gene')
 
     def _get_genes_desc(self, filter_seqs=None):
-        # Returns dict seq_ident -> set of gene names
-        return dict((seq_ident, set(feature_qualifiers_to_desc(f) for f in features))
+        # Returns dict seq_ident -> dict (gene name -> num occurences)
+        return dict((seq_ident, Counter(feature_qualifiers_to_desc(f) for f in features))
                     for seq_ident, _, features in self.get_genes(filter_seqs=filter_seqs))
 
     def extract_all_genes(self, filter_seqs=None):
@@ -99,8 +99,8 @@ Annotations are stored:
             yield seq_ident, seq_record, (f for f in seq_record.features if f.type == 'CDS')
 
     def _get_cds_desc(self, filter_seqs=None):
-        # Returns dict seq_ident -> set of gene names
-        return dict((seq_ident, set(feature_qualifiers_to_desc(f) for f in features))
+        # Returns dict seq_ident -> dict (CDS name -> num occurences)
+        return dict((seq_ident, Counter(feature_qualifiers_to_desc(f) for f in features))
                     for seq_ident, _, features in self.get_cds(filter_seqs=filter_seqs))
 
     def extract_all_cds(self, filter_seqs=None):
@@ -141,18 +141,23 @@ Annotations are stored:
                         sorted([seq_ident, d['length'], d['features']] + [d.get(t, 0) for t in all_types]
                                for seq_ident, d in sorted(data.items())))
 
+        # Genes
         elif cmd == 'genes':
-            self._all_features(self._get_genes_desc(filter_seqs=filter_seqs).items())
-
+            self._all_features(self._get_genes_desc(filter_seqs=filter_seqs))
+        elif cmd == 'repeated_genes':
+            self._repeated_features(self._get_genes_desc(filter_seqs=filter_seqs))
         elif cmd == 'shared_genes':
             self._shared_features(self._get_genes_desc(filter_seqs=filter_seqs))
 
+        # CDSs
         elif cmd == 'cds':
-            self._all_features(self._get_cds_desc(filter_seqs=filter_seqs).items())
-
+            self._all_features(self._get_cds_desc(filter_seqs=filter_seqs))
+        elif cmd == 'repeated_cds':
+            self._repeated_features(self._get_cds_desc(filter_seqs=filter_seqs))
         elif cmd == 'shared_cds':
             self._shared_features(self._get_cds_desc(filter_seqs=filter_seqs))
 
+        # IR
         elif cmd == 'ir':
             # seq_ident -> list of feature locations
             data = dict((seq_ident,
@@ -165,15 +170,31 @@ Annotations are stored:
             print(f'Wrong show command ({cmd})!')
 
     def _all_features(self, data):
-        for seq_ident, genes in sorted(data):
-            print(f"{seq_ident} ({len(genes)}): {', '.join(sorted(genes))}")
+        # data is dict seq_ident -> dict (gene -> num occurences)
+        for seq_ident, genes in sorted(data.items()):
+            print(f"{seq_ident} ({len(genes)}): {', '.join(sorted(genes.keys()))}")
+
+    def _repeated_features(self, data):
+        # data is dict seq_ident -> dict (gene -> num occurences)
+        for seq_ident, genes in sorted(data.items()):
+            num_2_genes = defaultdict(list)
+            num_repeted = 0
+            for g, num in genes.items():
+                if num > 1:
+                    num_2_genes[num].append(g)
+                    num_repeted += 1
+            if num_2_genes:
+                print(f"{seq_ident} ({num_repeted}):")
+                for num, genes in sorted(num_2_genes.items(), reverse=True):
+                    print(f"    {num}: {', '.join(sorted(genes))}")
 
     def _shared_features(self, data):
+        # data is dict seq_ident -> dict (gene -> num occurences)
         if len(data) > 1:
-            same_genes = set.intersection(*data.values())
+            same_genes = set.intersection(*(set(g.keys()) for g in data.values()))
             print('Genes not shared by all sequences:')
             for seq_ident, genes in sorted(data.items()):
-                rest_genes = genes - same_genes
+                rest_genes = set(genes.keys()) - same_genes
                 print(f"    {seq_ident} ({len(rest_genes)}): {', '.join(sorted(rest_genes))}")
 
             print(f"Shared ({len(same_genes)}): {', '.join(sorted(same_genes))}")
