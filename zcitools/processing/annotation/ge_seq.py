@@ -59,8 +59,7 @@ def create_ge_seq_data(step_data, sequences_step, cache):
             sequences_step.concatenate_seqs_fa(step.step_file(f'sequences_{i + 1}.fa'), d)
 
         # Store instructions
-        with open(step.step_file('INSTRUCTIONS.txt'), 'w') as out:
-            out.write(_instructions.format(step_name=step_data['step_name']))
+        write_str_in_file(step.step_file('INSTRUCTIONS.txt'), _instructions.format(step_name=step_data['step_name']))
 
     #
     step.set_sequences(all_sequences)

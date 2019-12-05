@@ -3,7 +3,7 @@ import re
 from zipfile import ZipFile
 from zcitools.steps.images import ImagesStep
 from zcitools.utils.helpers import split_list
-from zcitools.utils.file_utils import write_str_in_file, read_file_as_str, read_file_as_list, extract_from_zip
+from zcitools.utils.file_utils import write_str_in_file, write_yaml, read_yaml, extract_from_zip
 
 _re_zip_jpg = re.compile('GeSeqJob-[0-9]*-[0-9]*_(.*)_OGDRAW.jpg')
 
@@ -38,7 +38,7 @@ FAQ: https://chlorobox.mpimp-golm.mpg.de/OGDraw-FAQ.html
 """
 
 
-def calculate_ogdraw(step_data, image_format, annotations_step, cache):
+def create_ogdraw(step_data, image_format, annotations_step, cache):
     step = ImagesStep(step_data, remove_data=True)
     all_images = sorted(annotations_step.all_sequences())
 
@@ -61,16 +61,16 @@ def calculate_ogdraw(step_data, image_format, annotations_step, cache):
     # Store sequence
     if to_fetch:
         # Note: it is important that file has extension gbff (multiple sequence data)
+        sequences = dict()
         for i, d in enumerate(split_list(to_fetch, 30)):
             annotations_step.concatenate_seqs_genbank(step.step_file(f'sequences_{i + 1}.gbff'), d)
-            # Write sequences for finish command
-            write_str_in_file(step.step_file(f'_list_sequences_{i + 1}.txt'), '\n'.join(d))
+            sequences[i + 1] = d
 
         # Store instructions
         write_str_in_file(step.step_file('INSTRUCTIONS.txt'),
                           _instructions.format(step_name=step_data['step_name'], image_format=image_format))
         # Store image format used
-        write_str_in_file(step.step_file('_image_format.txt'), image_format)
+        write_yaml(step.step_file('finish.yml'), dict(image_format=image_format, sequences=sequences))
 
     #
     step.set_images(all_images)
@@ -80,8 +80,6 @@ def calculate_ogdraw(step_data, image_format, annotations_step, cache):
 
 def finish_ogdraw(step_obj, cache):
     # Note: original files are left in directory
-    image_format = read_file_as_str(step_obj.step_file('_image_format.txt'))
-    assert image_format
 
     # Check files ogdraw-result-<num>-<hash>.zip
     zip_files = step_obj.step_files(matches='^ogdraw-result-[0-9]+-.*.zip')
@@ -90,12 +88,13 @@ def finish_ogdraw(step_obj, cache):
         return
 
     # Collect sequence idents submited
+    d = read_yaml(step.step_file('finish.yml'))
+    image_format = d['image_format']
+
     seq_ident_map = dict()  # (sequence file idx, line idx) -> seq_ident
-    for f in step_obj.step_files(matches=r'^_list_sequences_\d+.txt'):
-        file_idx = int(re.findall(r'\d+', f)[0])
+    for seq_idx, sequences in d['sequences'].items():
         # Note: line idx starts from 1, since files in zip has that numbering
-        seq_ident_map.update(((file_idx, i + 1), seq_ident)
-                             for i, seq_ident in enumerate(read_file_as_list(step_obj.step_file(f))))
+        seq_ident_map.update(((seq_idx, i + 1), seq_ident) for i, seq_ident in enumerate(sequences))
 
     # extract ogdraw-result-<num>-<hash>/sequences_<num>ff_<num>/ogdraw_job_<hash>-outfile.<image_format>
     # Zip subdirectory naming depends on naming of OGDraw input files (sequences_<num>.gbff)

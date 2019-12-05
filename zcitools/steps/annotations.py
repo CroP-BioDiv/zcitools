@@ -4,6 +4,7 @@ from .step import Step
 from ..utils.import_methods import import_bio_seq_io
 from ..utils.show import print_table
 from ..utils.helpers import feature_qualifiers_to_desc, feature_location_desc, concatenate_sequences
+from ..utils.cache import cache_args
 
 
 class AnnotationsStep(Step):
@@ -47,64 +48,82 @@ Annotations are stored:
     def all_sequences(self):
         return self._sequences
 
-    def concatenate_seqs_genbank(self, filename, seq_idents):
-        concatenate_sequences(filename, [f for _, f in self._iterate_files(filter_seqs=seq_idents)])
+    @cache_args
+    def get_sequence_record(self, seq_ident):
+        with open(self.step_file(seq_ident + '.gb'), 'r') as in_s:
+            seq_record = import_bio_seq_io().read(in_s, 'genbank')
+            assert seq_ident == seq_record.id, (seq_ident, seq_record.id)
+        return seq_record
 
-    def _iterate_files(self, filter_seqs=None):
-        for seq_ident in sorted(self._sequences):
-            if not filter_seqs or seq_ident in filter_seqs:
-                yield seq_ident, self.step_file(seq_ident + '.gb')
+    def get_sequence(self, seq_ident):
+        return self.get_sequence_record(seq_ident).seq
 
     def _iterate_records(self, filter_seqs=None):
-        SeqIO = import_bio_seq_io()
-        for seq_ident, seq_filename in self._iterate_files(filter_seqs=filter_seqs):
-            with open(seq_filename, 'r') as in_s:
-                for seq_record in SeqIO.parse(in_s, 'genbank'):
-                    assert seq_ident == seq_record.id, (seq_ident, seq_record.id)
-                    yield seq_record.id, seq_record
+        for seq_ident in filter_seqs or self._sequences:
+            yield seq_ident, self.get_sequence_record(seq_ident)
+
+    def concatenate_seqs_genbank(self, filename, seq_idents):
+        concatenate_sequences(filename, [self.step_file(si + '.gb') for si in filter_seqs or self._sequences])
 
     #
-    def _extract_features(self, iter_features):
-        for seq_ident, seq_record, features in iter_features:
-            # ToDo: how to sort them. For now by name, it is possible to sort by location
-            features = sorted(features, key=feature_qualifiers_to_desc)
-            seq = ''.join(str(f.extract(seq_record).seq) for f in features)
-            # if len(seq) % 3:
-            #     print(seq_ident, len(seq))
-            #     # print([len(s) for s in (f.extract(seq_record).seq for f in features) if len(s) % 3])
-            #     for f in features:
-            #         if 'translation_input' in f.qualifiers:
-            #             t = ''.join(f.qualifiers['translation_input']).replace(' ', '')
-            #             print(feature_qualifiers_to_desc(f), len(f.extract(seq_record).seq), len(t))
-            #             print(t)
-            #             # print(f.qualifiers['translation_input'])
-            yield seq_ident, seq
+    def extract_shared_features(self, feature_type, filter_seqs=None):
+        # Returns tuple (set of same gene, dict ((seq_ident, gene) -> seq part))
+        data = self._get_feature_desc(feature_type, filter_seqs=filter_seqs)
+        if len(data) <= 1:
+            print('Not enough data to find shared features!')
+            return
 
-    def get_genes(self, filter_seqs=None):
+        same_genes = self._intersect_features(data)
+        if not same_genes:
+            print('There is no shared features in annotations!')
+            return
+
+        parts = defaultdict(str)  # (seq_ident, feature name) -> sequence
+        for seq_ident in data.keys():
+            seq_record = self.get_sequence_record(seq_ident)
+            for f in seq_record.features:
+                if f.type == feature_type:
+                    name = feature_qualifiers_to_desc(f)
+                    if name in same_genes:
+                        parts[(seq_ident, name)] += str(f.extract(seq_record).seq)
+        #
+        return same_genes, parts
+
+    # def extract_shared_features(self, feature_type, filter_seqs=None):
+    #     _extract_shared_features(self, feature_type, filter_seqs=None)
+
+
+    # def _extract_features(self, iter_features):
+    #     for seq_ident, seq_record, features in iter_features:
+    #         # ToDo: how to sort them. For now by name, it is possible to sort by location
+    #         features = sorted(features, key=feature_qualifiers_to_desc)
+    #         seq = ''.join(str(f.extract(seq_record).seq) for f in features)
+    #         # if len(seq) % 3:
+    #         #     print(seq_ident, len(seq))
+    #         #     # print([len(s) for s in (f.extract(seq_record).seq for f in features) if len(s) % 3])
+    #         #     for f in features:
+    #         #         if 'translation_input' in f.qualifiers:
+    #         #             t = ''.join(f.qualifiers['translation_input']).replace(' ', '')
+    #         #             print(feature_qualifiers_to_desc(f), len(f.extract(seq_record).seq), len(t))
+    #         #             print(t)
+    #         #             # print(f.qualifiers['translation_input'])
+    #         yield seq_ident, seq
+
+    def get_features(self, feature_type, filter_seqs=None):
         # Iterate through sequences and there genes
         for seq_ident, seq_record in self._iterate_records(filter_seqs=filter_seqs):
-            yield seq_ident, seq_record, (f for f in seq_record.features if f.type == 'gene')
+            yield seq_ident, seq_record, (f for f in seq_record.features if f.type == feature_type)
 
-    def _get_genes_desc(self, filter_seqs=None):
+    def _get_feature_desc(self, feature_type, filter_seqs=None):
         # Returns dict seq_ident -> dict (gene name -> num occurences)
         return dict((seq_ident, Counter(feature_qualifiers_to_desc(f) for f in features))
-                    for seq_ident, _, features in self.get_genes(filter_seqs=filter_seqs))
+                    for seq_ident, _, features in self.get_features(feature_type, filter_seqs=filter_seqs))
 
-    def extract_all_genes(self, filter_seqs=None):
-        return self._extract_features(self.get_genes(filter_seqs=filter_seqs))
+    # def extract_all_genes(self, filter_seqs=None):
+    #     return self._extract_features(self.get_features('gene', filter_seqs=filter_seqs))
 
-    def get_cds(self, filter_seqs=None):
-        # Iterate through sequences and there genes
-        for seq_ident, seq_record in self._iterate_records(filter_seqs=filter_seqs):
-            yield seq_ident, seq_record, (f for f in seq_record.features if f.type == 'CDS')
-
-    def _get_cds_desc(self, filter_seqs=None):
-        # Returns dict seq_ident -> dict (CDS name -> num occurences)
-        return dict((seq_ident, Counter(feature_qualifiers_to_desc(f) for f in features))
-                    for seq_ident, _, features in self.get_cds(filter_seqs=filter_seqs))
-
-    def extract_all_cds(self, filter_seqs=None):
-        return self._extract_features(self.get_cds(filter_seqs=filter_seqs))
+    # def extract_all_cds(self, filter_seqs=None):
+    #     return self._extract_features(self.get_features('CDS', filter_seqs=filter_seqs))
 
     # Show data
     def show_data(self, params=None):
@@ -143,19 +162,19 @@ Annotations are stored:
 
         # Genes
         elif cmd == 'genes':
-            self._all_features(self._get_genes_desc(filter_seqs=filter_seqs))
+            self._all_features(self._get_feature_desc('gene', filter_seqs=filter_seqs))
         elif cmd == 'repeated_genes':
-            self._repeated_features(self._get_genes_desc(filter_seqs=filter_seqs))
+            self._repeated_features(self._get_feature_desc('gene', filter_seqs=filter_seqs))
         elif cmd == 'shared_genes':
-            self._shared_features(self._get_genes_desc(filter_seqs=filter_seqs))
+            self._shared_features(self._get_feature_desc('gene', filter_seqs=filter_seqs))
 
         # CDSs
         elif cmd == 'cds':
-            self._all_features(self._get_cds_desc(filter_seqs=filter_seqs))
+            self._all_features(self._get_feature_desc('CDS', filter_seqs=filter_seqs))
         elif cmd == 'repeated_cds':
-            self._repeated_features(self._get_cds_desc(filter_seqs=filter_seqs))
+            self._repeated_features(self._get_feature_desc('CDS', filter_seqs=filter_seqs))
         elif cmd == 'shared_cds':
-            self._shared_features(self._get_cds_desc(filter_seqs=filter_seqs))
+            self._shared_features(self._get_feature_desc('CDS', filter_seqs=filter_seqs))
 
         # IR
         elif cmd == 'ir':
@@ -191,12 +210,16 @@ Annotations are stored:
     def _shared_features(self, data):
         # data is dict seq_ident -> dict (gene -> num occurences)
         if len(data) > 1:
-            same_genes = set.intersection(*(set(g.keys()) for g in data.values()))
+            same_features = self._intersect_features(data)
             print('Genes not shared by all sequences:')
             for seq_ident, genes in sorted(data.items()):
-                rest_genes = set(genes.keys()) - same_genes
-                print(f"    {seq_ident} ({len(rest_genes)}): {', '.join(sorted(rest_genes))}")
+                rest_features = set(genes.keys()) - same_features
+                print(f"    {seq_ident} ({len(rest_features)}): {', '.join(sorted(rest_features))}")
 
-            print(f"Shared ({len(same_genes)}): {', '.join(sorted(same_genes))}")
+            print(f"Shared ({len(same_features)}): {', '.join(sorted(same_features))}")
         else:
-            print('Not enough data to find same ganes!')
+            print('Not enough data to find same genes!')
+
+    def _intersect_features(self, data):
+        # data is dict seq_ident -> dict (gene -> num occurences)
+        return set.intersection(*(set(g.keys()) for g in data.values()))

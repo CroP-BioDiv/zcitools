@@ -55,14 +55,15 @@ class OGDRAW(_CreateStepFromStepCommand):
         parser.add_argument('-f', '--image_format', default='ps', help='One of: svg, pdf, ps, png, jpg, tif, gif')
 
     def cache_identifier(self):
-        return dict(static=True, data_identifier=['OGDraw', self.args.image_format])
+        step_commnad = self._input_step().get_step_command()  # Depends on annotation process
+        return dict(static=True, data_identifier=['OGDraw', step_commnad, self.args.image_format])
 
     def run(self, step_data):
-        from ..processing.annotation.ogdraw import calculate_ogdraw
+        from ..processing.annotation.ogdraw import create_ogdraw
         img_f = self.args.image_format.lower()
         if img_f not in self._IMAGE_FORMATS:
             raise ZCItoolsValueError(f'Given format {img_f} is not supported!')
-        return calculate_ogdraw(step_data, img_f, self._input_step(), self.get_cache_object())
+        return create_ogdraw(step_data, img_f, self._input_step(), self.get_cache_object())
 
     def finish(self, step_obj):
         from ..processing.annotation.ogdraw import finish_ogdraw

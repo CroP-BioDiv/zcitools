@@ -29,6 +29,9 @@ Create new step command also has to implement:
  - cache_identifier()    : returns None or dict(static=bool, data_identifier=list of strings)
                            Uniquelly specify how step data is created from project start.
                            Used for caching data.
+
+Create step command's run() method can store additional data for finish() method.
+It is good practice to store that data in file finish.yml.
 """
 
 

@@ -2,6 +2,7 @@ import os
 import sys
 import shutil
 import yaml
+from zipfile import ZipFile, ZIP_BZIP2
 
 
 # Files and directories
@@ -102,6 +103,12 @@ def read_yaml(filename):
 def extract_from_zip(zip_f, zip_filename, output_filename):
     with open(output_filename, 'wb') as save_f:
         save_f.write(zip_f.read(zip_filename))
+
+
+def zip_files(output_filename, files):
+    with ZipFile(output_filename, 'w', compression=ZIP_BZIP2) as output:
+        for f in files:
+            output.write(f)
 
 
 #

@@ -28,17 +28,23 @@ class Step:
 
     def __init__(self, step_data, remove_data=False, update_mode=False):
         self._step_data = step_data
-        self._step_name = step_data['step_name']
+        # step_data['step_name'] is string or list of strings for substeps
+        if isinstance(step_data['step_name'], str):
+            self._step_name_list = [step_data['step_name']]
+            self._step_directory = step_data['step_name']
+        else:
+            self._step_name_list = step_data['step_name']
+            self._step_directory = os.path.join(*step_data['step_name'])
         self._update_mode = update_mode
 
         # Call init data method
         if remove_data:
-            remove_directory(self._step_name, create=True)
+            remove_directory(self._step_directory, create=True)
             d = None
         else:
             d = self.get_desription()
             if not d:
-                ensure_directory(self._step_name)
+                ensure_directory(self._step_directory)
         if d:
             if d['data_type'] != self._STEP_TYPE:
                 raise ZCItoolsValueError(
@@ -89,15 +95,27 @@ class Step:
         if d:
             return d['data']
 
+    # Substep methods
+    def get_substep_step_data(self, step_name):
+        return dict(step_name=step_name)  # , prev_steps=None, command=None, command_args=None, cmd=None)
+
+    def create_substep(self, step_name, step_cls, remove_data=False, update_mode=False):
+        return step_cls(self.get_substep_step_data(self._step_name_list + [step_name]),
+                        remove_data=remove_data, update_mode=update_mode)
+
     # Commonn file methods
     def absolute_path(self):
-        return os.path.abspath(self._step_name)
+        return os.path.abspath(self._step_directory)
 
     def step_file(self, f):
-        return os.path.join(self._step_name, f)
+        return os.path.join(*self._step_name_list, f)
 
-    def step_calc_file(self, calc_d, f):
-        return os.path.join(self._step_name, calc_d, f)
+    def strip_step_dir(self, f):
+        assert f.startswith(self._step_directory), (f, self._step_directory)
+        return f[(len(self._step_directory) + 1):]
+
+    def strip_step_dir_files(self, files):
+        return [self.strip_step_dir(f) for f in files]
 
     @classmethod
     def _is_cache_file(cls, f):
@@ -109,9 +127,9 @@ class Step:
     def step_files(self, not_cached=False, matches=None):
         # Returns list of step's filenames relative to step subdirectory
         if not_cached:
-            files = [f for f in os.listdir(self._step_name) if not self._is_cache_file(f)]
+            files = [f for f in os.listdir(self._step_directory) if not self._is_cache_file(f)]
         else:
-            files = os.listdir(self._step_name)
+            files = os.listdir(self._step_directory)
         if matches:
             pattern = re.compile(matches)
             files = [f for f in files if pattern.search(f)]
@@ -124,7 +142,7 @@ class Step:
 
     def get_cached_records(self, cache, record_idents, info=False):
         if cache:
-            return cache.get_records(record_idents, self._step_name, info=info)
+            return cache.get_records(record_idents, self._step_directory, info=info)
         return record_idents
 
     #
