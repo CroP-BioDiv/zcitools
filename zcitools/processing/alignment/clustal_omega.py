@@ -1,8 +1,9 @@
 import os.path
 from . import run_clustal_omega
 from zcitools.steps.alignments import AlignmentStep, AlignmentsStep
-from zcitools.utils.helpers import write_fasta
-from zcitools.utils.file_utils import zip_files, copy_file, write_str_in_file, write_yaml
+from zcitools.utils.file_utils import zip_files, unzip_file, list_zip_files, write_yaml, read_yaml, \
+    copy_file, write_str_in_file, write_fasta
+from zcitools.utils.helpers import sets_equal
 
 _instructions = """
 Steps:
@@ -17,6 +18,8 @@ Notes:
  - Clustal Omega executable (clustalo) should be on the PATH or
    environment variable CLUSTAL_OMEGA_EXE should point to it.
 """
+
+# Note: global cache is not used!
 
 
 def _add_sequences(step, short, sequences, sequence_data):
@@ -36,14 +39,14 @@ def _feature_sequences(step, annotations_step, sequences, feature_type, single, 
 
     if single:
         for gene in same_features:
-            substep = step.create_substep(f'{feature_type}_{gene}', AlignmentStep)
+            substep = step.create_substep(AlignmentStep, f'{feature_type}_{gene}')
             seq_files.append(_add_sequences(
                 substep, True, sequences, [(seq_ident, parts[(seq_ident, gene)]) for seq_ident in sequences]))
 
     if concatenated:
-        substep = step.create_substep(f'{feature_type}_concatenated', AlignmentStep)
+        substep = step.create_substep(AlignmentStep, f'{feature_type}_concatenated')
         same_features = sorted(same_features)  # ToDo: order?!
-        files.append(_add_sequences(
+        seq_files.append(_add_sequences(
             substep, False, sequences,
             [(seq_ident, ''.join(parts[(seq_ident, gene)] for gene in same_features)) for seq_ident in sequences]))
 
@@ -85,7 +88,7 @@ def create_clustal_data(step_data, annotations_step, cache, alignments, run):
         _feature_sequences(step, annotations_step, sequences, 'gene', 'gs' in alignments, 'gc' in alignments, seq_files)
         _feature_sequences(step, annotations_step, sequences, 'CDS', 'cs' in alignments, 'cc' in alignments, seq_files)
         if 'w' in alignments:
-            substep = step.create_substep('whole', AlignmentStep)
+            substep = step.create_substep(AlignmentStep, 'whole')
             seq_files.append(_add_sequences(
                 substep, False, sequences, [annotations_step.get_sequence(seq_ident) for seq_ident in sequences]))
 
@@ -102,7 +105,7 @@ def create_clustal_data(step_data, annotations_step, cache, alignments, run):
 
     if run:
         project_dir = os.getcwd()
-        os.chdir(step._step_directory)
+        os.chdir(step.directory)
         run_clustal_omega.run(locale=True)
         os.chdir(project_dir)
     else:
@@ -123,4 +126,15 @@ def create_clustal_data(step_data, annotations_step, cache, alignments, run):
 
 
 def finish_clustal_data(step_obj, cache):
-    pass
+    output_f = step_obj.step_file('output.zip')
+    # Check are needed files in zip, not something strange
+    files = set(d['filename'].replace('sequences.fa', 'alignment.phy')
+                for d in read_yaml(step_obj.step_file('finish.yml')))
+    # ToDo: possible problems with file separator
+    sets_equal(files, set(list_zip_files(output_f)), 'file')  # raise exception if data is not good
+
+    # Unzip data
+    unzip_file(step_obj.step_file('output.zip'), step_obj.directory)
+
+    step_obj._check_data()
+    step_obj.save(create=False)

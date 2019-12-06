@@ -3,7 +3,7 @@ from collections import defaultdict, Counter
 from .step import Step
 from ..utils.import_methods import import_bio_seq_io
 from ..utils.show import print_table
-from ..utils.helpers import feature_qualifiers_to_desc, feature_location_desc, concatenate_sequences
+from ..utils.helpers import feature_qualifiers_to_desc, feature_location_desc, concatenate_sequences, sets_equal
 from ..utils.cache import cache_args
 
 
@@ -25,15 +25,7 @@ Annotations are stored:
 
     def _check_data(self):
         exist_seq_idents = set(seq_ident for seq_ident, _ in self._iterate_records())
-        # Are all sequences presented
-        not_exist = self._sequences - exist_seq_idents
-        if not_exist:
-            raise ZCItoolsValueError(f"Sequence data not presented for: {', '.join(sorted(not_exist))}")
-
-        # Is there more sequences
-        more_data = exist_seq_idents - self._sequences
-        if more_data:
-            raise ZCItoolsValueError(f"Data exists for not listed sequence(s): {', '.join(sorted(more_data))}")
+        sets_equal(self._sequences, exist_seq_idents, 'sequence', step=self.directory)
 
     # Set data
     def set_sequences(self, seqs):
@@ -89,26 +81,6 @@ Annotations are stored:
         #
         return same_genes, parts
 
-    # def extract_shared_features(self, feature_type, filter_seqs=None):
-    #     _extract_shared_features(self, feature_type, filter_seqs=None)
-
-
-    # def _extract_features(self, iter_features):
-    #     for seq_ident, seq_record, features in iter_features:
-    #         # ToDo: how to sort them. For now by name, it is possible to sort by location
-    #         features = sorted(features, key=feature_qualifiers_to_desc)
-    #         seq = ''.join(str(f.extract(seq_record).seq) for f in features)
-    #         # if len(seq) % 3:
-    #         #     print(seq_ident, len(seq))
-    #         #     # print([len(s) for s in (f.extract(seq_record).seq for f in features) if len(s) % 3])
-    #         #     for f in features:
-    #         #         if 'translation_input' in f.qualifiers:
-    #         #             t = ''.join(f.qualifiers['translation_input']).replace(' ', '')
-    #         #             print(feature_qualifiers_to_desc(f), len(f.extract(seq_record).seq), len(t))
-    #         #             print(t)
-    #         #             # print(f.qualifiers['translation_input'])
-    #         yield seq_ident, seq
-
     def get_features(self, feature_type, filter_seqs=None):
         # Iterate through sequences and there genes
         for seq_ident, seq_record in self._iterate_records(filter_seqs=filter_seqs):
@@ -118,12 +90,6 @@ Annotations are stored:
         # Returns dict seq_ident -> dict (gene name -> num occurences)
         return dict((seq_ident, Counter(feature_qualifiers_to_desc(f) for f in features))
                     for seq_ident, _, features in self.get_features(feature_type, filter_seqs=filter_seqs))
-
-    # def extract_all_genes(self, filter_seqs=None):
-    #     return self._extract_features(self.get_features('gene', filter_seqs=filter_seqs))
-
-    # def extract_all_cds(self, filter_seqs=None):
-    #     return self._extract_features(self.get_features('CDS', filter_seqs=filter_seqs))
 
     # Show data
     def show_data(self, params=None):

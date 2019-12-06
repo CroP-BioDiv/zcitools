@@ -1,5 +1,6 @@
 import os.path
 from .import_methods import import_bio_seq_io
+from .exceptions import ZCItoolsValueError
 
 # Methods for this and that
 
@@ -49,13 +50,7 @@ def feature_qualifiers_to_desc(feature):
     return str(qualifiers)  # ToDo: For now
 
 
-# Sequence files
-def write_fasta(filename, data):
-    with open(filename, 'w') as fa:
-        for ident, seq in data:
-            fa.write(f">{ident}\n{seq}\n")
-
-
+# Sequences
 def split_sequences(input_filename, output_ext):
     SeqIO = import_bio_seq_io()
     input_type = _bio_ext_2_type[os.path.splitext(input_filename)[1]]
@@ -87,3 +82,18 @@ def split_list(data, num_items):
     for i in range((len(data) // num_items) + 1):
         n = i * num_items
         yield data[n:(n + num_items)]
+
+
+# Data checks
+def sets_equal(have_to_exist, exist, description, step=None):
+    # Is all data presented
+    not_exist = have_to_exist - exist
+    if not_exist:
+        sd = f'({step}) ' if step else ''
+        raise ZCItoolsValueError(f"{sd}Data for {description}(s) not presented: {', '.join(sorted(not_exist))}")
+
+    # Is there more data than needed
+    more_data = exist - have_to_exist
+    if more_data:
+        sd = f'({step}) ' if step else ''
+        raise ZCItoolsValueError(f"{sd}Data exists for not listed {description}(s): {', '.join(sorted(more_data))}")

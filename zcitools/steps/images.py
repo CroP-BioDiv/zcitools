@@ -2,7 +2,8 @@ import os.path
 from collections import defaultdict
 from .step import Step
 from ..utils.show import print_table
-from ..utils.exceptions import ZCItoolsValueError
+# from ..utils.exceptions import ZCItoolsValueError
+from ..utils.helpers import sets_equal
 
 # ToDo: very similar to SequencesStep. Stores some files for some identifiers. Make it general?
 
@@ -25,17 +26,7 @@ Each image can be stored in one or more files in different formats.
 
     def _check_data(self):
         existing_images = self._find_existing_images()
-        exist_image_idents = set(existing_images.keys())
-        needed_image_idents = set(self._images.keys())
-        # Are all sequences presented
-        not_exist = needed_image_idents - exist_image_idents
-        if not_exist:
-            raise ZCItoolsValueError(f"Image data not presented for: {', '.join(sorted(not_exist))}")
-
-        # Is there more sequences
-        more_data = exist_image_idents - needed_image_idents
-        if more_data:
-            raise ZCItoolsValueError(f"Data exists for not listed image(s): {', '.join(sorted(more_data))}")
+        sets_equal(set(self._images.keys()), set(existing_images.keys()), 'image', step=self.directory)
 
     def _find_existing_images(self):
         existing_seqs = defaultdict(list)

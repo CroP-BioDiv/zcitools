@@ -106,9 +106,31 @@ def extract_from_zip(zip_f, zip_filename, output_filename):
 
 
 def zip_files(output_filename, files):
-    with ZipFile(output_filename, 'w', compression=ZIP_BZIP2) as output:
+    with ZipFile(output_filename, 'w', compression=ZIP_BZIP2) as _zip:
         for f in files:
-            output.write(f)
+            _zip.write(f)
+
+
+def unzip_file(zip_filename, into_directory):
+    with ZipFile(zip_filename, 'r') as _zip:
+        _zip.extractall(into_directory)
+
+
+def list_zip_files(zip_filename):
+    with ZipFile(zip_filename, 'r') as _zip:
+        return [z_i.filename for z_i in _zip.infolist() if not z_i.is_dir()]
+
+
+# Fasta file
+def write_fasta(filename, data):
+    with open(filename, 'w') as fa:
+        for ident, seq in data:
+            fa.write(f">{ident}\n{seq}\n")
+
+
+def read_fasta_identifiers(filename):
+    with open(filename, 'r') as fa:
+        return [line[1:].strip() for line in fa.readlines() if line[0] == '>']
 
 
 #

@@ -53,9 +53,11 @@ def run(locale=True, threads=None):
                 executor.submit(_run_single, clustalo_exe, d['filename'], outputs[-1])
 
     for d in long_files:
-        cmd = f"{clustalo_exe} -i {filename} -o {output_file} --outfmt=phy --threads={threads}"
-        print(f"Command: {cmd}")
-        os.system(cmd)
+        for d in long_files:
+            outputs.append(_alignment_file(d['filename']))
+            cmd = f"{clustalo_exe} -i {d['filename']} -o {outputs[-1]} --outfmt=phy --threads={threads}"
+            print(f"Command: {cmd}")
+            os.system(cmd)
 
     # Zip files
     if not locale:

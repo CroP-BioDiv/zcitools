@@ -4,7 +4,8 @@ from .step import Step
 from ..utils.exceptions import ZCItoolsValueError
 from ..utils.import_methods import import_bio_seq_io
 from ..utils.show import print_table
-from ..utils.helpers import write_fasta
+from ..utils.file_utils import write_fasta
+from ..utils.helpers import sets_equal
 
 
 class SequencesStep(Step):
@@ -29,17 +30,7 @@ Each sequence can be stored in one or more files in different formats.
 
     def _check_data(self):
         existing_seqs = self._find_existing_seqs()
-        exist_seq_idents = set(existing_seqs.keys())
-        needed_seq_idents = set(self._sequences.keys())
-        # Are all sequences presented
-        not_exist = needed_seq_idents - exist_seq_idents
-        if not_exist:
-            raise ZCItoolsValueError(f"Sequence data not presented for: {', '.join(sorted(not_exist))}")
-
-        # Is there more sequences
-        more_data = exist_seq_idents - needed_seq_idents
-        if more_data:
-            raise ZCItoolsValueError(f"Data exists for not listed sequence(s): {', '.join(sorted(more_data))}")
+        sets_equal(set(self._sequences.keys()), set(existing_seqs.keys()), 'sequence', step=self.directory)
 
     def _find_existing_seqs(self):
         existing_seqs = defaultdict(list)

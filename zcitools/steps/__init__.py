@@ -6,13 +6,18 @@ from ..utils.exceptions import ZCItoolsValueError
 from .table import TableStep
 from .sequences import SequencesStep
 from .annotations import AnnotationsStep
+from .alignments import AlignmentStep, AlignmentsStep
 from .images import ImagesStep
 
 _type_2_step_cls = dict((cls._STEP_TYPE, cls) for cls in locals().values() if hasattr(cls, '_STEP_TYPE'))
 
 
 def read_step(step_name, check_data_type=None, update_mode=False):
-    desc_data = read_yaml(os.path.join(step_name, 'description.yml'))
+    if isinstance(step_name, str):
+        desc_data = read_yaml(os.path.join(step_name, 'description.yml'))
+    else:
+        assert isinstance(step_name, list), type(step_name)
+        desc_data = read_yaml(os.path.join(*step_name, 'description.yml'))
     if not desc_data:
         raise ZCItoolsValueError(f"'{step_name}' is not a step!")
 
