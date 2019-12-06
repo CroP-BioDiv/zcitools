@@ -3,6 +3,7 @@ from .step import Step
 from ..utils.exceptions import ZCItoolsValueError
 from ..utils.file_utils import read_fasta_identifiers
 from ..utils.helpers import sets_equal
+from ..utils.show import print_ls_like_list
 
 
 class AlignmentStep(Step):
@@ -81,4 +82,4 @@ Note: list of alignments is not stored in description.yml.
 
     # Show data
     def show_data(self, params=None):
-        print('Alignments', self.directory)
+        print_ls_like_list('Alignments', self.all_alignments(), sort=True, min_rows_to_split=20)
