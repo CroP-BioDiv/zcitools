@@ -48,3 +48,21 @@ Stores an RAxML calculation from alignment.
 class RAxMLSteps(StepCollection):
     _STEP_TYPE = 'raxmls'
     _SUBSTEP_CLASS = RAxMLStep
+
+    # Show data
+    def show_data(self, params=None):
+        print('MrBayes', self.directory)
+
+
+#
+class MrBayesStep(RAxMLStep):
+    """
+Stores an MrBayes calculation from alignment.
+"""
+    # ToDo: other alignment formats?
+    _STEP_TYPE = 'mr_bayes'
+
+
+class MrBayesSteps(StepCollection):
+    _STEP_TYPE = 'mr_bayes_s'
+    _SUBSTEP_CLASS = MrBayesStep

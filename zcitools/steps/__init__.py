@@ -8,7 +8,7 @@ from .images import ImagesStep
 from .sequences import SequencesStep
 from .annotations import AnnotationsStep
 from .alignments import AlignmentStep, AlignmentsStep
-from .raxml import RAxMLStep, RAxMLSteps
+from .phylogenetics import RAxMLStep, RAxMLSteps, MrBayesStep, MrBayesSteps
 
 _type_2_step_cls = dict((cls._STEP_TYPE, cls) for cls in locals().values() if hasattr(cls, '_STEP_TYPE'))
 

@@ -3,6 +3,7 @@ from .step import Step, StepCollection
 from ..utils.exceptions import ZCItoolsValueError
 from ..utils.file_utils import read_fasta_identifiers
 from ..utils.helpers import sets_equal
+from ..utils.import_methods import import_bio_align_io, import_bio_alphabet
 
 
 class AlignmentStep(Step):
@@ -67,6 +68,17 @@ Data is stored:
         if os.path.isfile(f):
             return f
         # ToDo: when other formats are in, change this
+
+    def get_nexus_file(self):
+        f = self.step_file('alignment.nex')
+        if os.path.isfile(f):
+            return f
+        p_f = self.get_phylip_file()
+        if p_f:
+            AlignIO = import_bio_align_io()
+            Alphabet = import_bio_alphabet()
+            AlignIO.convert(p_f, 'phylip', f, 'nexus', alphabet=Alphabet.generic_dna)
+            return f
 
     # Show data
     def show_data(self, params=None):

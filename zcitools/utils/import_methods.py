@@ -58,6 +58,12 @@ def import_bio_align_io():
 
 
 @_import_method(_missing_bio)
+def import_bio_alphabet():
+    from Bio import Alphabet
+    return Alphabet
+
+
+@_import_method(_missing_bio)
 def import_bio_entrez():
     from Bio import Entrez
     return Entrez

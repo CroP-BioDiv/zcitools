@@ -18,7 +18,7 @@ _OUTPUT_FILES = (
 
 
 # Calculation strategy:
-#  - Just run calcualtions with given number of threads. Fist short, than long.
+#  - Just run calculations with given number of threads. Fist short, than long.
 #
 # Notes:
 #  - Output files are create in directory where RAxML is run with extension raxml_output (set in command with switch -n)
