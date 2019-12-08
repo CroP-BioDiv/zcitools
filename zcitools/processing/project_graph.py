@@ -17,11 +17,12 @@ def create_graph():
             #
             prev_steps = step._step_data['prev_steps']
             if prev_steps:
-                edges.extend((p, node) for p in prev_steps)
+                command = step._step_data['command']
+                edges.extend((p, node, command) for p in prev_steps)
 
     # Edges
-    for from_node, to_node in edges:
-        graph.add_edge(from_node, to_node)
+    for from_node, to_node, label in edges:
+        graph.add_edge(from_node, to_node, label=label)
 
     # Export
     output_filename = 'graph'
