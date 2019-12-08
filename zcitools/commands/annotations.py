@@ -55,7 +55,7 @@ class OGDRAW(_CreateStepFromStepCommand):
         parser.add_argument('-f', '--image_format', default='ps', help='One of: svg, pdf, ps, png, jpg, tif, gif')
 
     def cache_identifier(self):
-        step_commnad = self._input_step().get_step_command()  # Depends on annotation process
+        step_commnad = self._input_step().get_command()  # Depends on annotation process
         return dict(static=True, data_identifier=['OGDraw', step_commnad, self.args.image_format])
 
     def run(self, step_data):

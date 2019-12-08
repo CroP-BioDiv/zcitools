@@ -4,6 +4,7 @@ import re
 from zcitools.utils.file_utils import ensure_directory, remove_directory, silent_remove, \
     write_yaml, read_yaml
 from ..utils.exceptions import ZCItoolsValueError
+from ..utils.show import print_ls_like_list
 
 """
 Step object is created with step data that specfies step subdirectory and other environment info.
@@ -25,6 +26,7 @@ class Step:
     _STEP_TYPE = None
     _COLUMN_TYPES = frozenset(['seq_ident', 'str', 'int'])
     _CACHE_PREFIX = '_c_'  # Cache files are prfixed with '_c_'
+    _IS_COLLECTION = False
 
     def __init__(self, step_data, remove_data=False, update_mode=False):
         self._step_data = step_data
@@ -66,14 +68,14 @@ class Step:
         print(f'Warning: method {self.__class__.__name__}._check_data() not implemented!')
 
     #
-    def get_step_type(self):
-        return self._STEP_TYPE
-
-    def get_step_command(self):
+    def get_command(self):
         return self._step_data['command']
 
-    def get_step_needs_editing(self):
+    def get_needs_editing(self):
         return self._step_data['needs_editing']
+
+    def get_local_name(self):
+        return self._step_name_list[-1]
 
     # Description methods
     def save_description(self, type_description, create=True, needs_editing=False):
@@ -84,7 +86,7 @@ class Step:
             pd['updated'] = None
         else:
             pd['updated'] = datetime.datetime.now().isoformat()
-        write_yaml(dict(data_type=self.get_step_type(), data=type_description, project=pd),
+        write_yaml(dict(data_type=self._STEP_TYPE, data=type_description, project=pd),
                    self.step_file('description.yml'))
 
     def get_desription(self):
@@ -155,3 +157,47 @@ class Step:
     #
     def show_data(self, params=None):
         print(f'{self.__class__.__name__}.show_data() not implemented!')
+
+
+#
+class StepCollection(Step):
+    """
+Stores collection of steps of same step type.
+Substep is identified by it's directory name.
+Note: list of substeps is not stored in description.yml.
+"""
+    _IS_COLLECTION = True
+    _SUBSTEP_CLASS = None  # Class of substep
+
+    # Init object
+    def _init_data(self, type_description):
+        pass
+
+    def _check_data(self):
+        # Check all subobjects
+        for obj in self.step_objects():
+            obj._check_data()
+
+    def step_objects(self):
+        # Used to retrieve all step object encapsulated in this object.
+        return (self.read_substep(n) for n in self.substep_names())
+
+    # Save/load data
+    def save(self, create=True, needs_editing=False):
+        # Store description.yml
+        self.save_description(dict(), create=create, needs_editing=needs_editing)
+
+    # Retrieve data methods
+    def substep_names(self):
+        return self.step_subdirectories()
+
+    # Substep methods
+    def create_substep(self, local_step_name, remove_data=False, update_mode=False):
+        return self._SUBSTEP_CLASS(self.get_substep_step_data(self._step_name_list + [local_step_name]),
+                                   remove_data=remove_data, update_mode=update_mode)
+
+    # Show data
+    def show_data(self, params=None):
+        print_ls_like_list(self._STEP_TYPE, self.substep_names(), sort=True, min_rows_to_split=20)
+        if self.get_needs_editing():
+            print('Step is not finished!')

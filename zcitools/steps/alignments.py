@@ -1,9 +1,8 @@
 import os.path
-from .step import Step
+from .step import Step, StepCollection
 from ..utils.exceptions import ZCItoolsValueError
 from ..utils.file_utils import read_fasta_identifiers
 from ..utils.helpers import sets_equal
-from ..utils.show import print_ls_like_list
 
 
 class AlignmentStep(Step):
@@ -57,38 +56,23 @@ Data is stored:
     def all_sequences(self):
         return self._sequences
 
+    def get_sequence_type(self):
+        return self._seq_type
+
+    def is_short(self):
+        return self._seq_type == 'gene'
+
+    def get_phylip_file(self):
+        f = self.step_file('alignment.phy')
+        if os.path.isfile(f):
+            return f
+        # ToDo: when other formats are in, change this
+
     # Show data
     def show_data(self, params=None):
         print('Alignment', self.directory, self._seq_type)
 
 
-class AlignmentsStep(Step):
-    """
-Stores multiple aligments between different sets of sequences.
-Each alignment is step of type AligmentStep.
-Alignment is identified by AligmentStep's directory name.
-Note: list of alignments is not stored in description.yml.
-"""
+class AlignmentsStep(StepCollection):
     _STEP_TYPE = 'alignments'
-
-    # Init object
-    def _init_data(self, type_description):
-        pass
-
-    def _check_data(self):
-        # Check AlignmentStep objects
-        for a in self.all_alignments():
-            self.read_substep(a)._check_data()
-
-    # Save/load data
-    def save(self, create=True, needs_editing=False):
-        # Store description.yml
-        self.save_description(dict(), create=create, needs_editing=needs_editing)
-
-    # Retrieve data methods
-    def all_alignments(self):
-        return self.step_subdirectories()
-
-    # Show data
-    def show_data(self, params=None):
-        print_ls_like_list('Alignments', self.all_alignments(), sort=True, min_rows_to_split=20)
+    _SUBSTEP_CLASS = AlignmentStep

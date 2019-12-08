@@ -4,6 +4,7 @@ from .table import *
 from .sequences import *
 from .annotations import *
 from .alignments import *
+from .phylogenetics import *
 
 
 # Needs commands_map!
@@ -22,9 +23,9 @@ class Finish:  # (_Command):
     def run(self):
         from ..steps import read_step
         step = read_step(self.args.step, update_mode=True)  # Set to be in update mode
-        if step.get_step_needs_editing():
+        if step.get_needs_editing():
             orig_args = SimpleNamespace(**step._step_data['command_args'])
-            command_obj = commands_map[step.get_step_command()](orig_args)
+            command_obj = commands_map[step.get_command()](orig_args)
             command_obj.finish(step)
         else:
             print(f"Info: step {self.args.step} is already finished!")

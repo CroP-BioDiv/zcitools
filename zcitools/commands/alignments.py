@@ -4,7 +4,7 @@ from ..utils.exceptions import ZCItoolsValueError
 # Check base.py for description
 
 
-class ClustalOStep(_CreateStepFromStepCommand):
+class ClustalO(_CreateStepFromStepCommand):
     _COMMAND = 'clustal'
     _HELP = "Align sequences with Clustal Omega"
     _STEP_BASE_NAME = 'Clustal'
@@ -17,9 +17,8 @@ class ClustalOStep(_CreateStepFromStepCommand):
     @staticmethod
     def set_arguments(parser):
         parser.add_argument('step', help='Input sequences step')
-        # Cijeli, genes/CDS, svaki posebno, spojeni
         parser.add_argument(
-            'alignments', nargs='+', help=f"To align: {', '.join(f'{c} ({d})' for c, d in ClustalOStep._ALIGNMENTS)}")
+            'alignments', nargs='+', help=f"To align: {', '.join(f'{c} ({d})' for c, d in ClustalO._ALIGNMENTS)}")
         parser.add_argument('-r', '--run', action='store_true', help='Run Clustal Omega locale')
 
     def run(self, step_data):

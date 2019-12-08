@@ -55,7 +55,7 @@ def run(locale=True, threads=None):
 
     # Files to run
     with open('finish.yml', 'r') as r:
-        seq_files = yaml.load(r, Loader=yaml.CLoader)  # dict with attrs short, long
+        seq_files = yaml.load(r, Loader=yaml.CLoader)  # dict with attrs: filename, short, max_seq_length
     short_files = sorted((d for d in seq_files if d['short']), key=lambda x: -x['max_seq_length'])
     long_files = sorted((d for d in seq_files if not d['short']), key=lambda x: x['max_seq_length'])
 

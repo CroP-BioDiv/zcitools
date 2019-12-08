@@ -133,6 +133,28 @@ def read_fasta_identifiers(filename):
         return [line[1:].strip() for line in fa.readlines() if line[0] == '>']
 
 
+# Run script in step directory
+def run_module_script(module, step):
+    project_dir = os.getcwd()
+    os.chdir(step.directory)
+    module.run(locale=True)
+    os.chdir(project_dir)
+
+
+def set_run_instructions(module, step, files_to_zip, instructions):
+    # Copy run script
+    script_name = os.path.basename(module.__file__)
+    run_f = step.step_file(script_name)
+    copy_file(module.__file__, run_f)
+
+    # Instructions
+    inst_f = step.step_file('INSTRUCTIONS.txt')
+    write_str_in_file(inst_f, instructions.format(step_name=step.directory, script_name=script_name))
+
+    # Zip needed files
+    zip_files(step.step_file('calculate.zip'), files_to_zip + [inst_f, run_f])
+
+
 #
 _ext_to_filetype = dict(
     txt='text', text='text',

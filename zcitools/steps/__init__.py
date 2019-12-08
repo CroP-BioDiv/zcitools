@@ -4,10 +4,11 @@ from ..utils.exceptions import ZCItoolsValueError
 
 # Step classes. Used for filling _type_2_step_cls dict
 from .table import TableStep
+from .images import ImagesStep
 from .sequences import SequencesStep
 from .annotations import AnnotationsStep
 from .alignments import AlignmentStep, AlignmentsStep
-from .images import ImagesStep
+from .raxml import RAxMLStep, RAxMLSteps
 
 _type_2_step_cls = dict((cls._STEP_TYPE, cls) for cls in locals().values() if hasattr(cls, '_STEP_TYPE'))
 
@@ -23,8 +24,13 @@ def read_step(step_name, check_data_type=None, update_mode=False):
 
     data_type = desc_data['data_type']
 
-    if check_data_type and check_data_type != data_type:
-        raise ZCItoolsValueError(f"Step {step_name} is not of data type '{check_data_type}'!")
+    if check_data_type:
+        if isinstance(check_data_type, str):
+            if check_data_type != data_type:
+                raise ZCItoolsValueError(f"Step {step_name} is not of data type '{check_data_type}'!")
+        else:
+            if data_type not in check_data_type:
+                raise ZCItoolsValueError(f"Step {step_name} is not of data types: {', '.join(check_data_type)}!")
 
     cls = _type_2_step_cls.get(data_type)
     if not cls:
