@@ -1,5 +1,5 @@
 import os
-from . import run_mr_bayes
+from ..run import run_mr_bayes
 from zcitools.steps.phylogenetics import MrBayesStep, MrBayesSteps
 from zcitools.utils.file_utils import copy_file, unzip_file, list_zip_files, write_yaml, read_yaml, \
     run_module_script, set_run_instructions

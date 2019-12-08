@@ -1,5 +1,5 @@
 import os.path
-from . import run_clustal_omega
+from ..run import run_clustal_omega
 from zcitools.steps.alignments import AlignmentStep, AlignmentsStep
 from zcitools.utils.file_utils import unzip_file, list_zip_files, write_yaml, read_yaml, \
     write_fasta, run_module_script, set_run_instructions
