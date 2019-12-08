@@ -93,18 +93,18 @@ def finish_mr_bayes_data(step_obj, cache):
     if not os.path.isfile(output_f):
         raise ZCItoolsValueError('No calculation output file output.zip!')
 
-    # ToDo: check
-    # Check are all file RAxML outputs, in same directories as files to process and
-    # filenames matches RAxML_.*\.raxml_output
-    dirs = set(os.path.dirname(d['filename']) for d in read_yaml(step_obj.step_file('finish.yml')))
-    # for z_file in list_zip_files(output_f):
-    #     parts = z_file.split('/')  # ZipFile uses '/' as separator
-    #     _dir = '' if len(parts) == 1 else os.sep.join(parts[:-1])
-    #     if _dir not in dirs:
-    #         raise ZCItoolsValueError(f'Output contains file(s) in not step directory ({_dir})!')
+    allowed_files = ('alignment.ckp', 'alignment.con.tre', 'alignment.parts', 'alignment.tstat', 'alignment.vstat')
 
-    #     if not _re_raxml_output.search(parts[-1]):
-    #         raise ZCItoolsValueError(f'Not RAxML output file(s)found in the output ({parts[-1]})!')
+    # Check are all file MrBayes outputs
+    dirs = set(os.path.dirname(d['filename']) for d in read_yaml(step_obj.step_file('finish.yml')))
+    for z_file in list_zip_files(output_f):
+        parts = z_file.split('/')  # ZipFile uses '/' as separator
+        _dir = '' if len(parts) == 1 else os.sep.join(parts[:-1])
+        if _dir not in dirs:
+            raise ZCItoolsValueError(f'Output contains file(s) in not step directory ({_dir})!')
+
+        if parts[-1] not in allowed_files:
+            raise ZCItoolsValueError(f'Not RAxML output file(s)found in the output ({parts[-1]})!')
 
     # Unzip data
     unzip_file(output_f, step_obj.directory)
