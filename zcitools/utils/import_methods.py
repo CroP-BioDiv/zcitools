@@ -83,3 +83,19 @@ Short: pip install cai
 def import_CAI():
     import CAI
     return CAI
+
+
+_missing_pygraphviz = """
+PyGraphviz library is missing.
+
+For installation instruction check web page:
+https://pygraphviz.github.io/documentation/latest/install.html
+
+Short: pip install pygraphviz
+"""
+
+
+@_import_method(_missing_pygraphviz)
+def import_pygraphviz():
+    import pygraphviz
+    return pygraphviz

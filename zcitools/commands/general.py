@@ -44,3 +44,16 @@ class Show(_Command):
         from ..steps import read_step
         step = read_step(self.args.step)
         step.show_data(params=self.args.params)
+
+
+class Graph(_Command):
+    _COMMAND = 'graph'
+    _HELP = "Show project structure as a graph"
+
+    @staticmethod
+    def set_arguments(parser):
+        pass
+
+    def run(self):
+        from ..processing.project_graph import create_graph
+        create_graph()
