@@ -1,6 +1,7 @@
 import os
 from ..steps import read_step
 from ..utils.import_methods import import_pygraphviz
+from ..utils.file_utils import get_settings
 
 
 def create_graph():
@@ -17,7 +18,8 @@ def create_graph():
         if os.path.isdir(d) and os.path.isfile(os.path.join(d, 'description.yml')):
             step = read_step(d)
             node = step.directory
-            graph.add_node(node)
+            label = node if step.is_completed() else '* ' + node
+            graph.add_node(node, label=label)
             #
             prev_steps = step._step_data['prev_steps']
             if prev_steps:
@@ -30,8 +32,11 @@ def create_graph():
 
     # Export
     output_filename = 'graph'
-    graph.write(output_filename + '.dot')
+    # graph.write(output_filename + '.dot')
     # prog=neato|dot|twopi|circo|fdp|nop
-    graph.draw(output_filename + '.ps', prog='dot')
+    ps_file = output_filename + '.ps'
+    graph.draw(ps_file, prog='dot')
 
-    # ?Show
+    ps_viewer = get_settings()['ps_viewer']
+    if ps_viewer:
+        os.system(f"{ps_viewer} {ps_file}")

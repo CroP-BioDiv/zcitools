@@ -1,5 +1,5 @@
 import os.path
-from zcitools.utils.file_utils import ensure_directory
+from zcitools.utils.file_utils import settings_defaults, ensure_directory, write_yaml
 
 _readme = """
 Tools description:
@@ -15,6 +15,8 @@ def init_project(dirname, project_desc):
         print(f'Warning: project {dirname} was not created!')
 
     elif ensure_directory(dirname, check_empty=True):
+        # Add setting file
+        write_yaml(settings_defaults, os.path.join(dirname, 'settings.yml'))
         # Create empty project.log file
         with open(os.path.join(dirname, 'project_log.yml'), 'w') as r:
             pass

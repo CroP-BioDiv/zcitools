@@ -4,6 +4,19 @@ import shutil
 import yaml
 from zipfile import ZipFile, ZIP_BZIP2
 
+# Settings
+settings_defaults = dict(
+    ps_viewer='evince'
+)
+
+
+def get_settings():
+    settings = dict((k, None) for k in settings_defaults.keys())
+    s = read_yaml('settings.yml')
+    if s:
+        settings.update(s)
+    return settings
+
 
 # Files and directories
 def ensure_directory(d, check_empty=False):
