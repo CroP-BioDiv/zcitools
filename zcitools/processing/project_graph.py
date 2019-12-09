@@ -6,6 +6,10 @@ from ..utils.import_methods import import_pygraphviz
 def create_graph():
     pygraphviz = import_pygraphviz()
     graph = pygraphviz.AGraph(strict=True, directed=True)
+    # graph.graph_attr['rankdir'] = 'LR'  # Orientation left-right
+    # graph.node_attr['shape'] = 'plaintext'
+    # graph.node_attr['shape'] = 'record'
+    # graph.edge_attr['lblstyle'] = 'above, sloped'
 
     # Nodes
     edges = []
@@ -26,7 +30,7 @@ def create_graph():
 
     # Export
     output_filename = 'graph'
-    # graph.write(output_filename + '.dot')
+    graph.write(output_filename + '.dot')
     # prog=neato|dot|twopi|circo|fdp|nop
     graph.draw(output_filename + '.ps', prog='dot')
 

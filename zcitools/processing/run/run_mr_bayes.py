@@ -14,7 +14,9 @@ _ENV_VAR = 'MR_BAYES_EXE'
 _OUTPUT_EXTENSIONS = ('.ckp', '.con.tre', '.parts', '.tstat', '.vstat')
 
 
-# MrBayes is not multiprocessing!
+# MrBayes (base version) is not multiprocessing!
+# To make is multiprocessing compiling with MPI is needed
+#   https://github.com/NBISweden/MrBayes/blob/develop/INSTALL
 #
 # Calculation strategy:
 #  - Just run calculations in a pool. Fist long than short.

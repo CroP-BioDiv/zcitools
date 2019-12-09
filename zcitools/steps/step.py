@@ -154,6 +154,9 @@ class Step:
             return cache.get_records(record_idents, self.directory, info=info)
         return record_idents
 
+    def clean_files(self):
+        print(f"Warning: step {self.directory} ({self.__class__.__name__}) doesn't have clean method!")
+
     #
     def show_data(self, params=None):
         print(f'{self.__class__.__name__}.show_data() not implemented!')
@@ -195,6 +198,10 @@ Note: list of substeps is not stored in description.yml.
     def create_substep(self, local_step_name, remove_data=False, update_mode=False):
         return self._SUBSTEP_CLASS(self.get_substep_step_data(self._step_name_list + [local_step_name]),
                                    remove_data=remove_data, update_mode=update_mode)
+
+    def clean_files(self):
+        for obj in self.step_objects():
+            obj.clean_files()
 
     # Show data
     def show_data(self, params=None):

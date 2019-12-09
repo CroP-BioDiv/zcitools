@@ -16,6 +16,26 @@ class InitProject(_Command):
         init_project(self.args.dirname, self.args.description)
 
 
+class Clean(_Command):
+    _COMMAND = 'clean'
+    _HELP = "Remove not needed step data (cache and processed files)"
+
+    @staticmethod
+    def set_arguments(parser):
+        parser.add_argument('step', nargs='*', help='Step name')
+
+    def run(self):
+        import os
+        from ..steps import read_step
+        steps = self.args.step if self.args.step else os.listdir('.')
+        for step_name in steps:
+            if os.path.isfile(os.path.join(step_name, 'description.yml')):
+                step = read_step(step_name)
+                step.remove_cache_files()
+                if step.is_completed():
+                    step.clean_files()
+
+
 class CleanCache(_Command):
     _COMMAND = 'cache'
     _HELP = "Remove cache of given steps"
