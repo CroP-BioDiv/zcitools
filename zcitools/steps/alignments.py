@@ -48,10 +48,10 @@ Data is stored:
         self._seq_type = t
 
     # Save/load data
-    def save(self, create=True, needs_editing=False):
+    def save(self, create=True, completed=True):
         # Store description.yml
         self.save_description(dict(sequences=sorted(self._sequences), sequence_type=self._seq_type),
-                              create=create, needs_editing=needs_editing)
+                              create=create, completed=completed)
 
     # Retrieve data methods
     def all_sequences(self):

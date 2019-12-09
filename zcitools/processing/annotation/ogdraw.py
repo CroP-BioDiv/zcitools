@@ -74,7 +74,7 @@ def create_ogdraw(step_data, image_format, annotations_step, cache):
 
     #
     step.set_images(all_images)
-    step.save(needs_editing=bool(to_fetch))
+    step.save(completed=not to_fetch)
     return step
 
 

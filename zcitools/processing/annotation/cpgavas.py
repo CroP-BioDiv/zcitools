@@ -39,7 +39,7 @@ def create_cpgavas_data(step_data, sequences_step):
 
     #
     step.set_sequences(sequences_step.all_sequences())
-    step.save(needs_editing=True)
+    step.save(completed=False)
     return step
 
 

@@ -23,12 +23,12 @@ class Finish:  # (_Command):
     def run(self):
         from ..steps import read_step
         step = read_step(self.args.step, update_mode=True)  # Set to be in update mode
-        if step.get_needs_editing():
+        if step.is_completed():
+            print(f"Info: step {self.args.step} is completed!")
+        else:
             orig_args = SimpleNamespace(**step._step_data['command_args'])
             command_obj = commands_map[step.get_command()](orig_args)
             command_obj.finish(step)
-        else:
-            print(f"Info: step {self.args.step} is already finished!")
 
 
 commands_map = dict((cls._COMMAND, cls) for cls in locals().values() if getattr(cls, '_COMMAND', None))

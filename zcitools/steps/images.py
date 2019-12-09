@@ -59,9 +59,9 @@ Each image can be stored in one or more files in different formats.
                 self._images[iden] = []
 
     # Save/load data
-    def save(self, create=True, needs_editing=False):
+    def save(self, create=True, completed=True):
         # Store description.yml
-        self.save_description(dict(images=sorted(self._images)), create=create, needs_editing=needs_editing)
+        self.save_description(dict(images=sorted(self._images)), create=create, completed=completed)
 
     # Retrieve data methods
     def image_exists(self, ident):

@@ -71,16 +71,16 @@ class Step:
     def get_command(self):
         return self._step_data['command']
 
-    def get_needs_editing(self):
-        return self._step_data['needs_editing']
+    def is_completed(self):
+        return self._step_data['completed']
 
     def get_local_name(self):
         return self._step_name_list[-1]
 
     # Description methods
-    def save_description(self, type_description, create=True, needs_editing=False):
+    def save_description(self, type_description, create=True, completed=True):
         pd = dict(self._step_data)
-        pd['needs_editing'] = needs_editing
+        pd['completed'] = completed
         if create:
             pd['created'] = datetime.datetime.now().isoformat()
             pd['updated'] = None
@@ -183,9 +183,9 @@ Note: list of substeps is not stored in description.yml.
         return (self.read_substep(n) for n in self.substep_names())
 
     # Save/load data
-    def save(self, create=True, needs_editing=False):
+    def save(self, create=True, completed=True):
         # Store description.yml
-        self.save_description(dict(), create=create, needs_editing=needs_editing)
+        self.save_description(dict(), create=create, completed=completed)
 
     # Retrieve data methods
     def substep_names(self):
@@ -199,5 +199,5 @@ Note: list of substeps is not stored in description.yml.
     # Show data
     def show_data(self, params=None):
         print_ls_like_list(self._STEP_TYPE, self.substep_names(), sort=True, min_rows_to_split=20)
-        if self.get_needs_editing():
-            print('Step is not finished!')
+        if not self.is_completed():
+            print('Step is not completed!')

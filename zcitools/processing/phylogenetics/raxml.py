@@ -46,7 +46,7 @@ def create_raxml_data(step_data, alignment_step, cache, run):
             substep.seq_sequence_type(align_step.get_sequence_type())
             _copy_alignment_file(align_step, substep, files_to_proc)
             #
-            substep.save(needs_editing=True)
+            substep.save(completed=False)
     else:
         step = RAxMLStep(step_data, remove_data=True)
         step.set_sequences(alignment_step.all_sequences())
@@ -62,7 +62,7 @@ def create_raxml_data(step_data, alignment_step, cache, run):
     write_yaml(files_to_proc, finish_f)
 
     # Stores description.yml
-    step.save(needs_editing=not run)
+    step.save(completed=run)
 
     if run:
         run_module_script(run_raxml, step)

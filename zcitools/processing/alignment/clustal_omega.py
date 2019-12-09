@@ -32,7 +32,7 @@ def _add_sequences(step, seq_type, sequences, sequence_data):
     write_fasta(seq_file, sequence_data)
     step.set_sequences(sequences)
     step.seq_sequence_type(seq_type)
-    step.save(needs_editing=True)
+    step.save(completed=False)
     return dict(filename=seq_file, short=step.is_short(), max_seq_length=max(len(s) for _, s in sequence_data))
 
 
@@ -107,7 +107,7 @@ def create_clustal_data(step_data, annotations_step, cache, alignments, run):
     write_yaml(seq_files, finish_f)
 
     # Stores description.yml
-    step.save(needs_editing=not run)
+    step.save(completed=run)
 
     if run:
         run_module_script(run_clustal_omega, step)
