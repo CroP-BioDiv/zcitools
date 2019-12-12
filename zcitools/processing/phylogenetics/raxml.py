@@ -20,9 +20,9 @@ Steps:
  - run zcit command: zcit.py finish {step_name}
 
 Notes:
- - RAxML executable (raxmlHPC-PTHREADS) should be on the PATH or
+ - RAxML executable (raxml_threads) should be on the PATH or
    environment variable RAXML_EXE should point to it.
-   Real executable is probably raxmlHPC-PTHREADS-AVX2, and raxmlHPC-PTHREADS link to it.
+   Real executable is probably raxmlHPC-PTHREADS-AVX2, and raxml_threads links to it.
  - It is good to use command screen for running the script.
    screen -dm "python3 {script_name}"
 """

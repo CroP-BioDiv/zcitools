@@ -7,7 +7,7 @@ import multiprocessing
 from zipfile import ZipFile
 
 
-_DEFAULT_EXE_NAME = 'raxmlHPC-PTHREADS'  # probably raxmlHPC-PTHREADS-AVX2
+_DEFAULT_EXE_NAME = 'raxml_threads'  # probably raxmlHPC-PTHREADS-AVX2
 _ENV_VAR = 'RAXML_EXE'
 _OUTPUT_FILES = (
     'RAxML_bestTree.raxml_output',
