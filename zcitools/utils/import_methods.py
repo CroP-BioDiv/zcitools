@@ -69,6 +69,22 @@ def import_bio_entrez():
     return Entrez
 
 
+_missing_bcbio = """
+GFF parsing library (https://biopython.org/wiki/GFF_Parsing) is missing.
+
+For installation instruction check web page:
+https://github.com/chapmanb/bcbb/tree/master/gff
+
+Short: pip install bcbio-gff
+"""
+
+
+@_import_method(_missing_bcbio)
+def import_bcbio_gff():
+    from BCBio import GFF
+    return GFF
+
+
 _missing_cai = """
 Codon Adaptation Index (CAI) is missing.
 

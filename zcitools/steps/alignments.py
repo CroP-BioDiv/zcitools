@@ -88,3 +88,11 @@ Data is stored:
 class AlignmentsStep(StepCollection):
     _STEP_TYPE = 'alignments'
     _SUBSTEP_CLASS = AlignmentStep
+
+
+# ToDo:
+class mVISTAStep(AlignmentStep):
+    """
+...
+"""
+    pass

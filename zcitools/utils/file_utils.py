@@ -6,7 +6,8 @@ from zipfile import ZipFile, ZIP_BZIP2
 
 # Settings
 settings_defaults = dict(
-    ps_viewer='evince'
+    ps_viewer='evince',
+    email=None,
 )
 
 
