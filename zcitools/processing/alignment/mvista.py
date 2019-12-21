@@ -3,6 +3,24 @@ from zcitools.utils.file_utils import write_fasta
 # unzip_file, list_zip_files, write_yaml, read_yaml, \
 from zcitools.utils.import_methods import import_bcbio_gff
 
+_instructions_no_run = """
+Steps:
+ - open web page http://genome.lbl.gov/vista/mvista/submit.shtml
+ - in field 'Total number of sequences' set {num_sequences}
+ - press Submit button
+ - On next page
+ - in field 'Your email address' set email address to get informed when calculation finish
+ - change directory to {step_name}
+ - in 'Sequence #<num>' upload fasta files one by one. Take a care about file order!
+ - in 'Additional options' set
+   - for 'Alignment program' set Shuffle-LAGAN (?)
+   - in Sequence #<num> parts for each sequence
+     - set it's filename (without .fa)
+     - for Annotation uploaf corresponding gff3 file
+ - press Submit button
+
+"""
+
 
 def create_mvista_data(step_data, annotations_step, cache, run, email):
     step = mVISTAStep(step_data, remove_data=True)
@@ -18,4 +36,5 @@ def create_mvista_data(step_data, annotations_step, cache, run, email):
         with open(step.step_file(f'{seq_ident}.gff3'), 'w') as output:
             gff.write([sr], output)
 
+    # Jel run ili ne
     return step
