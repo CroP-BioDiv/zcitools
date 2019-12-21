@@ -1,11 +1,11 @@
-from .base import _CreateStepFromStepCommand
+from zcitools.base.commands import CreateStepFromStepCommand
 from ..utils.exceptions import ZCItoolsValueError
 from ..utils.file_utils import get_settings
 
 # Check base.py for description
 
 
-class ClustalO(_CreateStepFromStepCommand):
+class ClustalO(CreateStepFromStepCommand):
     _COMMAND = 'clustal'
     _HELP = "Align sequences with Clustal Omega"
     _STEP_BASE_NAME = 'Clustal'
@@ -36,7 +36,7 @@ class ClustalO(_CreateStepFromStepCommand):
         finish_clustal_data(step_obj, self.get_cache_object())
 
 
-class mVISTA(_CreateStepFromStepCommand):
+class mVISTA(CreateStepFromStepCommand):
     _COMMAND = 'mvista'
     _HELP = "Align sequences with mVISTA programs"
     _STEP_BASE_NAME = 'mVISTA'

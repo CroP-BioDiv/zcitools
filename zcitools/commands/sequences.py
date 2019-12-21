@@ -1,9 +1,9 @@
-from .base import _CreateStepCommand
+from zcitools.base.commands import CreateStepCommand
 
 # Check base.py for description
 
 
-class FetchSequencesStep(_CreateStepCommand):
+class FetchSequencesStep(CreateStepCommand):
     _COMMAND = 'fetch_seqs'
     _HELP = "Creates sequences step. Mandatory argument is a table step."
     _STEP_BASE_NAME = 'seqs'

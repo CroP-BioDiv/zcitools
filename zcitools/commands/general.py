@@ -1,8 +1,8 @@
 # Note: importing is done in run() methods to prevent crashes because of not used missing libraries!
-from .base import _Command
+from zcitools.base.commands import Command
 
 
-class InitProject(_Command):
+class InitProject(Command):
     _COMMAND = 'init'
     _HELP = "Initialize project in given directory name."
 
@@ -16,7 +16,7 @@ class InitProject(_Command):
         init_project(self.args.dirname, self.args.description)
 
 
-class Clean(_Command):
+class Clean(Command):
     _COMMAND = 'clean'
     _HELP = "Remove not needed step data (cache and processed files)"
 
@@ -36,7 +36,7 @@ class Clean(_Command):
                     step.clean_files()
 
 
-class CleanCache(_Command):
+class CleanCache(Command):
     _COMMAND = 'cache'
     _HELP = "Remove cache of given steps"
 
@@ -51,7 +51,7 @@ class CleanCache(_Command):
             step.remove_cache_files()
 
 
-class Show(_Command):
+class Show(Command):
     _COMMAND = 'show'
     _HELP = "Print step(s) data"
 
@@ -66,7 +66,7 @@ class Show(_Command):
         step.show_data(params=self.args.params)
 
 
-class Graph(_Command):
+class Graph(Command):
     _COMMAND = 'graph'
     _HELP = "Show project structure as a graph"
 

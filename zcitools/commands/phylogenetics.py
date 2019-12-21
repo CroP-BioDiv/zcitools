@@ -1,10 +1,10 @@
-from .base import _CreateStepFromStepCommand
+from zcitools.base.commands import CreateStepFromStepCommand
 from ..utils.exceptions import ZCItoolsValueError
 
 # Check base.py for description
 
 
-class RAxML(_CreateStepFromStepCommand):
+class RAxML(CreateStepFromStepCommand):
     _COMMAND = 'raxml'
     _HELP = "Run RAxML on alignment(s)"
     _STEP_BASE_NAME = 'RAxML'
@@ -25,7 +25,7 @@ class RAxML(_CreateStepFromStepCommand):
         finish_raxml_data(step_obj, self.get_cache_object())
 
 
-class MrBayes(_CreateStepFromStepCommand):
+class MrBayes(CreateStepFromStepCommand):
     _COMMAND = 'mr_bayes'
     _HELP = "Run MrBayes on alignment(s)"
     _STEP_BASE_NAME = 'MrBayes'

@@ -8,7 +8,7 @@ from .phylogenetics import *
 
 
 # Needs commands_map!
-class Finish:  # (_Command):
+class Finish:  # (Command):
     _COMMAND_TYPE = None  # General work
     _COMMAND = 'finish'
     _HELP = "Finish step that needed editing."

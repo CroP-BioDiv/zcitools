@@ -1,9 +1,9 @@
-from .base import _CreateStepCommand
+from zcitools.base.commands import CreateStepCommand
 
 # Check base.py for description
 
 
-class TableStep(_CreateStepCommand):
+class TableStep(CreateStepCommand):
     _COMMAND = 'table'
     _HELP = """
 Creates table step. Mandatory argument is input data file.

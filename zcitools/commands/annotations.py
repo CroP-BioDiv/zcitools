@@ -1,10 +1,10 @@
-from .base import _CreateStepFromStepCommand
+from zcitools.base.commands import CreateStepFromStepCommand
 from ..utils.exceptions import ZCItoolsValueError
 
 # Check base.py for description
 
 
-class GeSeqStep(_CreateStepFromStepCommand):
+class GeSeqStep(CreateStepFromStepCommand):
     _COMMAND = 'ge_seq'
     _HELP = "Annotates chloroplast sequences with GeSeq"
     _STEP_BASE_NAME = 'GeSeq'
@@ -22,7 +22,7 @@ class GeSeqStep(_CreateStepFromStepCommand):
         finish_ge_seq_data(step_obj, self.get_cache_object())
 
 
-class CPGAVAS(_CreateStepFromStepCommand):
+class CPGAVAS(CreateStepFromStepCommand):
     _COMMAND = 'cpgavas'
     _HELP = "Annotates chloroplast sequences with CPGAVAS"
     _STEP_BASE_NAME = 'CPGAVAS'
@@ -41,7 +41,7 @@ class CPGAVAS(_CreateStepFromStepCommand):
 
 
 # Presentations
-class OGDRAW(_CreateStepFromStepCommand):
+class OGDRAW(CreateStepFromStepCommand):
     _COMMAND = 'ogdraw'
     _HELP = "Create OGDraw images of annotations"
     _STEP_BASE_NAME = 'OGDraw'

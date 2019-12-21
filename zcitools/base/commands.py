@@ -35,7 +35,7 @@ It is good practice to store that data in file finish.yml.
 """
 
 
-class _Command:
+class Command:
     _COMMAND_TYPE = None  # General work
     _COMMAND = None
 
@@ -46,7 +46,7 @@ class _Command:
         raise NotImplementedError(f'Method {self.__class__.__name__}.run() is not implemented!')
 
 
-class _CreateStepCommand(_Command):
+class CreateStepCommand(Command):
     _COMMAND_TYPE = 'new_step'
     _PRESENTATION = False
     _STEP_BASE_NAME = None
@@ -80,7 +80,7 @@ class _CreateStepCommand(_Command):
                 return Cache(os.path.join(_dir, *d['data_identifier']))
 
 
-class _CreateStepFromStepCommand(_CreateStepCommand):
+class CreateStepFromStepCommand(CreateStepCommand):
     # Same as above, but assumes one step as input parameter
     _INPUT_STEP_DATA_TYPE = None
 
