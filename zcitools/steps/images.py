@@ -1,6 +1,6 @@
 import os.path
 from collections import defaultdict
-from .step import Step
+from zcitools.base.step import Step
 from ..utils.show import print_table
 # from ..utils.exceptions import ZCItoolsValueError
 from ..utils.helpers import sets_equal

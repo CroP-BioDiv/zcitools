@@ -1,5 +1,5 @@
 import os.path
-from .step import Step, StepCollection
+from zcitools.base.step import Step, StepCollection
 
 
 class RAxMLStep(Step):

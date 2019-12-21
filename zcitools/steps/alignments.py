@@ -1,5 +1,5 @@
 import os.path
-from .step import Step, StepCollection
+from zcitools.base.step import Step, StepCollection
 from ..utils.exceptions import ZCItoolsValueError
 from ..utils.file_utils import read_fasta_identifiers
 from ..utils.helpers import sets_equal

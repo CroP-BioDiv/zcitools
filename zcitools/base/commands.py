@@ -51,7 +51,7 @@ class CreateStepCommand(Command):
     _PRESENTATION = False
     _STEP_BASE_NAME = None
     _CACHE_DIR_PROJECT = '_project_cache_'
-    _CACHE_DIR_GLOBAL = os.path.join('..', '_global_cache_')  # Note: not so global cache :-)
+    _CACHE_DIR_GLOBAL = os.path.join('..', '..', '_global_cache_')  # Note: not so global cache :-)
 
     def prev_steps(self):
         return [os.path.normpath(p) for p in self._prev_steps()]

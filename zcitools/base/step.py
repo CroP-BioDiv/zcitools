@@ -1,8 +1,7 @@
 import os.path
 import datetime
 import re
-from zcitools.utils.file_utils import ensure_directory, remove_directory, silent_remove, \
-    write_yaml, read_yaml
+from ..utils.file_utils import ensure_directory, remove_directory, silent_remove, write_yaml, read_yaml
 from ..utils.exceptions import ZCItoolsValueError
 from ..utils.show import print_ls_like_list
 

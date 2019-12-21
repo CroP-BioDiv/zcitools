@@ -1,5 +1,5 @@
 import csv
-from .step import Step
+from zcitools.base.step import Step
 from ..utils.exceptions import ZCItoolsValueError
 from ..utils.show import print_table
 
