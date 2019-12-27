@@ -1,7 +1,7 @@
 import os.path
 from collections import defaultdict
-from zcitools.base.step import Step
-from zcitools.utils.import_methods import import_bio_seq_io
+from step_project.base.step import Step
+from step_project.utils.import_methods import import_bio_seq_io
 from common_utils.misc import sets_equal
 from common_utils.exceptions import ZCItoolsValueError
 from common_utils.show import print_table

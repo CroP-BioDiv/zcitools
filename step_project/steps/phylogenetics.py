@@ -1,5 +1,5 @@
 import os.path
-from zcitools.base.step import Step, StepCollection
+from step_project.base.step import Step, StepCollection
 from common_utils.exceptions import ZCItoolsValueError
 
 

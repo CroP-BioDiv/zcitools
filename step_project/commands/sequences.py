@@ -1,4 +1,4 @@
-from zcitools.base.commands import CreateStepCommand
+from step_project.base.commands import CreateStepCommand
 
 # Check base.py for description
 

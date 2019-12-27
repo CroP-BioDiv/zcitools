@@ -1,9 +1,9 @@
 import os.path
-from zcitools.base.step import Step, StepCollection
+from step_project.base.step import Step, StepCollection
+from step_project.utils.import_methods import import_bio_align_io, import_bio_alphabet
 from common_utils.exceptions import ZCItoolsValueError
 from common_utils.file_utils import read_fasta_identifiers
 from common_utils.misc import sets_equal
-from zcitools.utils.import_methods import import_bio_align_io, import_bio_alphabet
 
 
 class AlignmentStep(Step):

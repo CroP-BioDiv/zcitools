@@ -1,5 +1,5 @@
-from zcitools.steps.sequences import SequencesStep
-from zcitools.utils.import_methods import import_bio_entrez
+from step_project.steps.sequences import SequencesStep
+from step_project.utils.import_methods import import_bio_entrez
 
 
 def fetch_sequences(step_data, table_step, cache):

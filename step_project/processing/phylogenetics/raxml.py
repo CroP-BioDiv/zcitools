@@ -1,7 +1,7 @@
 import re
 import os
 from ..run import run_raxml
-from zcitools.steps.phylogenetics import RAxMLStep, RAxMLSteps
+from step_project.steps.phylogenetics import RAxMLStep, RAxMLSteps
 from common_utils.file_utils import copy_file, unzip_file, list_zip_files, write_yaml, read_yaml, \
     run_module_script, set_run_instructions
 from common_utils.exceptions import ZCItoolsValueError

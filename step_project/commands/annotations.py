@@ -1,4 +1,4 @@
-from zcitools.base.commands import CreateStepFromStepCommand
+from step_project.base.commands import CreateStepFromStepCommand
 from common_utils.exceptions import ZCItoolsValueError
 
 # Check base.py for description

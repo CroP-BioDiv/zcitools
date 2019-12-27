@@ -1,5 +1,5 @@
 import os.path
-from zcitools.steps.table import TableStep
+from step_project.steps.table import TableStep
 from common_utils.file_utils import filetype_from_ext
 from common_utils.exceptions import ZCItoolsValueError
 

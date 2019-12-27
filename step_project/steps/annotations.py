@@ -1,8 +1,8 @@
 import os.path
 from collections import defaultdict, Counter
-from zcitools.base.step import Step
-from zcitools.utils.import_methods import import_bio_seq_io
-from zcitools.utils.helpers import feature_qualifiers_to_desc, feature_location_desc, concatenate_sequences
+from step_project.base.step import Step
+from step_project.utils.import_methods import import_bio_seq_io
+from step_project.utils.helpers import feature_qualifiers_to_desc, feature_location_desc, concatenate_sequences
 from common_utils.misc import sets_equal
 from common_utils.show import print_table
 from common_utils.cache import cache_args

@@ -1,5 +1,5 @@
 # Note: importing is done in run() methods to prevent crashes because of not used missing libraries!
-from zcitools.base.commands import Command
+from step_project.base.commands import Command
 
 
 class InitProject(Command):
