@@ -1,8 +1,8 @@
 import re
 from zipfile import ZipFile
 from zcitools.steps.annotations import AnnotationsStep
-from zcitools.utils.file_utils import copy_file, extract_from_zip
 from zcitools.utils.helpers import split_sequences, split_list
+from zci_utils.file_utils import copy_file, extract_from_zip
 
 _re_zip_genbank = re.compile('GeSeqJob-[0-9]*-[0-9]*_(.*)_GenBank.gb')
 

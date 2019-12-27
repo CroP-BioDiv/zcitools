@@ -2,9 +2,9 @@ import re
 import os
 from ..run import run_raxml
 from zcitools.steps.phylogenetics import RAxMLStep, RAxMLSteps
-from zcitools.utils.file_utils import copy_file, unzip_file, list_zip_files, write_yaml, read_yaml, \
+from zci_utils.file_utils import copy_file, unzip_file, list_zip_files, write_yaml, read_yaml, \
     run_module_script, set_run_instructions
-from zcitools.utils.exceptions import ZCItoolsValueError
+from zci_utils.exceptions import ZCItoolsValueError
 
 _re_raxml_output = re.compile(r'^RAxML_.*\.raxml_output')
 

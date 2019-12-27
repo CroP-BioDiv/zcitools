@@ -1,11 +1,11 @@
 import os.path
 from collections import defaultdict
 from zcitools.base.step import Step
-from zcitools.utils.exceptions import ZCItoolsValueError
 from zcitools.utils.import_methods import import_bio_seq_io
-from zcitools.utils.show import print_table
-from zcitools.utils.file_utils import write_fasta
 from zcitools.utils.helpers import sets_equal
+from zci_utils.exceptions import ZCItoolsValueError
+from zci_utils.show import print_table
+from zci_utils.file_utils import write_fasta
 
 
 class SequencesStep(Step):

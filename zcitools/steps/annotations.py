@@ -2,9 +2,9 @@ import os.path
 from collections import defaultdict, Counter
 from zcitools.base.step import Step
 from zcitools.utils.import_methods import import_bio_seq_io
-from zcitools.utils.show import print_table
 from zcitools.utils.helpers import feature_qualifiers_to_desc, feature_location_desc, concatenate_sequences, sets_equal
-from zcitools.utils.cache import cache_args
+from zci_utils.show import print_table
+from zci_utils.cache import cache_args
 
 
 class AnnotationsStep(Step):

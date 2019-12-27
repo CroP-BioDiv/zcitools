@@ -1,6 +1,5 @@
 from zcitools.steps.alignments import mVISTAStep
-from zcitools.utils.file_utils import write_fasta
-# unzip_file, list_zip_files, write_yaml, read_yaml, \
+from zci_utils.file_utils import write_fasta
 from zcitools.utils.import_methods import import_bcbio_gff
 
 _instructions_no_run = """

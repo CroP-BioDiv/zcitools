@@ -1,9 +1,9 @@
 import os.path
 import datetime
 import re
-from ..utils.file_utils import ensure_directory, remove_directory, silent_remove, write_yaml, read_yaml
-from ..utils.exceptions import ZCItoolsValueError
-from ..utils.show import print_ls_like_list
+from zci_utils.file_utils import ensure_directory, remove_directory, silent_remove, write_yaml, read_yaml
+from zci_utils.exceptions import ZCItoolsValueError
+from zci_utils.show import print_ls_like_list
 
 """
 Step object is created with step data that specfies step subdirectory and other environment info.

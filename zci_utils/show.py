@@ -1,7 +1,7 @@
 import shutil
 import itertools
 import math
-from ..utils.terminal_layout import StringColumns
+from .terminal_layout import StringColumns
 
 
 def print_table(header, rows, sort=False, show_limit=None):

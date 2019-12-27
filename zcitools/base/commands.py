@@ -1,5 +1,5 @@
 import os.path
-from ..utils.cache import Cache
+from zci_utils.cache import Cache
 
 """
 Command classes, called from zcit script.

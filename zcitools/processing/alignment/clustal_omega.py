@@ -1,10 +1,10 @@
 import os.path
 from ..run import run_clustal_omega
 from zcitools.steps.alignments import AlignmentStep, AlignmentsStep
-from zcitools.utils.file_utils import unzip_file, list_zip_files, write_yaml, read_yaml, \
-    write_fasta, run_module_script, set_run_instructions
 from zcitools.utils.helpers import sets_equal
-from zcitools.utils.exceptions import ZCItoolsValueError
+from zci_utils.file_utils import unzip_file, list_zip_files, write_yaml, read_yaml, \
+    write_fasta, run_module_script, set_run_instructions
+from zci_utils.exceptions import ZCItoolsValueError
 
 _instructions = """
 Steps:

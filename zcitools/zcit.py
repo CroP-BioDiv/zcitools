@@ -1,8 +1,8 @@
 import os.path
 import sys
 import argparse
-from .utils.file_utils import write_yaml, read_yaml
-from .utils.exceptions import ZCItoolsValueError
+from zci_utils.file_utils import write_yaml, read_yaml
+from zci_utils.exceptions import ZCItoolsValueError
 from .commands import registered_commands as common_commands
 from .steps import registered_steps as common_steps
 

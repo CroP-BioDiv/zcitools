@@ -1,6 +1,6 @@
 import os.path
 from .import_methods import import_bio_seq_io
-from .exceptions import ZCItoolsValueError
+from zci_utils.exceptions import ZCItoolsValueError
 
 # Methods for this and that
 

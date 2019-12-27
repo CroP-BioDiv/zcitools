@@ -1,5 +1,6 @@
 import os.path
 from zcitools.base.step import Step, StepCollection
+from zci_utils.exceptions import ZCItoolsValueError
 
 
 class RAxMLStep(Step):
