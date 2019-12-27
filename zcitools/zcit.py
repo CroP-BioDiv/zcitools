@@ -7,6 +7,11 @@ from .commands import registered_commands as common_commands
 from .steps import registered_steps as common_steps
 
 
+# Note: this script is called from project main directory, all used filenames are relative to it!
+def run(registered_commands, registered_steps):
+    ZCIT(registered_commands=registered_commands, registered_steps=registered_steps).run()
+
+
 class ZCIT:
     def __init__(self, registered_commands=None, registered_steps=None):
         self.commands_map = dict()  # command -> command class that processes it
