@@ -1,6 +1,6 @@
 from zcitools.base.commands import CreateStepFromStepCommand
-from zci_utils.exceptions import ZCItoolsValueError
-from zci_utils.file_utils import get_settings
+from common_utils.exceptions import ZCItoolsValueError
+from common_utils.file_utils import get_settings
 
 # Check base.py for description
 

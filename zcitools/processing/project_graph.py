@@ -1,6 +1,6 @@
 import os
 from ..utils.import_methods import import_pygraphviz
-from zci_utils.file_utils import get_settings
+from common_utils.file_utils import get_settings
 
 
 def create_graph(zcit):

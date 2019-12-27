@@ -1,5 +1,5 @@
 import os.path
-from zci_utils.file_utils import settings_defaults, ensure_directory, write_yaml
+from common_utils.file_utils import settings_defaults, ensure_directory, write_yaml
 
 _readme = """
 Tools description:

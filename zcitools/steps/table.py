@@ -1,7 +1,7 @@
 import csv
 from zcitools.base.step import Step
-from zci_utils.exceptions import ZCItoolsValueError
-from zci_utils.show import print_table
+from common_utils.exceptions import ZCItoolsValueError
+from common_utils.show import print_table
 
 
 class TableStep(Step):

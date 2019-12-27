@@ -1,7 +1,7 @@
 import os.path
 from zcitools.steps.table import TableStep
-from zci_utils.file_utils import filetype_from_ext
-from zci_utils.exceptions import ZCItoolsValueError
+from common_utils.file_utils import filetype_from_ext
+from common_utils.exceptions import ZCItoolsValueError
 
 
 def create_table_step(zcit, step_data, filename, data_format=None, columns=None):

@@ -1,9 +1,9 @@
 import os
 from ..run import run_mr_bayes
 from zcitools.steps.phylogenetics import MrBayesStep, MrBayesSteps
-from zci_utils.file_utils import copy_file, unzip_file, list_zip_files, write_yaml, read_yaml, \
+from common_utils.file_utils import copy_file, unzip_file, list_zip_files, write_yaml, read_yaml, \
     run_module_script, set_run_instructions
-from zci_utils.exceptions import ZCItoolsValueError
+from common_utils.exceptions import ZCItoolsValueError
 
 _NEXUS_DATA = """
 begin mrbayes;

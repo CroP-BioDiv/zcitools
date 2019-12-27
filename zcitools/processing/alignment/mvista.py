@@ -1,6 +1,6 @@
 from zcitools.steps.alignments import mVISTAStep
-from zci_utils.file_utils import write_fasta
 from zcitools.utils.import_methods import import_bcbio_gff
+from common_utils.file_utils import write_fasta
 
 _instructions_no_run = """
 Steps:

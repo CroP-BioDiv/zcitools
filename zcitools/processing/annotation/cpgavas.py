@@ -1,5 +1,5 @@
 from zcitools.steps.annotations import AnnotationsStep
-from zci_utils.file_utils import write_fasta  # copy_file, link_file
+from common_utils.file_utils import write_fasta  # copy_file, link_file
 
 _instructions = """
 Open web page http://www.herbalgenomics.org/cpgavas/
