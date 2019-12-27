@@ -1,5 +1,5 @@
 from zcitools.base.commands import CreateStepFromStepCommand
-from ..utils.exceptions import ZCItoolsValueError
+from zcitools.utils.exceptions import ZCItoolsValueError
 
 # Check base.py for description
 
