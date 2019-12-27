@@ -197,7 +197,7 @@ Note: list of substeps is not stored in description.yml.
 
     # Substep methods
     def create_substep(self, local_step_name, remove_data=False, update_mode=False):
-        return self._SUBSTEP_CLASS(self.get_substep_step_data(self._step_name_list + [local_step_name]),
+        return self._SUBSTEP_CLASS(self.project, self.get_substep_step_data(self._step_name_list + [local_step_name]),
                                    remove_data=remove_data, update_mode=update_mode)
 
     def clean_files(self):

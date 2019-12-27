@@ -1,6 +1,5 @@
 from .general import *
 from .table import *
-from .alignments import *
 from .phylogenetics import *
 
 # commands_map = dict((cls._COMMAND, cls) for cls in locals().values() if getattr(cls, '_COMMAND', None))

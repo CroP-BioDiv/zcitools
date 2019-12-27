@@ -95,4 +95,4 @@ class mVISTAStep(AlignmentStep):
     """
 ...
 """
-    pass
+    _STEP_TYPE = 'mvista'

@@ -1,4 +1,4 @@
-from step_project.steps.alignments import mVISTAStep
+from .steps import mVISTAStep
 from step_project.utils.import_methods import import_bcbio_gff
 from common_utils.file_utils import write_fasta
 
