@@ -24,7 +24,7 @@ https://academic.oup.com/nar/advance-article/doi/10.1093/nar/gkz345/5486746
 
 
 def create_cpgavas_data(step_data, sequences_step):
-    step = AnnotationsStep(sequences_step.zcit, step_data, remove_data=True)
+    step = AnnotationsStep(sequences_step.project, step_data, remove_data=True)
 
     # Store sequence
     for seq_ident in sequences_step.all_sequences():

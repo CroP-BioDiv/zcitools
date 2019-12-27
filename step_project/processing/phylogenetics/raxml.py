@@ -40,7 +40,7 @@ def create_raxml_data(step_data, alignment_step, cache, run):
     files_to_proc = []
 
     if alignment_step._IS_COLLECTION:
-        step = RAxMLSteps(alignment_step.zcit, step_data, remove_data=True)
+        step = RAxMLSteps(alignment_step.project, step_data, remove_data=True)
         for align_step in alignment_step.step_objects():
             substep = step.create_substep(align_step.get_local_name())
             substep.set_sequences(align_step.all_sequences())
@@ -49,7 +49,7 @@ def create_raxml_data(step_data, alignment_step, cache, run):
             #
             substep.save(completed=False)
     else:
-        step = RAxMLStep(alignment_step.zcit, step_data, remove_data=True)
+        step = RAxMLStep(alignment_step.project, step_data, remove_data=True)
         step.set_sequences(alignment_step.all_sequences())
         step.seq_sequence_type(alignment_step.get_sequence_type())
         _copy_alignment_file(alignment_step, step, files_to_proc)

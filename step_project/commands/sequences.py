@@ -20,5 +20,5 @@ class FetchSequencesStep(CreateStepCommand):
 
     def run(self, step_data):
         from ..processing.sequence.fetch import fetch_sequences
-        step = self.zcit.read_step(self.args.step, check_data_type='table')
+        step = self.project.read_step(self.args.step, check_data_type='table')
         return fetch_sequences(step_data, step, self.get_cache_object())

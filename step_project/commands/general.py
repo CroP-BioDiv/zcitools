@@ -25,12 +25,12 @@ class Finish(Command):
         parser.add_argument('step', help='Step name')
 
     def run(self):
-        step = self.zcit.read_step(self.args.step, update_mode=True)  # Set to be in update mode
+        step = self.project.read_step(self.args.step, update_mode=True)  # Set to be in update mode
         if step.is_completed():
             print(f"Info: step {self.args.step} is completed!")
         else:
             orig_args = SimpleNamespace(**step._step_data['command_args'])
-            command_obj = self.zcit.commands_map[step.get_command()](orig_args)
+            command_obj = self.project.commands_map[step.get_command()](orig_args)
             command_obj.finish(step)
 
 
@@ -47,7 +47,7 @@ class Clean(Command):
         steps = self.args.step if self.args.step else os.listdir('.')
         for step_name in steps:
             if os.path.isfile(os.path.join(step_name, 'description.yml')):
-                step = self.zcit.read_step(step_name)
+                step = self.project.read_step(step_name)
                 step.remove_cache_files()
                 if step.is_completed():
                     step.clean_files()
@@ -63,7 +63,7 @@ class CleanCache(Command):
 
     def run(self):
         for s in self.args.step:
-            step = self.zcit.read_step(s)
+            step = self.project.read_step(s)
             step.remove_cache_files()
 
 
@@ -77,7 +77,7 @@ class Show(Command):
         parser.add_argument('params', nargs='*', help='Additional format option (free format, depends on step type)')
 
     def run(self):
-        step = self.zcit.read_step(self.args.step)
+        step = self.project.read_step(self.args.step)
         step.show_data(params=self.args.params)
 
 
@@ -91,4 +91,4 @@ class Graph(Command):
 
     def run(self):
         from ..processing.project_graph import create_graph
-        create_graph(self.zcit)
+        create_graph(self.project)

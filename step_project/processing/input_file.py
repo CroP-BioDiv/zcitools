@@ -4,7 +4,7 @@ from common_utils.file_utils import filetype_from_ext
 from common_utils.exceptions import ZCItoolsValueError
 
 
-def create_table_step(zcit, step_data, filename, data_format=None, columns=None):
+def create_table_step(project, step_data, filename, data_format=None, columns=None):
     if not os.path.isfile(filename):
         raise ZCItoolsValueError(f"Table file {filename} doesn't exist.")
 
@@ -31,7 +31,7 @@ def create_table_step(zcit, step_data, filename, data_format=None, columns=None)
         raise ZCItoolsValueError(f"Columns are not specified for input table! Filename {filename}.")
 
     # Store (or overwrite) step data
-    step = TableStep(zcit, step_data, remove_data=True)
+    step = TableStep(project, step_data, remove_data=True)
     step.set_table_data(data, columns, orig_filename=filename, data_format=data_format)
     step.save()
     return step

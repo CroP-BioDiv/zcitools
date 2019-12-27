@@ -70,7 +70,7 @@ def create_clustal_data(step_data, annotations_step, cache, alignments, run):
     if sum(int(a in alignments) for a in ('w', 'gc', 'cc')) == 1 and \
             all(a not in alignments for a in ('w', 'gc', 'cc')):
         # Only one sequence is aligned
-        step = AlignmentStep(annotations_step.zcit, step_data, remove_data=True)
+        step = AlignmentStep(annotations_step.project, step_data, remove_data=True)
         assert False, 'Not implemented!!!'
 
         if 'w' in alignments:
@@ -90,7 +90,7 @@ def create_clustal_data(step_data, annotations_step, cache, alignments, run):
 
     else:
         # Lot of sequence are aligned
-        step = AlignmentsStep(annotations_step.zcit, step_data, remove_data=True)
+        step = AlignmentsStep(annotations_step.project, step_data, remove_data=True)
         _feature_sequences(step, annotations_step, sequences, 'gene', 'gs' in alignments, 'gc' in alignments, seq_files)
         _feature_sequences(step, annotations_step, sequences, 'CDS', 'cs' in alignments, 'cc' in alignments, seq_files)
         if 'w' in alignments:

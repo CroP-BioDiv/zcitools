@@ -1,6 +1,10 @@
 from .exceptions import ZCItoolsValueError
 
 
+def find_registered():
+    return [], []
+
+
 # Other
 def split_list(data, num_items):
     assert isinstance(data, list), type(data)

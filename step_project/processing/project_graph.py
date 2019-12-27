@@ -3,7 +3,7 @@ from ..utils.import_methods import import_pygraphviz
 from common_utils.file_utils import get_settings
 
 
-def create_graph(zcit):
+def create_graph(project):
     pygraphviz = import_pygraphviz()
     graph = pygraphviz.AGraph(strict=True, directed=True)
     # graph.graph_attr['rankdir'] = 'LR'  # Orientation left-right
@@ -15,7 +15,7 @@ def create_graph(zcit):
     edges = []
     for d in sorted(os.listdir('.')):
         if os.path.isdir(d) and os.path.isfile(os.path.join(d, 'description.yml')):
-            step = zcit.read_step(d)
+            step = project.read_step(d)
             node = step.directory
             label = node if step.is_completed() else '* ' + node
             graph.add_node(node, label=label)

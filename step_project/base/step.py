@@ -27,9 +27,9 @@ class Step:
     _CACHE_PREFIX = '_c_'  # Cache files are prfixed with '_c_'
     _IS_COLLECTION = False
 
-    def __init__(self, zcit, step_data, remove_data=False, update_mode=False):
-        assert zcit.__class__.__name__ == 'ZCIT', self.__class__.__name__  # For now
-        self.zcit = zcit
+    def __init__(self, project, step_data, remove_data=False, update_mode=False):
+        assert project.__class__.__name__ == 'StepProject', self.__class__.__name__  # For now
+        self.project = project
         self._step_data = step_data
         # step_data['step_name'] is string or list of strings for substeps
         if isinstance(step_data['step_name'], str):
