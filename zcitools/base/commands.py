@@ -39,7 +39,8 @@ class Command:
     _COMMAND_TYPE = None  # General work
     _COMMAND = None
 
-    def __init__(self, args):
+    def __init__(self, zcit, args):
+        self.zcit = zcit
         self.args = args
 
     def run(self):
@@ -92,6 +93,5 @@ class CreateStepFromStepCommand(CreateStepCommand):
         return [self.args.step]
 
     def _input_step(self):
-        from ..steps import read_step
         assert self._INPUT_STEP_DATA_TYPE
-        return read_step(self.args.step, check_data_type=self._INPUT_STEP_DATA_TYPE)
+        return self.zcit.read_step(self.args.step, check_data_type=self._INPUT_STEP_DATA_TYPE)

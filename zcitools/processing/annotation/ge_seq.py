@@ -47,7 +47,7 @@ Documentation: https://chlorobox.mpimp-golm.mpg.de/gs_documentation.html
 
 
 def create_ge_seq_data(step_data, sequences_step, cache):
-    step = AnnotationsStep(step_data, remove_data=True)
+    step = AnnotationsStep(sequences_step.zcit, step_data, remove_data=True)
     all_sequences = list(sequences_step.all_sequences())
 
     # Fetch cached sequences

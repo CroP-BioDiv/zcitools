@@ -23,7 +23,7 @@ Steps:
 
 
 def create_mvista_data(step_data, annotations_step, cache, run, email):
-    step = mVISTAStep(step_data, remove_data=True)
+    step = mVISTAStep(annotations_step.zcit, step_data, remove_data=True)
     sequences = sorted(annotations_step.all_sequences())
 
     # Store fasta and gff3 files

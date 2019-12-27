@@ -19,4 +19,4 @@ Additional arguments specify how to interpret input data.
     def run(self, step_data):
         from ..processing.input_file import create_table_step
         args = self.args
-        return create_table_step(step_data, args.filename, data_format=args.format, columns=args.columns)
+        return create_table_step(self.zcit, step_data, args.filename, data_format=args.format, columns=args.columns)

@@ -16,6 +16,24 @@ class InitProject(Command):
         init_project(self.args.dirname, self.args.description)
 
 
+class Finish(Command):
+    _COMMAND = 'finish'
+    _HELP = "Finish step that needed editing."
+
+    @staticmethod
+    def set_arguments(parser):
+        parser.add_argument('step', help='Step name')
+
+    def run(self):
+        step = self.zcit.read_step(self.args.step, update_mode=True)  # Set to be in update mode
+        if step.is_completed():
+            print(f"Info: step {self.args.step} is completed!")
+        else:
+            orig_args = SimpleNamespace(**step._step_data['command_args'])
+            command_obj = self.zcit.commands_map[step.get_command()](orig_args)
+            command_obj.finish(step)
+
+
 class Clean(Command):
     _COMMAND = 'clean'
     _HELP = "Remove not needed step data (cache and processed files)"
@@ -26,11 +44,10 @@ class Clean(Command):
 
     def run(self):
         import os
-        from ..steps import read_step
         steps = self.args.step if self.args.step else os.listdir('.')
         for step_name in steps:
             if os.path.isfile(os.path.join(step_name, 'description.yml')):
-                step = read_step(step_name)
+                step = self.zcit.read_step(step_name)
                 step.remove_cache_files()
                 if step.is_completed():
                     step.clean_files()
@@ -45,9 +62,8 @@ class CleanCache(Command):
         parser.add_argument('step', nargs='+', help='Step name')
 
     def run(self):
-        from ..steps import read_step
         for s in self.args.step:
-            step = read_step(s)
+            step = self.zcit.read_step(s)
             step.remove_cache_files()
 
 
@@ -61,8 +77,7 @@ class Show(Command):
         parser.add_argument('params', nargs='*', help='Additional format option (free format, depends on step type)')
 
     def run(self):
-        from ..steps import read_step
-        step = read_step(self.args.step)
+        step = self.zcit.read_step(self.args.step)
         step.show_data(params=self.args.params)
 
 
@@ -76,4 +91,4 @@ class Graph(Command):
 
     def run(self):
         from ..processing.project_graph import create_graph
-        create_graph()
+        create_graph(self.zcit)
