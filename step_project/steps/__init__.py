@@ -1,7 +1,6 @@
 # Step classes. Used for filling _type_2_step_cls dict
 from .table import TableStep
 from .images import ImagesStep
-from .sequences import SequencesStep
 from .annotations import AnnotationsStep
 from .alignments import AlignmentStep, AlignmentsStep
 from .phylogenetics import RAxMLStep, RAxMLSteps, MrBayesStep, MrBayesSteps

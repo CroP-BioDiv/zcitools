@@ -1,8 +1,20 @@
+import os
+import importlib
 from .exceptions import ZCItoolsValueError
 
 
-def find_registered():
-    return [], []
+def find_registered(init_filename, package):
+    commands, steps = [], []
+    _dir = os.path.dirname(init_filename)
+    for f in os.listdir(_dir):
+        if not f.startswith('_') and os.path.isdir(os.path.join(_dir, f)):
+            r = importlib.import_module(f'.{f}', package=package)
+            data = r.__dict__
+            if 'registered_commands' in data:
+                commands.extend(data['registered_commands'])
+            if 'register_steps' in data:
+                commands.extend(data['register_steps'])
+    return commands, steps
 
 
 # Other

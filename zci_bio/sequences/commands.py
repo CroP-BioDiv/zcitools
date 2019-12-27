@@ -19,6 +19,6 @@ class FetchSequencesStep(CreateStepCommand):
         return dict(static=True, data_identifier=['sequences'])
 
     def run(self, step_data):
-        from ..processing.sequence.fetch import fetch_sequences
+        from .fetch import fetch_sequences
         step = self.project.read_step(self.args.step, check_data_type='table')
         return fetch_sequences(step_data, step, self.get_cache_object())

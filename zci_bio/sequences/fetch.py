@@ -1,9 +1,9 @@
-from step_project.steps.sequences import SequencesStep
+from .steps import SequencesStep
 from step_project.utils.import_methods import import_bio_entrez
 
 
 def fetch_sequences(step_data, table_step, cache):
-    step = SequencesStep(table_step.zcit, step_data, update_mode=True)
+    step = SequencesStep(table_step.project, step_data, update_mode=True)
     all_sequences = [ni for ni in table_step.get_column_by_type('seq_ident') if not step.sequence_exists(ni)]
 
     # Fetch cached sequences
