@@ -2,7 +2,7 @@ import os.path
 from zcitools.base.step import Step, StepCollection
 from common_utils.exceptions import ZCItoolsValueError
 from common_utils.file_utils import read_fasta_identifiers
-from zcitools.utils.helpers import sets_equal
+from common_utils.misc import sets_equal
 from zcitools.utils.import_methods import import_bio_align_io, import_bio_alphabet
 
 

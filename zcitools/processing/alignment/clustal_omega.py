@@ -1,7 +1,7 @@
 import os.path
 from ..run import run_clustal_omega
 from zcitools.steps.alignments import AlignmentStep, AlignmentsStep
-from zcitools.utils.helpers import sets_equal
+from common_utils.misc import sets_equal
 from common_utils.file_utils import unzip_file, list_zip_files, write_yaml, read_yaml, \
     write_fasta, run_module_script, set_run_instructions
 from common_utils.exceptions import ZCItoolsValueError

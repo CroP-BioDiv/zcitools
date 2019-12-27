@@ -2,7 +2,7 @@ import os.path
 from collections import defaultdict
 from zcitools.base.step import Step
 from zcitools.utils.import_methods import import_bio_seq_io
-from zcitools.utils.helpers import sets_equal
+from common_utils.misc import sets_equal
 from common_utils.exceptions import ZCItoolsValueError
 from common_utils.show import print_table
 from common_utils.file_utils import write_fasta

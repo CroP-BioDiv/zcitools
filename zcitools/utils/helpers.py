@@ -1,6 +1,5 @@
 import os.path
 from .import_methods import import_bio_seq_io
-from common_utils.exceptions import ZCItoolsValueError
 
 # Methods for this and that
 
@@ -74,26 +73,3 @@ def concatenate_sequences(output_filename, input_filenames):
         for in_f in input_filenames:
             with open(in_f, 'r') as seq:
                 SeqIO.write(list(SeqIO.parse(seq, _bio_ext_2_type[os.path.splitext(in_f)[1]])), out_seqs, output_type)
-
-
-# Other
-def split_list(data, num_items):
-    assert isinstance(data, list), type(data)
-    for i in range((len(data) // num_items) + 1):
-        n = i * num_items
-        yield data[n:(n + num_items)]
-
-
-# Data checks
-def sets_equal(have_to_exist, exist, description, step=None):
-    # Is all data presented
-    not_exist = have_to_exist - exist
-    if not_exist:
-        sd = f'({step}) ' if step else ''
-        raise ZCItoolsValueError(f"{sd}Data for {description}(s) not presented: {', '.join(sorted(not_exist))}")
-
-    # Is there more data than needed
-    more_data = exist - have_to_exist
-    if more_data:
-        sd = f'({step}) ' if step else ''
-        raise ZCItoolsValueError(f"{sd}Data exists for not listed {description}(s): {', '.join(sorted(more_data))}")

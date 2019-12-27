@@ -2,7 +2,7 @@ import os.path
 from collections import defaultdict
 from zcitools.base.step import Step
 from common_utils.show import print_table
-from ..utils.helpers import sets_equal
+from common_utils.misc import sets_equal
 
 # ToDo: very similar to SequencesStep. Stores some files for some identifiers. Make it general?
 
