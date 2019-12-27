@@ -10,10 +10,17 @@ def find_registered(init_filename, package):
         if not f.startswith('_') and os.path.isdir(os.path.join(_dir, f)):
             r = importlib.import_module(f'.{f}', package=package)
             data = r.__dict__
+            #
             if 'registered_commands' in data:
                 commands.extend(data['registered_commands'])
-            if 'register_steps' in data:
-                commands.extend(data['register_steps'])
+            else:
+                print(f"Warning: module {package}.{f} doesn't have registeded commands!")
+            #
+            if 'registered_steps' in data:
+                steps.extend(data['registered_steps'])
+            else:
+                print(f"Warning: module {package}.{f} doesn't have registeded steps!")
+    #
     return commands, steps
 
 

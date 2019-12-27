@@ -1,6 +1,5 @@
 from .general import *
 from .table import *
-from .annotations import *
 from .alignments import *
 from .phylogenetics import *
 

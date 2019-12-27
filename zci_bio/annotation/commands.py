@@ -14,11 +14,11 @@ class GeSeqStep(CreateStepFromStepCommand):
         return dict(static=True, data_identifier=['GeSeq'])
 
     def run(self, step_data):
-        from ..processing.annotation.ge_seq import create_ge_seq_data
+        from .ge_seq import create_ge_seq_data
         return create_ge_seq_data(step_data, self._input_step(), self.get_cache_object())
 
     def finish(self, step_obj):
-        from ..processing.annotation.ge_seq import finish_ge_seq_data
+        from .ge_seq import finish_ge_seq_data
         finish_ge_seq_data(step_obj, self.get_cache_object())
 
 
@@ -32,11 +32,11 @@ class CPGAVAS(CreateStepFromStepCommand):
         return dict(static=True, data_identifier=['CPGAVAS'])
 
     def run(self, step_data):
-        from ..processing.annotation.cpgavas import create_cpgavas_data
+        from .cpgavas import create_cpgavas_data
         return create_cpgavas_data(step_data, self._input_step())
 
     def finish(self, step_obj):
-        from ..processing.annotation.ge_seq import finish_cpgavas_data
+        from .ge_seq import finish_cpgavas_data
         finish_cpgavas_data(step_obj)
 
 
@@ -59,14 +59,14 @@ class OGDRAW(CreateStepFromStepCommand):
         return dict(static=True, data_identifier=['OGDraw', step_commnad, self.args.image_format])
 
     def run(self, step_data):
-        from ..processing.annotation.ogdraw import create_ogdraw
+        from .ogdraw import create_ogdraw
         img_f = self.args.image_format.lower()
         if img_f not in self._IMAGE_FORMATS:
             raise ZCItoolsValueError(f'Given format {img_f} is not supported!')
         return create_ogdraw(step_data, img_f, self._input_step(), self.get_cache_object())
 
     def finish(self, step_obj):
-        from ..processing.annotation.ogdraw import finish_ogdraw
+        from .ogdraw import finish_ogdraw
         finish_ogdraw(step_obj, self.get_cache_object())
 
 
