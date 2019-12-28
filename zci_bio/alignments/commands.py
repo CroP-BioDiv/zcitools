@@ -2,8 +2,6 @@ from step_project.base.commands import CreateStepFromStepCommand
 from common_utils.exceptions import ZCItoolsValueError
 from common_utils.file_utils import get_settings
 
-# Check base.py for description
-
 
 class ClustalO(CreateStepFromStepCommand):
     _COMMAND = 'clustal'

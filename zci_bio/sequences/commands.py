@@ -1,7 +1,5 @@
 from step_project.base.commands import CreateStepCommand
 
-# Check base.py for description
-
 
 class FetchSequencesStep(CreateStepCommand):
     _COMMAND = 'fetch_seqs'

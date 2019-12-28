@@ -23,7 +23,6 @@ description.yml contains data:
 
 class Step:
     _STEP_TYPE = None
-    _COLUMN_TYPES = frozenset(['seq_ident', 'str', 'int'])
     _CACHE_PREFIX = '_c_'  # Cache files are prfixed with '_c_'
     _IS_COLLECTION = False
 
@@ -59,7 +58,7 @@ class Step:
         self._init_data(type_desc)
 
         # Check data if exists and step not set in update mode
-        if type_desc and not self._update_mode:
+        if type_desc and not self._update_mode and self.is_completed():
             self._check_data()
 
     def _init_data(self, type_description):

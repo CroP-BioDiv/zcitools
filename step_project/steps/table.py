@@ -12,15 +12,19 @@ Table data is stored in table.csv with header, separator ;, quote character ".
 ToDo: store original file?
 """
     _STEP_TYPE = 'table'
+    _COLUMN_TYPES = frozenset(['seq_ident', 'str', 'int', 'date', 'decimal'])
     _TABLE_FILENAME = 'table.csv'
 
     # Init object
     def _init_data(self, type_description):
         if type_description:
-            self._data = self._load_table()
             self._columns = type_description['columns']
             self._orig_filename = type_description.get('orig_filename')
             self._data_format = type_description.get('data_format')
+            if self._columns:
+                self._data = self._load_table()
+            else:
+                self._data = None
         else:
             self._data = None
             self._columns = None
@@ -70,13 +74,14 @@ ToDo: store original file?
             if self._data_format:
                 desc['data_format'] = self._data_format
 
-        self.save_description(desc)
+        self.save_description(desc, completed=bool(self._columns))
 
         # Write csv
-        with open(self._get_table_filename(), 'w', newline='') as outcsv:
-            writer = csv.writer(outcsv, delimiter=';', quotechar='"')
-            writer.writerow([n for n, _ in self._columns])  # Header
-            writer.writerows(self._data)
+        if self._columns:
+            with open(self._get_table_filename(), 'w', newline='') as outcsv:
+                writer = csv.writer(outcsv, delimiter=';', quotechar='"')
+                writer.writerow([n for n, _ in self._columns])  # Header
+                writer.writerows(self._data)
 
     # Retrieve data methods
     def _column_index_by_type(self, data_type):
@@ -93,6 +98,10 @@ ToDo: store original file?
 
     # Show data
     def show_data(self, params=None):
+        if not self.is_completed():
+            print('Table step is not completed!')
+            return
+
         print('Columns:')
         print_table(None, self._columns)
 

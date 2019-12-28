@@ -1,4 +1,5 @@
 # Note: importing is done in run() methods to prevent crashes because of not used missing libraries!
+from types import SimpleNamespace
 from step_project.base.commands import Command
 
 
@@ -16,6 +17,22 @@ class InitProject(Command):
         init_project(self.args.dirname, self.args.description)
 
 
+class Unfinish(Command):
+    _COMMAND = 'unfinish'
+    _HELP = "Undo finish step"
+
+    @staticmethod
+    def set_arguments(parser):
+        parser.add_argument('step', help='Step name')
+
+    def run(self):
+        step = self.project.read_step(self.args.step, update_mode=True)  # Set to be in update mode
+        if not step.is_completed():
+            print(f"Info: step {self.args.step} is not completed!")
+        else:
+            step.save_description(step.get_type_desciption() or dict(), completed=False)
+
+
 class Finish(Command):
     _COMMAND = 'finish'
     _HELP = "Finish step that needed editing."
@@ -30,7 +47,7 @@ class Finish(Command):
             print(f"Info: step {self.args.step} is completed!")
         else:
             orig_args = SimpleNamespace(**step._step_data['command_args'])
-            command_obj = self.project.commands_map[step.get_command()](orig_args)
+            command_obj = self.project.commands_map[step.get_command()](self.project, orig_args)
             command_obj.finish(step)
 
 
