@@ -1,5 +1,5 @@
 from .steps import SequencesStep
-from step_project.utils.import_methods import import_bio_entrez
+from ..utils.import_methods import import_bio_entrez
 
 
 def fetch_sequences(step_data, table_step, cache):

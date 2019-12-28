@@ -1,4 +1,4 @@
-from step_project.utils.import_methods import import_CAI
+from ..utils.import_methods import import_CAI
 
 # Check: https://github.com/Benjamin-Lee/CodonAdaptationIndex
 

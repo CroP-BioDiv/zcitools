@@ -1,7 +1,7 @@
 import re
 from zipfile import ZipFile
 from .steps import AnnotationsStep
-from step_project.utils.helpers import split_sequences
+from ..utils.helpers import split_sequences
 from common_utils.misc import split_list
 from common_utils.file_utils import copy_file, extract_from_zip
 

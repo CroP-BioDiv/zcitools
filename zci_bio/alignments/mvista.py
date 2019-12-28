@@ -1,6 +1,6 @@
-from .steps import mVISTAStep
-from step_project.utils.import_methods import import_bcbio_gff
 from common_utils.file_utils import write_fasta
+from ..utils.import_methods import import_bcbio_gff
+from .steps import mVISTAStep
 
 _instructions_no_run = """
 Steps:
