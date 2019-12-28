@@ -4,22 +4,39 @@ from .exceptions import ZCItoolsValueError
 
 
 def find_registered(init_filename, package):
+    # Checks submodules __init__.py for attributes (lists) registered_commands and registered_steps
+    # If attributes are not set, checks for classes in files commands.py and steps.py
     commands, steps = [], []
     _dir = os.path.dirname(init_filename)
+
     for f in os.listdir(_dir):
         if not f.startswith('_') and os.path.isdir(os.path.join(_dir, f)):
-            r = importlib.import_module(f'.{f}', package=package)
-            data = r.__dict__
-            #
-            if 'registered_commands' in data:
-                commands.extend(data['registered_commands'])
-            else:
-                print(f"Warning: module {package}.{f} doesn't have registeded commands!")
-            #
-            if 'registered_steps' in data:
-                steps.extend(data['registered_steps'])
-            else:
-                print(f"Warning: module {package}.{f} doesn't have registeded steps!")
+            found_cmds = found_steps = False
+            if os.path.isfile(os.path.join(_dir, f, '__init__.py')):
+                r = importlib.import_module(f'.{f}', package=package)
+                data = r.__dict__
+                #
+                found_cmds = 'registered_commands' in data
+                if found_cmds:
+                    commands.extend(data['registered_commands'])
+                #
+                found_steps = 'registered_steps' in data
+                if found_steps:
+                    steps.extend(data['registered_steps'])
+
+            if not found_cmds:
+                if os.path.isfile(os.path.join(_dir, f, 'commands.py')):
+                    r = importlib.import_module(f'.{f}.commands', package=package)
+                    commands.extend(c for c in r.__dict__.values() if getattr(c, '_COMMAND', None))
+                else:
+                    print(f"Warning: module {package}.{f} doesn't have registeded commands!")
+
+            if not found_steps:
+                if os.path.isfile(os.path.join(_dir, f, 'steps.py')):
+                    r = importlib.import_module(f'.{f}.steps', package=package)
+                    steps.extend(c for c in r.__dict__.values() if getattr(c, '_STEP_TYPE', None))
+                else:
+                    print(f"Warning: module {package}.{f} doesn't have registeded steps!")
     #
     return commands, steps
 
