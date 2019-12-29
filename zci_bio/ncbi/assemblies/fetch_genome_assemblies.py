@@ -23,26 +23,6 @@ Notes on search refining:
 
 """
 
-_req_fields = (
-    'Assembly name', 'Organism name', 'Taxid', 'BioProject', 'Date',
-    'Assembly level', 'GenBank assembly accession',
-)
-_columns = (
-    ('date', 'date'),
-    ('assembly_name', 'str'),
-    ('organism_name', 'str'),
-    ('taxid', 'int'),
-    ('bio_project', 'str'),
-    ('bio_sample', 'str'),
-    ('assembly_type', 'str'),
-    ('assembly_level', 'str'),
-    ('assembly_method', 'str'),
-    ('gen_bank', 'str'),
-    ('ref_seq', 'str'),
-    ('WGS', 'str'),
-    ('coverage', 'decimal'),
-)
-
 
 def fetch_genome_assemblies(project, step_data):
     # Create table step data
@@ -81,11 +61,17 @@ def _extract_data(lines, file_name):
     data = dict()
     for line in lines:
         line = line.decode("utf-8").strip()
-        if line.startswith('# ') and ':' in line:
-            line = line[2:]
-            i = line.index(':')
-            if i < len(line) - 1:
-                data[line[:i].strip()] = line[i + 1:].strip()
+        if line.startswith('# '):
+            if ':' in line:
+                line = line[2:]
+                i = line.index(':')
+                if i < len(line) - 1:
+                    data[line[:i].strip()] = line[i + 1:].strip()
+        elif line.startswith('all'):
+            fields = line.split()
+            assert len(fields) == 6, (file_name, line)
+            assert all(f == 'all' for f in fields[:4]), (file_name, line)
+            data[fields[4]] = int(fields[5])
 
     not_in = [f for f in _req_fields if f not in data]
     assert not not_in, (file_name, not_in)
@@ -103,13 +89,66 @@ def _extract_data(lines, file_name):
         data['Assembly name'],
         data['Organism name'],
         int(data['Taxid']),
+        #
         data['BioProject'],
         data.get('BioSample'),
-        data.get('Assembly type', 'haploid'),  # Default
-        data['Assembly level'],
-        data.get('Assembly method'),
         data['GenBank assembly accession'],
         data.get('RefSeq assembly accession'),
         data.get('WGS project'),
+        #
+        int(data['Genome representation'] == 'full'),
+        data.get('Sequencing technology'),
         coverage,
+        data.get('Assembly type', 'haploid'),  # Default
+        data['Assembly level'],
+        data.get('Assembly method'),
+        #
+        data['total-length'],
+        data.get('contig-count', -1),
+        data.get('contig-N50', -1),
+        data.get('contig-L50', -1),
+        data.get('scaffold-count', -1),
+        data.get('scaffold-N50', -1),
+        data.get('scaffold-L50', -1),
+        data.get('scaffold-N75', -1),
+        data.get('scaffold-N90', -1),
     ]
+
+
+_req_fields = (
+    'Assembly name', 'Organism name', 'Taxid', 'BioProject', 'Date',
+    'Assembly level', 'GenBank assembly accession', 'Genome representation',
+    'total-length',
+    # Old assemblies with Assembly level == Complete Genome, dont have contig-*
+    # 'contig-count', 'contig-N50', 'contig-L50',
+)
+
+_columns = (
+    ('date', 'date'),
+    ('assembly_name', 'str'),
+    ('organism_name', 'str'),
+    ('taxid', 'int'),
+    #
+    ('bio_project', 'str'),
+    ('bio_sample', 'str'),
+    ('gen_bank', 'str'),
+    ('ref_seq', 'str'),
+    ('WGS', 'str'),
+    #
+    ('full_genome', 'int'),
+    ('sequencing_technology', 'str'),
+    ('coverage', 'decimal'),
+    ('assembly_type', 'str'),
+    ('assembly_level', 'str'),
+    ('assembly_method', 'str'),
+    #
+    ('total_length', 'int'),
+    ('contig_count', 'int'),
+    ('contig_N50', 'int'),
+    ('contig_L50', 'int'),
+    ('scaffold_count', 'int'),
+    ('scaffold_N50', 'int'),
+    ('scaffold_L50', 'int'),
+    ('scaffold_N75', 'int'),
+    ('scaffold_N90', 'int'),
+)

@@ -40,10 +40,12 @@ class Finish(Command):
     @staticmethod
     def set_arguments(parser):
         parser.add_argument('step', help='Step name')
+        parser.add_argument(
+            '-f', '--force', action='store_true', help='Force finish even if step is already completed')
 
     def run(self):
         step = self.project.read_step(self.args.step, update_mode=True)  # Set to be in update mode
-        if step.is_completed():
+        if step.is_completed() and not self.args.force:
             print(f"Info: step {self.args.step} is completed!")
         else:
             orig_args = SimpleNamespace(**step._step_data['command_args'])
