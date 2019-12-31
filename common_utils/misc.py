@@ -1,4 +1,6 @@
 import os
+import re
+import datetime
 import importlib
 from .exceptions import ZCItoolsValueError
 
@@ -62,3 +64,10 @@ def sets_equal(have_to_exist, exist, description, step=None):
     if more_data:
         sd = f'({step}) ' if step else ''
         raise ZCItoolsValueError(f"{sd}Data exists for not listed {description}(s): {', '.join(sorted(more_data))}")
+
+
+#
+def YYYYMMDD_2_date(s):
+    nums = re.findall(r'\d+', s)
+    assert len(nums) == 3, s
+    return datetime.date(*map(int, nums))

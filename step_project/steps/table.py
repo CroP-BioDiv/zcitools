@@ -1,5 +1,5 @@
 import csv
-from step_project.base.step import Step
+from step_project.base.step import Step, StepCollection
 from common_utils.exceptions import ZCItoolsValueError
 from common_utils.show import print_table
 
@@ -68,7 +68,7 @@ ToDo: store original file?
 
     def save(self):
         # Store description.yml
-        desc = dict(columns=self._columns)
+        desc = dict(columns=[list(c) for c in self._columns])
         if self._orig_filename:
             desc['orig_filename'] = self._orig_filename
             if self._data_format:
@@ -84,17 +84,26 @@ ToDo: store original file?
                 writer.writerows(self._data)
 
     # Retrieve data methods
+    def _column_index(self, column_name):
+        for i, (name, _) in enumerate(self._columns):
+            if name == column_name:
+                return i
+        raise ZCItoolsValueError(f"No column named {column_name}! Columns: {self._columns}")
+
+    def get_column_values(self, column_name):
+        idx = self._column_index(column_name)
+        return set(row[idx] for row in self._data)
+
     def _column_index_by_type(self, data_type):
         for i, (_, dt) in enumerate(self._columns):
             if dt == data_type:
                 return i
+        raise ZCItoolsValueError(f"No column with data_type {data_type}! Columns: {self._columns}")
 
-    def get_column_by_type(self, data_type):
+    def get_column_values_by_type(self, data_type):
         # Iterate through column values
         idx = self._column_index_by_type(data_type)
-        if idx is None:
-            raise ZCItoolsValueError(f"No column with data_type {data_type}! Columns: {self._columns}")
-        return (row[idx] for row in self._data)
+        return set(row[idx] for row in self._data)
 
     # Show data
     def show_data(self, params=None):
@@ -107,3 +116,9 @@ ToDo: store original file?
 
         print('\nData:')
         print_table([c for c, _ in self._columns], self._data, show_limit=7)
+
+
+class TablesStep(StepCollection):
+    """
+    """
+    _SUBSTEP_CLASS = TableStep

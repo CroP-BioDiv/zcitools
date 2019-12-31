@@ -1,4 +1,4 @@
-from step_project.base.commands import CreateStepCommand
+from step_project.base.commands import CreateStepCommand, CreateStepFromStepCommand
 
 
 class NCBIAssembliesList(CreateStepCommand):
@@ -17,3 +17,14 @@ class NCBIAssembliesList(CreateStepCommand):
     def finish(self, step_obj):
         from .fetch_genome_assemblies import finish_fetch_genome_assemblies
         finish_fetch_genome_assemblies(step_obj)
+
+
+class NCBISraSummary(CreateStepFromStepCommand):
+    _COMMAND = 'ncbi_sra_summary'
+    _HELP = "Creates tables step from table of NCBI bio projects"
+    # _STEP_BASE_NAME = 'ncbi_sra_summary'
+    _INPUT_STEP_DATA_TYPE = 'table'
+
+    def run(self, step_data):
+        from .fetch_sra_summaries import fetch_sra_summaries
+        return fetch_sra_summaries(step_data, self._input_step())
