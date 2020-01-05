@@ -3,16 +3,7 @@ import sys
 import argparse
 from common_utils.file_utils import write_yaml, read_yaml
 from common_utils.exceptions import ZCItoolsValueError
-#
-from .commands import registered_commands as common_commands
-from .steps import registered_steps as common_steps
-from common_utils.misc import find_registered
-
-registered_commands, registered_steps = find_registered(__file__, 'step_project', dir_list=['table', 'graph'])
-if registered_commands:
-    common_commands = common_commands + registered_commands
-if registered_steps:
-    common_steps = common_steps + registered_steps
+from .common import registered_commands as common_commands, registered_steps as common_steps
 
 
 class StepProject:

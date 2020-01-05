@@ -1,5 +1,5 @@
 import os
-from ..utils.import_methods import import_pygraphviz
+from step_project.utils.import_methods import import_pygraphviz
 from common_utils.file_utils import get_settings
 
 
