@@ -13,7 +13,7 @@ class InitProject(Command):
         parser.add_argument('-d', '--description', help='Project description text')
 
     def run(self):
-        from ..processing.init_project import init_project
+        from ..init_project import init_project
         init_project(self.args.dirname, self.args.description)
 
 
@@ -98,16 +98,3 @@ class Show(Command):
     def run(self):
         step = self.project.read_step(self.args.step)
         step.show_data(params=self.args.params)
-
-
-class Graph(Command):
-    _COMMAND = 'graph'
-    _HELP = "Show project structure as a graph"
-
-    @staticmethod
-    def set_arguments(parser):
-        pass
-
-    def run(self):
-        from ..processing.project_graph import create_graph
-        create_graph(self.project)

@@ -5,13 +5,13 @@ import importlib
 from .exceptions import ZCItoolsValueError
 
 
-def find_registered(init_filename, package):
+def find_registered(init_filename, package, dir_list=None):
     # Checks submodules __init__.py for attributes (lists) registered_commands and registered_steps
     # If attributes are not set, checks for classes in files commands.py and steps.py
     commands, steps = [], []
     _dir = os.path.dirname(init_filename)
 
-    for f in os.listdir(_dir):
+    for f in (dir_list or os.listdir(_dir)):
         if not f.startswith('_') and os.path.isdir(os.path.join(_dir, f)):
             found_cmds = found_steps = False
             if os.path.isfile(os.path.join(_dir, f, '__init__.py')):

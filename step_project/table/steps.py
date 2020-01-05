@@ -121,4 +121,5 @@ ToDo: store original file?
 class TablesStep(StepCollection):
     """
     """
+    _STEP_TYPE = 'tables'
     _SUBSTEP_CLASS = TableStep

@@ -46,7 +46,7 @@ def fetch_sra_summaries(step_data, table_step):
                     try:
                         sra = extract_data(record)
                         sra_data.append([sra[c] for c, _ in _sra_columns])
-                    except:
+                    except Exception:
                         print(record)
                         raise
                     # ToDo: check
@@ -105,6 +105,7 @@ def extract_data(record):
         updated=YYYYMMDD_2_date(record['UpdateDate']),
         #
         taxid=int(exp_xml['Organism'].attrib['taxid']),
+        # Note: not all SRA summaries have BioProject!!!
         # bio_project=exp_xml['Bioproject'].text,
         # bio_sample=exp_xml['Biosample'].text,
         study_acc=exp_xml['Study'].attrib['acc'],
