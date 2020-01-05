@@ -1,4 +1,4 @@
-from step_project.base.commands import CreateStepCommand
+from step_project.base_commands import CreateStepCommand
 
 # Check base.py for description
 

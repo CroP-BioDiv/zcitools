@@ -1,4 +1,4 @@
-from step_project.base.commands import CreateStepCommand, CreateStepFromStepCommand
+from step_project.base_commands import CreateStepCommand, CreateStepFromStepCommand
 
 
 class NCBIAssembliesList(CreateStepCommand):

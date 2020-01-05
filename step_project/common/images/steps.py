@@ -1,6 +1,6 @@
 import os.path
 from collections import defaultdict
-from step_project.base.step import Step
+from step_project.base_step import Step
 from common_utils.show import print_table
 from common_utils.misc import sets_equal
 

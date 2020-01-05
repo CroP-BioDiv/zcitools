@@ -1,5 +1,5 @@
 import os.path
-from step_project.base.step import Step, StepCollection
+from step_project.base_step import Step, StepCollection
 from common_utils.exceptions import ZCItoolsValueError
 from common_utils.file_utils import read_fasta_identifiers
 from common_utils.misc import sets_equal

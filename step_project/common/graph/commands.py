@@ -1,4 +1,4 @@
-from step_project.base.commands import Command
+from step_project.base_commands import Command
 
 
 class Graph(Command):
