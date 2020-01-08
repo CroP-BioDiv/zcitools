@@ -1,4 +1,4 @@
-from step_project.steps.annotations import AnnotationsStep
+from zci_bio.annotations.steps import AnnotationsStep
 from common_utils.file_utils import write_fasta  # copy_file, link_file
 
 _instructions = """

@@ -3,7 +3,7 @@ import tarfile
 import datetime
 import re
 from decimal import Decimal
-from step_project.steps.table import TableStep
+from step_project.common.table.steps import TableStep
 from common_utils.file_utils import write_str_in_file
 
 _instructions = """

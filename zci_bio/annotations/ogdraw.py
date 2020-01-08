@@ -1,7 +1,7 @@
 import os.path
 import re
 from zipfile import ZipFile
-from step_project.steps.images import ImagesStep
+from step_project.common.images.steps import ImagesStep
 from common_utils.misc import split_list
 from common_utils.file_utils import write_str_in_file, write_yaml, read_yaml, extract_from_zip
 

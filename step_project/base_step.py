@@ -106,8 +106,7 @@ class Step:
                         remove_data=remove_data, update_mode=update_mode)
 
     def read_substep(self, local_step_name):
-        from . import read_step
-        return read_step(self._step_name_list + [local_step_name])
+        return self.project.read_step(self._step_name_list + [local_step_name])
 
     # Commonn file methods
     def absolute_path(self):

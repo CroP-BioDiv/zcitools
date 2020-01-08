@@ -1,10 +1,11 @@
 from collections import defaultdict
-from step_project.steps.table import TablesStep
+from step_project.common.table.steps import GroupTablesStep
 from common_utils.misc import split_list, YYYYMMDD_2_date
 from common_utils.xml_dict import XmlDict
 from ...utils.entrez import Entrez
 
 _sra_columns = (
+    ('bio_project', 'str'),  # Group column
     ('id', 'int'),
     ('created', 'date'),
     ('updated', 'date'),
@@ -25,7 +26,8 @@ _sra_columns = (
 
 
 def fetch_sra_summaries(step_data, table_step):
-    step = TablesStep(table_step.project, step_data)
+    step = GroupTablesStep(table_step.project, step_data, update_mode=True)
+    step.set_columns(_sra_columns)
     #
     to_proc = table_step.get_column_values('bio_project') - set(step.substep_names())
     if to_proc:
@@ -38,6 +40,7 @@ def fetch_sra_summaries(step_data, table_step):
 
             if not ids:
                 print(f"No SRA data for project: {proj}!")
+                sra_data = None
             else:
                 records = entrez.esummary(db='sra', id=','.join(ids), retmax=num_grouped_sras)
                 print(f"{proj}: {len(ids)} / {len(records)}")
@@ -45,14 +48,14 @@ def fetch_sra_summaries(step_data, table_step):
                 for record in records:
                     try:
                         sra = extract_data(record)
-                        sra_data.append([sra[c] for c, _ in _sra_columns])
+                        sra_data.append([sra[c] for c, _ in _sra_columns[1:]])
                     except Exception:
                         print(record)
                         raise
                     # ToDo: check
                     #  - is taxid same as in project
-                substep.set_table_data(sra_data, _sra_columns)
 
+            step.set_group_data(substep, sra_data)
             substep.save()
 
         # Note: it is not possible to retrive data by group of projects since not all SRA summaries have BioProject!!!
@@ -121,9 +124,11 @@ def extract_data(record):
         library_selection=lib['LIBRARY_SELECTION'].text,
         library_paired=library_paired.attrib.get('NOMINAL_LENGTH') if library_paired else None,
         #
-        total_spots=int(stat_attrs.get('total_spots')),
-        total_bases=int(stat_attrs.get('total_bases')),
+        total_spots=int(stat_attrs.get('total_spots') or 0),
+        total_bases=int(stat_attrs.get('total_bases') or 0),
         #
-        runs=[dict(accession=r.attrib['acc'], spots=int(r.attrib.get('total_spots')), bases=int(r.attrib.get('total_bases')))
+        runs=[dict(accession=r.attrib['acc'],
+                   spots=int(r.attrib.get('total_spots') or 0),
+                   bases=int(r.attrib.get('total_bases') or 0))
               for r in runs]
     )
