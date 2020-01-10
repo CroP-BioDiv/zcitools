@@ -60,7 +60,6 @@ class MrBayesStep(RAxMLStep):
     """
 Stores an MrBayes calculation from alignment.
 """
-    # ToDo: other alignment formats?
     _STEP_TYPE = 'mr_bayes'
 
 
