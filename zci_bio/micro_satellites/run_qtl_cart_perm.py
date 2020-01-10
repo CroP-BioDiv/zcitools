@@ -9,6 +9,7 @@ from zipfile import ZipFile
 
 _DEFAULT_EXE_NAME = 'Zmapqtl'
 _ENV_VAR = 'QTL_CART_PERMUTATION_EXE'
+results_dir = 'results'
 
 _install_instructions = """
 QTL Carthographer is not installed or not properly set!
@@ -45,8 +46,26 @@ def _find_5_perc(filename):
                 rows.append(float(fields[1]))
             if len(fields) >= 3 and fields[0] == '#' and fields[1] == 'Repetition' and fields[2] == 'GlobalMax':
                 store = True
-    rows = sorted(rows)
+    rows = sorted(rows, reverse=True)
     return rows[len(rows) // 20]
+
+
+def manage_summary(trait_dirs=None):
+    if trait_dirs is None:
+        with open('finish.yml', 'r') as r:
+            data = yaml.load(r, Loader=yaml.CLoader)
+        trait_dirs = data['trait_dirs']
+
+    # Summary
+    summary_data = [(d, _find_5_perc(os.path.join(results_dir, f"{d}.txt"))) for d in sorted(trait_dirs)]
+
+    with open(os.path.join(results_dir, "TLR.txt"), 'w') as out:
+        for r, f in summary_data:
+            out.write(f"{r} {f}\n")
+    with open(os.path.join(results_dir, "TLOD.txt"), 'w') as out:
+        d = 4.60517018599  # 2 * ln(10)
+        for r, f in summary_data:
+            out.write(f"{r} {f / d:.5f}\n")
 
 
 def run(locale=True, threads=None):
@@ -66,37 +85,30 @@ def run(locale=True, threads=None):
             executor.submit(_run_single, qtl_exe, run_dir, num_perm)
 
     #
-    results_dir = 'results'
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
     elif os.path.isfile(results_dir):
         raise ValueError(f"Can't create directory, file exists with same name ({results_dir})!")
 
     # Copy qtlcart.z6e files
-    summary_data = []
     output_files = [os.path.join(results_dir, "TLR.txt"), os.path.join(results_dir, "TLOD.txt")]
-    for run_dir in sorted(trait_dirs):
-        input_f = os.path.join(run_dir, 'qtlcart.z6e')
+    for run_dir in trait_dirs:
         output_files.append(os.path.join(results_dir, f"{run_dir}.txt"))
-        shutil.copyfile(input_f, output_files[-1])
-        summary_data.append((run_dir, _find_5_perc(input_f)))
+        shutil.copyfile(os.path.join(run_dir, 'qtlcart.z6e'), output_files[-1])
 
-    #
-    with open(output_files[0], 'w') as out:
-        for r, f in summary_data:
-            out.write(f"{r} {f}\n")
-    with open(output_files[1], 'w') as out:
-        d = 4.60517018599  # 2 * ln(10)
-        for r, f in summary_data:
-            out.write(f"{r} {f / d}\n")
+    # Summary
+    manage_summary(trait_dirs=trait_dirs)
 
     # Zip files
-    # if not locale:
-    with ZipFile('output.zip', 'w') as output:
-        for f in output_files:
-            output.write(f, arcname=os.path.basename(f))
+    if not locale:
+        with ZipFile('output.zip', 'w') as output:
+            for f in output_files:
+                output.write(f, arcname=os.path.basename(f))
 
 
 if __name__ == '__main__':
     import sys
-    run(locale=False, threads=int(sys.argv[1]) if len(sys.argv) > 1 else None)
+    if len(sys.argv) == 2 and sys.argv[1] == 'summary':
+        manage_summary()
+    else:
+        run(locale=False, threads=int(sys.argv[1]) if len(sys.argv) > 1 else None)

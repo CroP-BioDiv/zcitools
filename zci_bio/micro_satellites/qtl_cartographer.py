@@ -131,6 +131,8 @@ def create_permutations(project, step_data, raw_file, permutations, num_traits=N
 
     write_yaml(dict(permutations=permutations, trait_dirs=trait_dirs), step.step_file('finish.yml'))
 
+    # ToDo: files_to_zip = [d['filename'] for d in seq_files]  # files to zip
+
     # Run or set instructions
     if run:
         run_module_script(run_qtl_cart_perm, step)
