@@ -57,6 +57,17 @@ def cache_remove_all(self):
             delattr(self, attr)
 
 
+def is_cached(self, method_name):
+    c_attr = _CACHE_PREFIX + method_name
+    return hasattr(self, c_attr)
+
+
+def cache_remove(self, method_name):
+    c_attr = _CACHE_PREFIX + method_name
+    if hasattr(self, c_attr):
+        delattr(self, attr)
+
+
 # Global cache
 class Cache:
     def __init__(self, cache_dir):

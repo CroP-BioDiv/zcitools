@@ -1,15 +1,31 @@
+"""
+Steps types to store table data.
+Table structure is defined with list of columns, where column has name and data type.
+Column names and types are stored in description.yml.
+Table data can be stored in different formats, depending on step implementation.
+
+Note: loading of table data is lazy and cached.
+
+Step interface regarding table data structure:
+ - get_rows()
+ - get_table_data()
+ - get_column_values(column)
+ - get_column_values_by_type(data_type)
+"""
+
 import csv
 import itertools
 import os.path
 from step_project.base_step import Step, StepCollection
 from common_utils.exceptions import ZCItoolsValueError
 from common_utils.show import print_table
+from common_utils.file_utils import ensure_directory, append_line_to_file, read_file_as_list
 from .table_data import TableData
 
 _COLUMN_TYPES = frozenset(['seq_ident', 'str', 'int', 'date', 'decimal'])
 
 
-def _check_columns(columns, rows):
+def _check_columns(columns):
     if not isinstance(columns, (tuple, list)):
         raise ZCItoolsValueError(f"Column specification is not a list or tuple ({type(columns)})!")
     wrong_columns = [d for d in columns if not isinstance(d, (tuple, list)) or len(d) != 2]
@@ -19,14 +35,34 @@ def _check_columns(columns, rows):
     wrong_types = [(n, ct) for n, ct in columns if ct not in _COLUMN_TYPES]
     if wrong_types:
         raise ZCItoolsValueError(f"Unsupported column type(s) for: {wrong_types}")
-    #
-    if rows:
-        n_cols = len(columns)
-        diff_lengts = [(i, len(row)) for i, row in enumerate(rows) if len(row) != n_cols]
-        if diff_lengts:
-            raise ZCItoolsValueError(f"Rows have different length than specified columns {n_cols}: {diff_lengts}")
 
 
+def _check_rows(columns, rows):
+    n_cols = len(columns)
+    diff_lengts = [(i, len(row)) for i, row in enumerate(rows) if len(row) != n_cols]
+    if diff_lengts:
+        raise ZCItoolsValueError(f"Rows have different length than specified columns {n_cols}: {diff_lengts}")
+    # ToDo: data types?
+
+
+def _write_csv(filename, columns, rows):
+    with open(filename, 'w', newline='') as outcsv:
+        writer = csv.writer(outcsv, delimiter=';', quotechar='"')
+        writer.writerow([n for n, _ in columns])  # Header
+        writer.writerows(rows)
+
+
+def _read_csv(filename):
+    if os.path.isfile(filename):
+        with open(filename, 'r') as incsv:
+            reader = csv.reader(incsv, delimiter=';', quotechar='"')
+            next(reader)  # Skip header
+            return list(reader)
+    else:
+        return []
+
+
+# -------------------------------------------------------------
 class TableStep(Step):
     """
 Stores table data. Table has list of columns, where column has name and data type.
@@ -50,9 +86,13 @@ ToDo: store original file?
             self._data_format = None
 
     def _check_data(self):
-        _check_columns(self._columns, self._rows)
+        _check_columns(self._columns)
 
     # Set data
+    def set_columns(self, columns):
+        _check_columns(columns)
+        self._columns = columns
+
     def set_table_data(self, rows, columns, orig_filename=None, data_format=None):
         self._rows = rows
         self._columns = columns
@@ -77,22 +117,13 @@ ToDo: store original file?
 
         # Write csv
         if self._rows:
-            with open(self._get_table_filename(), 'w', newline='') as outcsv:
-                writer = csv.writer(outcsv, delimiter=';', quotechar='"')
-                writer.writerow([n for n, _ in self._columns])  # Header
-                writer.writerows(self._rows)
+            _write_csv(self._get_table_filename(), self._columns, self._rows)
 
     # Retrieve data methods
     def get_rows(self):
         if self._rows is None:
-            if os.path.isfile(self._get_table_filename()):
-                with open(self._get_table_filename(), 'r') as incsv:
-                    reader = csv.reader(incsv, delimiter=';', quotechar='"')
-                    next(reader)  # Skip header
-                    self._rows = [row for row in reader]
-                    _check_columns(self._columns, self._rows)
-            else:
-                self._rows = []
+            self._rows = _read_csv(self._get_table_filename())
+            _check_rows(self._columns, self._rows)
         return self._rows
 
     def get_table_data(self):
@@ -132,29 +163,40 @@ ToDo: store original file?
         print_table([c for c, _ in self._columns], self.get_rows(), show_limit=7)
 
 
-class GroupTablesStep(StepCollection):
+class TableGroupedStep(TableStep):
     """
-Stores table data in more substeps (subdirectories).
 First column is used for grouping.
-Column names and types are stored in description.yml.
+Data for each group is stored as csv into file data/<group>.
+Groups that do not have data are store as a list in file no_data.txt
 """
-    _STEP_TYPE = 'group_tables'
-    _SUBSTEP_CLASS = TableStep
+    _STEP_TYPE = 'table_grouped'
+    _DATA_SUBDIRECTORY = 'data'
+    _NO_DATA_FILE = 'no_data.txt'
 
     # Init object
     def _init_data(self, type_description):
+        self._rows = None
         if type_description:
             self.set_columns(type_description['columns'])
         else:
             self._columns = None
 
-    # Set data
-    def set_columns(self, columns):
-        _check_columns(columns, None)
-        self._columns = columns
+    def _data_subdirectory(self):
+        return self.step_file(self._DATA_SUBDIRECTORY)
 
-    def set_group_data(self, substep, data):
-        substep.set_table_data(data, self._columns[1:])
+    def _no_data_filename(self):
+        return self.step_file(self._NO_DATA_FILE)
+
+    # Set data
+    def set_group_rows(self, group, rows):
+        # ToDo: check rows?
+        if rows:
+            self._rows = None  # Remove get_rows() cache
+            data_dir = self._data_subdirectory()
+            ensure_directory(data_dir)
+            _write_csv(os.path.join(data_dir, group), self._columns[1:], rows)
+        else:
+            append_line_to_file(self._no_data_filename(), group)
 
     # Save/load data
     def save(self):
@@ -163,7 +205,25 @@ Column names and types are stored in description.yml.
 
     # Retrieve data methods
     def get_rows(self):
-        return list(itertools.chain.from_iterable(substep.get_rows() for substep in self.step_objects()))
+        # ToDo: dodati prvu kolonu
+        if self._rows is None:
+            data_dir = _data_subdirectory()
+            if os.path.isdir(data_dir):
+                self._rows = list(
+                    itertools.chain.from_iterable(
+                        [[g] + r for r in _read_csv(os.path.join(data_dir, group))]
+                        for group in os.listdir(data_dir)))
+            else:
+                self._rows = []
+        return self._rows
 
-    def get_table_data(self):
-        return TableData(self._columns, self.get_rows())
+    def get_groups_with_rows(self):
+        data_dir = self._data_subdirectory()
+        return os.listdir(data_dir) if os.path.isdir(data_dir) else []
+
+    def get_groups_without_rows(self):
+        no_data_file = self._no_data_filename()
+        return read_file_as_list(no_data_file) if os.path.isfile(no_data_file) else []
+
+    def known_groups(self):
+        return self.get_groups_with_rows() + self.get_groups_without_rows()

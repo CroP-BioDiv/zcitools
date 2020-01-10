@@ -1,5 +1,5 @@
 from collections import defaultdict
-from step_project.common.table.steps import GroupTablesStep
+from step_project.common.table.steps import TableGroupedStep
 from common_utils.misc import split_list, YYYYMMDD_2_date
 from common_utils.xml_dict import XmlDict
 from ...utils.entrez import Entrez
@@ -26,25 +26,25 @@ _sra_columns = (
 
 
 def fetch_sra_summaries(step_data, table_step):
-    step = GroupTablesStep(table_step.project, step_data, update_mode=True)
+    step = TableGroupedStep(table_step.project, step_data, update_mode=True)
     step.set_columns(_sra_columns)
+    step.save()  # To store step as it is
+    step.known_groups()
     #
-    to_proc = table_step.get_column_values('bio_project') - set(step.substep_names())
+    to_proc = table_step.get_column_values('bio_project') - set(step.known_groups())
     if to_proc:
         entrez = Entrez()
         num_grouped_sras = 2000
         for proj in to_proc:
             data = entrez.esearch(db='sra', term=f"{proj}[BioProject]", retmax=num_grouped_sras)
             ids = data['IdList']
-            substep = step.create_substep(proj)
+            sra_data = []
 
             if not ids:
                 print(f"No SRA data for project: {proj}!")
-                sra_data = None
             else:
                 records = entrez.esummary(db='sra', id=','.join(ids), retmax=num_grouped_sras)
                 print(f"{proj}: {len(ids)} / {len(records)}")
-                sra_data = []
                 for record in records:
                     try:
                         sra = extract_data(record)
@@ -55,8 +55,7 @@ def fetch_sra_summaries(step_data, table_step):
                     # ToDo: check
                     #  - is taxid same as in project
 
-            step.set_group_data(substep, sra_data)
-            substep.save()
+            step.set_group_rows(proj, sra_data)
 
         # Note: it is not possible to retrive data by group of projects since not all SRA summaries have BioProject!!!
         # num_grouped_projects = 8
@@ -86,7 +85,6 @@ def fetch_sra_summaries(step_data, table_step):
         #             substep.set_table_data(sra_data, _sra_columns)
         #             substep.save()
 
-    step.save()
     return step
 
 

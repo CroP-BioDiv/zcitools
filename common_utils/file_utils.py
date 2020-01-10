@@ -96,6 +96,12 @@ def read_file_as_str(filename):
         return r.read()
 
 
+def append_line_to_file(filename, s):
+    with open(filename, 'a') as r:
+        r.write(s)
+        r.write('\n')
+
+
 def read_file_as_list(filename):
     with open(filename, 'r') as r:
         return [line.strip() for line in r.readlines()]
