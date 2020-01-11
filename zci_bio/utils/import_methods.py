@@ -32,6 +32,11 @@ def import_bio_alphabet():
 @import_method(_missing_bio)
 def import_bio_entrez():
     from Bio import Entrez
+    # Set email from settings file
+    from common_utils.file_utils import get_settings
+    email = get_settings()['email']
+    if email:
+        Entrez.email = email
     return Entrez
 
 

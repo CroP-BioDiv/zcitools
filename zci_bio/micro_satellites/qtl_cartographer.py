@@ -1,7 +1,8 @@
 import os.path
 from common_utils.exceptions import ZCItoolsValueError
+from common_utils.misc import sets_equal
 from common_utils.file_utils import ensure_directory, copy_file, link_file, write_str_in_file, write_yaml, \
-    run_module_script, set_run_instructions
+    run_module_script, set_run_instructions, unzip_file, list_zip_files
 from .steps import QTLCartStep
 from . import run_qtl_cart_perm
 
@@ -109,6 +110,7 @@ def create_permutations(project, step_data, raw_file, permutations, num_traits=N
 
     #
     step = QTLCartStep(project, step_data, remove_data=True)
+    step.set_data(num_traits, permutations)
 
     # Copy input files
     files_to_zip = []
@@ -121,7 +123,7 @@ def create_permutations(project, step_data, raw_file, permutations, num_traits=N
     assert num_traits and num_traits > 0, num_traits
     trait_dirs = []
     for t_idx in range(1, num_traits + 1):
-        trait_dirs.append(f'T{t_idx:02}')
+        trait_dirs.append(step.trait_dir(t_idx))
         t_dir = step.step_file(trait_dirs[-1])
         ensure_directory(t_dir)
         files_to_zip.append(os.path.join(t_dir, 'qtlcart.rc'))
@@ -134,18 +136,33 @@ def create_permutations(project, step_data, raw_file, permutations, num_traits=N
     files_to_zip.append(step.step_file('finish.yml'))
     write_yaml(dict(permutations=permutations, trait_dirs=trait_dirs), files_to_zip[-1])
 
+    # Stores description.yml
+    step.save(completed=run)
+
     # Run or set instructions
     if run:
         run_module_script(run_qtl_cart_perm, step)
     else:
-        # files_to_zip.append(finish_f)
         set_run_instructions(run_qtl_cart_perm, step, files_to_zip, _instructions)
-
     #
-    step.save()
     return step
 
 
 def finish_permutations(step_obj):
-    print('ToDo')
-    pass
+    output_f = step_obj.step_file('output.zip')
+    if not os.path.isfile(output_f):
+        raise ZCItoolsValueError('No calculation output file output.zip!')
+
+    # Check are needed files in zip, not something strange
+    files = set([os.path.join('results', 'TLR.txt'), os.path.join('results', 'TLOD.txt')])
+    for d in step_obj.trait_dirs():
+        files.add(os.path.join('results', f"{d}.txt"))
+        files.update(os.path.join(d, f) for f in ('qtlcart.log', 'qtlcart.z6c', 'qtlcart.z6e'))
+    # ToDo: possible problems with file separator
+    sets_equal(files, set(list_zip_files(output_f)), 'file')  # raise exception if data is not good
+
+    # Unzip data
+    unzip_file(output_f, step_obj.directory)
+
+    step_obj._check_data()
+    step_obj.save(create=False)

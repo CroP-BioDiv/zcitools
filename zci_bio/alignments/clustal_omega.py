@@ -103,8 +103,8 @@ def create_clustal_data(step_data, annotations_step, cache, alignments, run):
     # Remove step directory from files since run script is called from step directory
     for d in seq_files:
         d['filename'] = step.strip_step_dir(d['filename'])
-    finish_f = step.step_file('finish.yml')
-    write_yaml(seq_files, finish_f)
+    files_to_zip.append(step.step_file('finish.yml'))
+    write_yaml(seq_files, files_to_zip[-1])
 
     # Stores description.yml
     step.save(completed=run)
@@ -112,7 +112,6 @@ def create_clustal_data(step_data, annotations_step, cache, alignments, run):
     if run:
         run_module_script(run_clustal_omega, step)
     else:
-        files_to_zip.append(finish_f)
         set_run_instructions(run_clustal_omega, step, files_to_zip, _instructions)
     #
     return step

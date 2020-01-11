@@ -93,7 +93,7 @@ def run(locale=True, threads=None):
         raise ValueError(f"Can't create directory, file exists with same name ({results_dir})!")
 
     # Copy qtlcart.z6e files
-    output_files = [os.path.join(results_dir, "TLR.txt"), os.path.join(results_dir, "TLOD.txt")]
+    output_files = [os.path.join(results_dir, 'TLR.txt'), os.path.join(results_dir, 'TLOD.txt')]
     for run_dir in trait_dirs:
         output_files.append(os.path.join(results_dir, f"{run_dir}.txt"))
         shutil.copyfile(os.path.join(run_dir, 'qtlcart.z6e'), output_files[-1])
