@@ -3,6 +3,8 @@
 import os
 import shutil
 import yaml
+import random
+import subprocess
 from concurrent.futures import ThreadPoolExecutor
 import multiprocessing
 from zipfile import ZipFile
@@ -31,9 +33,9 @@ def _find_exe(default_exe, env_var):
 
 
 def _run_single(qtl_exe, run_dir, num_perm):
-    cmd = f"cd {run_dir}; {qtl_exe} -r {num_perm} -A > /dev/null"
-    print(f"Command: {cmd}")
-    os.system(cmd)
+    seed = random.randint(1, 2000000000)
+    print(f"Command: cd {run_dir}; {qtl_exe} -r {num_perm} -s {seed} -A > /dev/null")
+    subprocess.run([qtl_exe, '-r', str(num_perm), '-s', str(seed), '-A'], cwd=run_dir, stdout=subprocess.DEVNULL)
 
 
 def _find_5_perc(filename):
@@ -95,6 +97,7 @@ def run(locale=True, threads=None):
     for run_dir in trait_dirs:
         output_files.append(os.path.join(results_dir, f"{run_dir}.txt"))
         shutil.copyfile(os.path.join(run_dir, 'qtlcart.z6e'), output_files[-1])
+        output_files.extend(os.path.join(run_dir, f) for f in ('qtlcart.log', 'qtlcart.z6c', 'qtlcart.z6e'))
 
     # Summary
     manage_summary(trait_dirs=trait_dirs)
@@ -103,7 +106,7 @@ def run(locale=True, threads=None):
     if not locale:
         with ZipFile('output.zip', 'w') as output:
             for f in output_files:
-                output.write(f, arcname=os.path.basename(f))
+                output.write(f)
 
 
 if __name__ == '__main__':

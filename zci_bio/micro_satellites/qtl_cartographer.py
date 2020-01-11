@@ -76,13 +76,13 @@ _qtlcart_rc = """#
 -stem                        qtlcart  # (Stem for filenames)
 -Thecross                        RI1  # (Type of cross)
 -error                   qtlcart.log  # (Log and error file: All)
--map                         tmp.00m  # (Rmap ouput file, linkage map)
+-map                      ../tmp.00m  # (Rmap ouput file, linkage map)
 -mapin                      temp.00m  # (Rmap input file)
 -qtl                     qtlcart.qtl  # (Rqtl output file)
--ifile                       tmp.00c  # (Rcross output file, individual data file)
+-ifile                    ../tmp.00c  # (Rcross output file, individual data file)
 -iinfile                    temp.00c  # (Rcross input file, individual data file)
 -lrfile                   qtlcart.lr  # (Results of Linear Regression analysis)
--srfile                      tmp.00r  # (Results of Stepwise Regression analysis)
+-srfile                   ../tmp.00r  # (Results of Stepwise Regression analysis)
 -qstat                   qtlcart.qst  # (Results of Qstats)
 -zfile       results_T{trait:02}.txt  # (Results of (Composite) Interval Mapping Analysis)
 -eqtlfile                   qtlcart.eqt  # (Eqtl output file)
@@ -111,10 +111,11 @@ def create_permutations(project, step_data, raw_file, permutations, num_traits=N
     step = QTLCartStep(project, step_data, remove_data=True)
 
     # Copy input files
-    for qf in tmp_files:
-        copy_file(os.path.join(data_dir, qf), step.step_file(qf))
-
     files_to_zip = []
+    for qf in tmp_files:
+        files_to_zip.append(step.step_file(qf))
+        copy_file(os.path.join(data_dir, qf), files_to_zip[-1])
+
     # Create trait directories
     # ToDo: find max traits and fix it/set default
     assert num_traits and num_traits > 0, num_traits
@@ -123,15 +124,15 @@ def create_permutations(project, step_data, raw_file, permutations, num_traits=N
         trait_dirs.append(f'T{t_idx:02}')
         t_dir = step.step_file(trait_dirs[-1])
         ensure_directory(t_dir)
-        # Create links to input files
-        for qf in tmp_files:
-            link_file(os.path.join('..', qf), os.path.join(t_dir, qf))
+        files_to_zip.append(os.path.join(t_dir, 'qtlcart.rc'))
+        write_str_in_file(files_to_zip[-1], _qtlcart_rc.format(trait=t_idx, num_traits=num_traits))
+        # # Create links to input files
+        # for qf in tmp_files:
+        #     link_file(os.path.join('..', qf), os.path.join(t_dir, qf))
         #
-        write_str_in_file(os.path.join(t_dir, 'qtlcart.rc'), _qtlcart_rc.format(trait=t_idx, num_traits=num_traits))
 
-    write_yaml(dict(permutations=permutations, trait_dirs=trait_dirs), step.step_file('finish.yml'))
-
-    # ToDo: files_to_zip = [d['filename'] for d in seq_files]  # files to zip
+    files_to_zip.append(step.step_file('finish.yml'))
+    write_yaml(dict(permutations=permutations, trait_dirs=trait_dirs), files_to_zip[-1])
 
     # Run or set instructions
     if run:
