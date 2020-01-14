@@ -88,7 +88,7 @@ class CleanCache(Command):
 
 class Show(Command):
     _COMMAND = 'show'
-    _HELP = "Print step(s) data"
+    _HELP = "Print step data"
 
     @staticmethod
     def set_arguments(parser):

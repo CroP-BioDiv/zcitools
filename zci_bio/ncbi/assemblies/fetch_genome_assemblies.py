@@ -1,10 +1,10 @@
 import os.path
 import tarfile
-import datetime
 import re
 from decimal import Decimal
 from step_project.common.table.steps import TableStep
 from common_utils.file_utils import write_str_in_file
+from common_utils.value_data_types import fromisoformat
 
 _instructions = """
 Steps:
@@ -84,8 +84,7 @@ def _extract_data(lines, file_name):
         coverage = Decimal(nums[0]) if nums else None
 
     return [
-        # datetime.date.fromisoformat(data['Date']),  # In python 3.7 :-/
-        datetime.date(*map(int, data['Date'].split('-'))),
+        fromisoformat(data['Date']),
         data['Assembly name'],
         data['Organism name'],
         int(data['Taxid']),

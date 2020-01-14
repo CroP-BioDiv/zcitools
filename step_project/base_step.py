@@ -156,9 +156,12 @@ class Step:
     def clean_files(self):
         print(f"Warning: step {self.directory} ({self.__class__.__name__}) doesn't have clean method!")
 
-    #
+    # Common step methods/commands
     def show_data(self, params=None):
         print(f'{self.__class__.__name__}.show_data() not implemented!')
+
+    def export_data(self, filename, filters=None, params=None):
+        print(f'{self.__class__.__name__}.export_data() not implemented!')
 
 
 #

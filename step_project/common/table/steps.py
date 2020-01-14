@@ -4,13 +4,15 @@ Table structure is defined with list of columns, where column has name and data 
 Column names and types are stored in description.yml.
 Table data can be stored in different formats, depending on step implementation.
 
-Note: loading of table data is lazy and cached.
+Notes:
+ - loading of table data is lazy and cached.
+ - table step stores column types but doesn't force casting data into them. That is Relation task
 
 Step interface regarding table data structure:
  - get_rows()
- - get_table_data()
  - get_column_values(column)
  - get_column_values_by_type(data_type)
+ - get_relation()
 """
 
 import csv
@@ -20,9 +22,8 @@ from step_project.base_step import Step, StepCollection
 from common_utils.exceptions import ZCItoolsValueError
 from common_utils.show import print_table
 from common_utils.file_utils import ensure_directory, append_line_to_file, read_file_as_list
-from .table_data import TableData
-
-_COLUMN_TYPES = frozenset(['seq_ident', 'str', 'int', 'date', 'decimal'])
+from common_utils.value_data_types import KNOWN_DATA_TYPES
+from .relation import Relation
 
 
 def _check_columns(columns):
@@ -32,7 +33,7 @@ def _check_columns(columns):
     if wrong_columns:
         raise ZCItoolsValueError(f"Error in columns specification: {wrong_columns}")
     #
-    wrong_types = [(n, ct) for n, ct in columns if ct not in _COLUMN_TYPES]
+    wrong_types = [(n, ct) for n, ct in columns if ct not in KNOWN_DATA_TYPES]
     if wrong_types:
         raise ZCItoolsValueError(f"Unsupported column type(s) for: {wrong_types}")
 
@@ -68,7 +69,7 @@ class TableStep(Step):
 Stores table data. Table has list of columns, where column has name and data type.
 Column names and types are stored in description.yml.
 Table data is stored in table.csv with header, separator ;, quote character ".
-ToDo: store original file?
+
 """
     _STEP_TYPE = 'table'
     _TABLE_FILENAME = 'table.csv'
@@ -78,12 +79,8 @@ ToDo: store original file?
         self._rows = None
         if type_description:
             self._columns = type_description['columns']
-            self._orig_filename = type_description.get('orig_filename')
-            self._data_format = type_description.get('data_format')
         else:
             self._columns = None
-            self._orig_filename = None
-            self._data_format = None
 
     def _check_data(self):
         _check_columns(self._columns)
@@ -93,11 +90,9 @@ ToDo: store original file?
         _check_columns(columns)
         self._columns = columns
 
-    def set_table_data(self, rows, columns, orig_filename=None, data_format=None):
+    def set_table_data(self, rows, columns):
         self._rows = rows
         self._columns = columns
-        self._orig_filename = orig_filename
-        self._data_format = data_format
         #
         self._check_data()
 
@@ -107,13 +102,7 @@ ToDo: store original file?
 
     def save(self):
         # Store description.yml
-        desc = dict(columns=[list(c) for c in self._columns])
-        if self._orig_filename:
-            desc['orig_filename'] = self._orig_filename
-            if self._data_format:
-                desc['data_format'] = self._data_format
-
-        self.save_description(desc, completed=bool(self._columns))
+        self.save_description(dict(columns=[list(c) for c in self._columns]), completed=bool(self._columns))
 
         # Write csv
         if self._rows:
@@ -125,9 +114,6 @@ ToDo: store original file?
             self._rows = _read_csv(self._get_table_filename())
             _check_rows(self._columns, self._rows)
         return self._rows
-
-    def get_table_data(self):
-        return TableData(self._columns, self.get_rows())
 
     def _column_index(self, column_name):
         for i, (name, _) in enumerate(self._columns):
@@ -149,6 +135,9 @@ ToDo: store original file?
         # Iterate through column values
         idx = self._column_index_by_type(data_type)
         return set(row[idx] for row in self.get_rows())
+
+    def get_relation(self):
+        return Relation(self.get_rows(), columns_data_types=self._columns)
 
     # Show data
     def show_data(self, params=None):

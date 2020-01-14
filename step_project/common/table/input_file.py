@@ -32,6 +32,6 @@ def create_table_step(project, step_data, filename, data_format=None, columns=No
 
     # Store (or overwrite) step data
     step = TableStep(project, step_data, remove_data=True)
-    step.set_table_data(data, columns, orig_filename=filename, data_format=data_format)
+    step.set_table_data(data, columns)
     step.save()
     return step

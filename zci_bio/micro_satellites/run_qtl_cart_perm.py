@@ -49,7 +49,7 @@ def _find_5_perc(filename):
             if len(fields) >= 3 and fields[0] == '#' and fields[1] == 'Repetition' and fields[2] == 'GlobalMax':
                 store = True
     rows = sorted(rows, reverse=True)
-    return rows[len(rows) // 20]
+    return rows[max(0, (len(rows) // 20) - 1)]
 
 
 def manage_summary(trait_dirs=None):

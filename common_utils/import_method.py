@@ -32,3 +32,17 @@ def import_method(error_msg):
 
         return wrapped_f
     return wrap
+
+
+# --------------------------------------------------
+@import_method("""
+Pandas library is missing.
+
+For installation instruction check web page:
+https://pandas.pydata.org/getpandas.html
+
+Short: pip install pandas
+""")
+def import_pandas():
+    import pandas
+    return pandas
