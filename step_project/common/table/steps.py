@@ -152,8 +152,9 @@ Table data is stored in table.csv with header, separator ;, quote character ".
         print('Columns:')
         print_table(None, self._columns)
 
-        print('\nData:')
-        print_table([c for c, _ in self._columns], self.get_rows(), show_limit=7)
+        if 'columns' not in params:
+            print('\nData:')
+            print_table([c for c, _ in self._columns], self.get_rows(), show_limit=7)
 
 
 class TableGroupedStep(TableStep):

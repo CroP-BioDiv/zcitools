@@ -57,5 +57,6 @@ class TableSelect(Command):
         from .select import select_data
         ps = self.args
         steps = [self.project.read_step(s, check_data_type=('table', 'table_grouped')) for s in ps.steps]
-        select_data(step_data, ps.result, steps, ps.select, ps.where, ps.group_by, ps.having, ps.order_by,
+        select_data(ps.result, step_data, steps, ps.select,
+                    where_part=ps.where, group_by_part=ps.group_by, having_part=ps.having, order_by_part=ps.order_by,
                     output_filename=ps.output_filename)

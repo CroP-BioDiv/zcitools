@@ -52,8 +52,12 @@ class StepDatabase:
     def all_tables(self):
         return sorted(self.table_2_step.keys())
 
-    def exact_column_name(self, c):
-        # Returns tuple (table_name.column_name, data type)
+    def exact_column_name(self, c, c_idx):
+        # Returns tuple (table_name.column_name, column name, data type)
+        # ToDo: better parsing to support functions. Right now functions can work if there are no spaces in them!
+        if '(' in c:
+            return c, f'c_{c_idx}', 'int'
+        #
         fields = c.split('.')
         if len(fields) == 1:
             tables = self.column_2_tables.get(c)
@@ -63,7 +67,7 @@ class StepDatabase:
                 raise ZCItoolsValueError(f'Column {c} is in more tables!', ', '.join(t for t, _ in tables))
             #
             table_name, dt = tables[0]
-            return f'{table_name}.{c}', dt
+            return f'{table_name}.{c}', c, dt
         #
         elif len(fields) == 2:
             t_name, c_name = fields
@@ -72,7 +76,7 @@ class StepDatabase:
             dts = [dt for t, dt in self.column_2_tables.get(c_name, []) if t == t_name]
             if len(dts) != 1:
                 raise ZCItoolsValueError(f'Column {c_name} is not in table {t_name}!')
-            return c, dts[0]
+            return c, c_name, dts[0]
         #
         raise ZCItoolsValueError(f'Column {c} is not good specified!')
 
@@ -82,19 +86,20 @@ class StepDatabase:
 
     #
     # @time_it
-    def select_all_tables(self, select, where_part, group_by_part, having_part, order_by_part, info=False):
+    def select_all_tables(self, select, where_part='', group_by_part='', having_part='', order_by_part='', info=False):
         # Returns table data generated as result of SELECT statement generated with given data
         # Returns tuple (column_data_types, rows)
         # select is None or string of format {[<table>.]column [AS name],}+
         select_part = []
         column_data_types = []
         if select:
-            for s in select.split(','):
+            # ToDo: better parsing to support functions. Right now functions can work if there are no spaces in them!
+            for c_idx, s in enumerate(select.split(',')):
                 fields = s.strip().split()
-                sel_name, data_type = self.exact_column_name(fields[0])
+                sel_name, c_name, data_type = self.exact_column_name(fields[0], c_idx)
                 select_part.append(sel_name)
                 if len(fields) == 1:
-                    column_data_types.append((sel_name.split('.')[1], data_type))
+                    column_data_types.append((c_name, data_type))
                 elif len(fields) == 3:
                     assert fields[1].lower() == 'as'
                     column_data_types.append((fields[2].lower(), data_type))

@@ -2,6 +2,7 @@ from collections import defaultdict
 from step_project.common.table.steps import TableStep, TableGroupedStep
 from common_utils.misc import split_list, YYYYMMDD_2_date
 from common_utils.xml_dict import XmlDict
+from common_utils.step_database import StepDatabase
 from ...utils.entrez import Entrez
 
 _sra_columns = (
@@ -133,26 +134,20 @@ def extract_data(record):
 
 
 def group_sra_data(step_data, sra_step):
-    step = TableStep(sra_step.project, step_data)
-    # Assumes _sra_columns
-    bp_idx = sra_step._column_index('bio_project')
-    platform_idx = sra_step._column_index('platform')
-    instr_idx = sra_step._column_index('instrument_model')
+    # Creates step from this select statement
+    # SELECT bio_project, instrument_model, library_paired, COUNT(*), SUM(total_spots), SUM(total_bases)
+    # GROUP BY bio_project, instrument_model, library_paired
+    with StepDatabase([sra_step]) as db:
+        column_data_types, rows = db.select_all_tables(
+            "bio_project, instrument_model, library_paired, " +
+            "COUNT(*) as count, SUM(total_spots) as spots, SUM(total_bases) as bases",
+            group_by_part="bio_project, instrument_model, library_paired")
 
-    # print(table_step.get_rows())
-    columns = (())
-    rows = []
-    step.set_table_data(rows, columns)
+    # Add Giga columns
+    rows = [r + (round(r[-2] / 1000000, 1), round(r[-1] / 1000000, 1)) for r in rows]
+    column_data_types += [('spots_G', 'decimal'), ('bases_G', 'decimal')]
+    #
+    step = TableStep(sra_step.project, step_data, remove_data=True)
+    step.set_table_data(rows, column_data_types)
     step.save()
     return step
-
-
-    # ('bio_project', 'str'),  # Group column
-    # ('platform', 'str'),
-    # ('instrument_model', 'str'),
-    # ('library_strategy', 'str'),
-    # ('library_source', 'str'),
-    # ('library_selection', 'str'),
-    # ('library_paired', 'str'),
-    # ('total_spots', 'int'),
-    # ('total_bases', 'int'),
