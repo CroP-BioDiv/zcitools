@@ -39,6 +39,14 @@ data_type_python = dict(
     decimal=Decimal,
 )
 
+data_type_sqlite = dict(
+    seq_ident='text',
+    str='text',
+    int='integer',
+    date='text',
+    decimal='numeric',  # 'real',
+)
+
 
 # Columns are in format [(name, data_type), ...]
 def columns_needs_casting(data_types):

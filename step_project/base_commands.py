@@ -43,6 +43,9 @@ class Command:
         self.project = project
         self.args = args
 
+    def get_command_type(self):
+        return self._COMMAND_TYPE
+
     @staticmethod
     def set_arguments(parser):
         raise NotImplementedError(f'Method {self.__class__.__name__}.set_arguments(parser) is not implemented!')

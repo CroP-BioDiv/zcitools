@@ -1,5 +1,5 @@
 from collections import defaultdict
-from step_project.common.table.steps import TableGroupedStep
+from step_project.common.table.steps import TableStep, TableGroupedStep
 from common_utils.misc import split_list, YYYYMMDD_2_date
 from common_utils.xml_dict import XmlDict
 from ...utils.entrez import Entrez
@@ -130,3 +130,29 @@ def extract_data(record):
                    bases=int(r.attrib.get('total_bases') or 0))
               for r in runs]
     )
+
+
+def group_sra_data(step_data, sra_step):
+    step = TableStep(sra_step.project, step_data)
+    # Assumes _sra_columns
+    bp_idx = sra_step._column_index('bio_project')
+    platform_idx = sra_step._column_index('platform')
+    instr_idx = sra_step._column_index('instrument_model')
+
+    # print(table_step.get_rows())
+    columns = (())
+    rows = []
+    step.set_table_data(rows, columns)
+    step.save()
+    return step
+
+
+    # ('bio_project', 'str'),  # Group column
+    # ('platform', 'str'),
+    # ('instrument_model', 'str'),
+    # ('library_strategy', 'str'),
+    # ('library_source', 'str'),
+    # ('library_selection', 'str'),
+    # ('library_paired', 'str'),
+    # ('total_spots', 'int'),
+    # ('total_bases', 'int'),

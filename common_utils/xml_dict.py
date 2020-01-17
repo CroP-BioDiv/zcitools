@@ -19,7 +19,7 @@ class XmlDict:
 
     def get(self, attr):
         n = self._children.get(attr)
-        if n:
+        if n is not None:
             return XmlDict(n)
 
     def __iter__(self):

@@ -6,13 +6,12 @@ Table data can be stored in different formats, depending on step implementation.
 
 Notes:
  - loading of table data is lazy and cached.
- - table step stores column types but doesn't force casting data into them. That is Relation task
+ - ?table step stores column types but doesn't force casting data into them
 
 Step interface regarding table data structure:
  - get_rows()
  - get_column_values(column)
  - get_column_values_by_type(data_type)
- - get_relation()
 """
 
 import csv
@@ -23,7 +22,6 @@ from common_utils.exceptions import ZCItoolsValueError
 from common_utils.show import print_table
 from common_utils.file_utils import ensure_directory, append_line_to_file, read_file_as_list
 from common_utils.value_data_types import KNOWN_DATA_TYPES
-from .relation import Relation
 
 
 def _check_columns(columns):
@@ -109,6 +107,15 @@ Table data is stored in table.csv with header, separator ;, quote character ".
             _write_csv(self._get_table_filename(), self._columns, self._rows)
 
     # Retrieve data methods
+    def get_column_with_data_types(self):
+        return self._columns
+
+    def get_column_names(self):
+        return [c for c, _ in self._columns]
+
+    def get_data_types(self):
+        return [dt for _, dt in self._columns]
+
     def get_rows(self):
         if self._rows is None:
             self._rows = _read_csv(self._get_table_filename())
@@ -135,9 +142,6 @@ Table data is stored in table.csv with header, separator ;, quote character ".
         # Iterate through column values
         idx = self._column_index_by_type(data_type)
         return set(row[idx] for row in self.get_rows())
-
-    def get_relation(self):
-        return Relation(self.get_rows(), columns_data_types=self._columns)
 
     # Show data
     def show_data(self, params=None):
@@ -196,11 +200,11 @@ Groups that do not have data are store as a list in file no_data.txt
     def get_rows(self):
         # ToDo: dodati prvu kolonu
         if self._rows is None:
-            data_dir = _data_subdirectory()
+            data_dir = self._data_subdirectory()
             if os.path.isdir(data_dir):
                 self._rows = list(
                     itertools.chain.from_iterable(
-                        [[g] + r for r in _read_csv(os.path.join(data_dir, group))]
+                        [[group] + r for r in _read_csv(os.path.join(data_dir, group))]
                         for group in os.listdir(data_dir)))
             else:
                 self._rows = []

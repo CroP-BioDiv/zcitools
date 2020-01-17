@@ -1,3 +1,4 @@
+import os.path
 from step_project.base_commands import Command, CreateStepCommand
 
 # Check base.py for description
@@ -23,35 +24,35 @@ Additional arguments specify how to interpret input data.
 
 
 class TableSelect(Command):
-    _COMMAND = 'table_select'
-    _HELP = "SQL select like query"
+    _COMMAND = 'select'
+    _HELP = "SQL select query on table steps"
+    _PRESENTATION = False
 
     @staticmethod
     def set_arguments(parser):
-        parser.add_argument('step', help='Main table step name')
-        parser.add_argument('-o', '--output', help='Output filename')
-        parser.add_argument('-s', '--select', help='Select part')
-        # Format "column_1 table_step column_2". Means: relation.column_1 = table_step column_2
-        parser.add_argument('-j', '--join', nargs=3, action='append', help='From part (join)')
+        parser.add_argument(
+            'steps', nargs='+', help='Table steps. From part. Tables are named a, b, c, ... in order of appearance.')
+        parser.add_argument('-s', '--select', help='Select part. Format "[<table>.]column [[AS] name], *"')
         parser.add_argument('-w', '--where', help='Where part')
+        parser.add_argument('-g', '--group-by', help='Group by part')
+        parser.add_argument('-H', '--having', help='Having part')
+        parser.add_argument('-o', '--order-by', help='Order part')
+        parser.add_argument('-r', '--result', default='print', help='Result into: print, excel, step')
 
-    def run(self):
-        params = self.args
-        step = self.project.read_step(params.step)
-        relation = step.get_relation()
-        #
-        if params.join:
-            for c1, step, c2 in join:
-                s = self.project.read_step(step)
-                relation = relation.join(c1, s.get_relation(), c2)
-        #
-        if params.where:
-            relation = relation.where(params.where)
-        #
-        if params.select:
-            relation = relation.select([s.strip() for s in params.select.split(',')])
-        #
-        if params.output:
-            relation.to_excel(params.output)
-        else:
-            relation.print_data()
+    def _is_step_cmd(self):
+        return self.args.result[0].lower() == 's'
+
+    def get_command_type(self):
+        return 'new_step' if self._is_step_cmd() else None
+
+    def prev_steps(self):
+        return [os.path.normpath(p) for p in self.args.steps]
+
+    def step_base_name(self):
+        return self._COMMAND
+
+    def run(self, step_data=None):
+        from .select import select_data
+        ps = self.args
+        steps = [self.project.read_step(s, check_data_type=('table', 'table_grouped')) for s in ps.steps]
+        select_data(step_data, ps.result, steps, ps.select, ps.where, ps.group_by, ps.having, ps.order_by)

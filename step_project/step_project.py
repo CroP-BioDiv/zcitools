@@ -58,16 +58,17 @@ class StepProject:
         parser = self._get_parser(command, False)
         args = parser.parse_args()
         command_obj = self.commands_map[command](self, args)
+        command_type = command_obj.get_command_type()
 
         # General work
-        if not command_obj._COMMAND_TYPE:
+        if not command_type:
             if command != 'init':
                 if not self._check_is_project_valid():
                     return
             command_obj.run()
 
         # Create new step
-        elif command_obj._COMMAND_TYPE == 'new_step':
+        elif command_type == 'new_step':
             if not self._check_is_project_valid():
                 return
 
