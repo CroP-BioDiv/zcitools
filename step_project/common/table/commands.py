@@ -37,7 +37,9 @@ class TableSelect(Command):
         parser.add_argument('-g', '--group-by', help='Group by part')
         parser.add_argument('-H', '--having', help='Having part')
         parser.add_argument('-o', '--order-by', help='Order part')
+        #
         parser.add_argument('-r', '--result', default='print', help='Result into: print, excel, step')
+        parser.add_argument('-f', '--output-filename', help='Export filename')
 
     def _is_step_cmd(self):
         return self.args.result[0].lower() == 's'
@@ -55,4 +57,5 @@ class TableSelect(Command):
         from .select import select_data
         ps = self.args
         steps = [self.project.read_step(s, check_data_type=('table', 'table_grouped')) for s in ps.steps]
-        select_data(step_data, ps.result, steps, ps.select, ps.where, ps.group_by, ps.having, ps.order_by)
+        select_data(step_data, ps.result, steps, ps.select, ps.where, ps.group_by, ps.having, ps.order_by,
+                    output_filename=ps.output_filename)

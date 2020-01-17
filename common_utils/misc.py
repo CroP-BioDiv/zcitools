@@ -1,7 +1,9 @@
 import os
 import re
+import time
 import datetime
 import importlib
+from functools import wraps
 from .exceptions import ZCItoolsValueError
 
 
@@ -71,3 +73,14 @@ def YYYYMMDD_2_date(s):
     nums = re.findall(r'\d+', s)
     assert len(nums) == 3, s
     return datetime.date(*map(int, nums))
+
+
+def time_it(f):
+    @wraps(f)
+    def wrap(*args, **kw):
+        t = time.time()
+        result = f(*args, **kw)
+        t = 1000 * (time.time() - t)
+        print(f'method:{f.__name__} took: {t:2.4f} ms')
+        return result
+    return wrap
