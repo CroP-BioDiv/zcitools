@@ -151,3 +151,16 @@ def group_sra_data(step_data, sra_step):
     step.set_table_data(rows, column_data_types)
     step.save()
     return step
+
+
+def make_report(assemblies, sra, output_filename):
+    assem_columns = (
+        'bio_project', 'date', 'organism_name', 'assembly_method', 'total_length',
+        'contig_count', 'contig_N50', 'contig_L50')
+    # 'scaffold_count', 'scaffold_N50', 'scaffold_L50', 'scaffold_N75', 'scaffold_N90')
+    with StepDatabase([assemblies, sra]) as db:
+        db.cursor.execute("CREATE INDEX xx ON b (bio_project)")  # For speed
+        for x in db.select_result(f"SELECT {','.join(assem_columns)} FROM a WHERE assembly_method != '' ORDER BY date"):
+            print(x)
+            for y in db.select_result(f"SELECT * FROM b WHERE bio_project = '{x[0]}'"):
+                print('   ', y)

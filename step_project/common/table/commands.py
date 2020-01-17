@@ -23,7 +23,7 @@ Additional arguments specify how to interpret input data.
         return create_table_step(self.project, step_data, args.filename, data_format=args.format, columns=args.columns)
 
 
-class TableSelect(Command):
+class SQLSelect(Command):
     _COMMAND = 'select'
     _HELP = "SQL select query on table steps"
     _PRESENTATION = False

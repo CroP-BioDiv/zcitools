@@ -1,4 +1,4 @@
-from step_project.base_commands import CreateStepCommand, CreateStepFromStepCommand
+from step_project.base_commands import Command, CreateStepCommand, CreateStepFromStepCommand
 
 
 class NCBIAssembliesList(CreateStepCommand):
@@ -21,7 +21,7 @@ class NCBIAssembliesList(CreateStepCommand):
 
 class NCBISraSummary(CreateStepFromStepCommand):
     _COMMAND = 'ncbi_sra_summary'
-    _HELP = "Creates tables step from table of NCBI bio projects"
+    _HELP = "Fetch SRA summaries for bio projects in given table"
     _INPUT_STEP_DATA_TYPE = 'table'
 
     def run(self, step_data):
@@ -31,9 +31,30 @@ class NCBISraSummary(CreateStepFromStepCommand):
 
 class NCBISraGroup(CreateStepFromStepCommand):
     _COMMAND = 'ncbi_sra_group'
-    _HELP = "Creates tables step from table of NCBI SRA data"
+    _HELP = "Creates table step with aggregated data from NCBI SRA summary data"
     _INPUT_STEP_DATA_TYPE = ('table_grouped', 'table')
 
     def run(self, step_data):
         from .fetch_sra_summaries import group_sra_data
         return group_sra_data(step_data, self._input_step())
+
+
+class NCBIAssembliesReport(Command):
+    _COMMAND = 'ncbi_assemblies_report'
+    _HELP = "Creates excel filestep with aggregated data from NCBI SRA summary data"
+
+    @staticmethod
+    def set_arguments(parser):
+        parser.add_argument('assemblies', help='Input table step with assemblies')
+        parser.add_argument('sra', help='Input table step with sra summaries')
+        parser.add_argument('-o', '--output', default='assemblies.xlsx', help='Output filename')
+
+    def _prev_steps(self):
+        return [self.args.assemblies, self.args.sra]
+
+    def run(self):
+        from .fetch_sra_summaries import make_report
+        ps = self.args
+        assem = self.project.read_step(ps.assemblies, check_data_type=('table_grouped', 'table'))
+        sra = self.project.read_step(ps.sra, check_data_type=('table_grouped', 'table'))
+        return make_report(assem, sra, ps.output)
