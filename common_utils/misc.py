@@ -100,6 +100,14 @@ def human_2_int(s):
     raise ZCItoolsValueError(f"String {s} is not an integer!")
 
 
+def coverage_2_human(x):
+    if x:
+        if x >= 100:
+            return f'{round(x)}x'
+        return f'{round(x, 1)}x'.replace('.0', '')
+    return x
+
+
 def time_it(f):
     @wraps(f)
     def wrap(*args, **kw):

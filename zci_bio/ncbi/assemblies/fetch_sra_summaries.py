@@ -1,6 +1,6 @@
 from collections import defaultdict
 from step_project.common.table.steps import TableStep, TableGroupedStep
-from common_utils.misc import split_list, YYYYMMDD_2_date, int_2_human, human_2_int
+from common_utils.misc import split_list, YYYYMMDD_2_date, int_2_human, human_2_int, coverage_2_human
 from common_utils.xml_dict import XmlDict
 from common_utils.step_database import StepDatabase
 from common_utils.import_method import import_pandas
@@ -161,7 +161,7 @@ def make_report(assemblies, sra, params):
     #
     columns = [['BioProject', 'Date', 'Method', 'Genome length', 'Coverage', 'Organism', 'Contigs', 'C N50'],  # 'C L50'
                ['Instrument', 'Paired', 'Spots', 'Bases', 'Count']]
-    data_types = [['str', 'date', 'str', 'int', 'decimal', 'str', 'int', 'int'],
+    data_types = [['str', 'date', 'str', 'int', 'str', 'str', 'int', 'int'],
                   ['str', 'int', 'int', 'int', 'int']]
     table = HierarchicalTable(columns, data_types)
     #
@@ -187,15 +187,16 @@ def make_report(assemblies, sra, params):
             for x in projects:
                 sras = db.select_result(f"SELECT {','.join(sra_columns)} FROM b WHERE bio_project = '{x[0]}'")
                 if sras:
+                    gen_l = x[3]
+                    cov = coverage_2_human(sum(s[-2] for s in sras) / gen_l) if gen_l else ''
+                    x = x[:4] + (f"{coverage_2_human(x[4])}/{cov}",) + x[5:]
                     table.append_row(0, x)
                     table.extend_rows(1, sras)
 
             # Post-format data in more readable form
-            table.update_column(0, 'Coverage', lambda x: round(x, 1) if x else x)
             table.update_column(0, 'Genome length', int_2_human, update_data_type='str')
             table.update_column(1, 'Spots', int_2_human, update_data_type='str')
             table.update_column(1, 'Bases', int_2_human, update_data_type='str')
-            # ToDo: add real coverage
 
     if params.print:
         table.print(show_limit=7)

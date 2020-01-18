@@ -106,7 +106,6 @@ class HierarchicalTable:
     def _extend_data(self):
         columns = [([''] * i + c) for i, c in enumerate(self._columns)]
         rows = [([''] * d + r) for d, r in zip(self._row_depths, self._rows)]
-        print(rows)
         return _extend_rows(self._repr_columns, columns), _extend_rows(self._repr_columns, rows)
 
     def print(self, show_limit=None):

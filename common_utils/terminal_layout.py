@@ -135,7 +135,7 @@ class StringColumns(Box):
         assert all(len(r) == num_cols for r in rows), (num_cols, [r for r in rows if len(r) != num_cols])
 
         # Make strings, to be sure
-        rows = [[str(cell) for cell in r] for r in rows]
+        rows = [['' if cell is None else str(cell) for cell in r] for r in rows]
         if max_data_length:
             l3 = max_data_length - 3
 

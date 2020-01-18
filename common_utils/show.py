@@ -17,13 +17,14 @@ def print_table(header, rows, sort=False, show_limit=None, ident=None):
 
 def print_hierarchical_table(header, rows, show_limit=None):
     # Note: header consists of more rows
+    first_order_rows = [i for i, r in enumerate(rows) if r[0]]
     if show_limit:
-        first_order_rows = [i for i, r in enumerate(rows) if r[0]]
         if len(first_order_rows) > show_limit:
             h_depth = len(header)
             n = (show_limit - 1) // 2
-            rows = rows[:first_order_rows[n]] + ([['...'] * len(rows[0])] * h_depth) + rows[first_order_rows[-n]:]
+            rows = rows[:first_order_rows[n]] + [['...'] * len(rows[0])] + rows[first_order_rows[-n]:]
     print(StringColumns(rows, header=list(zip(*header))))
+    print(f"Num rows: {len(first_order_rows)}")
 
 
 def print_ls_like_list(title, data, sort=False, width=None, min_rows_to_split=None):
