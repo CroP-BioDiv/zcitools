@@ -52,6 +52,7 @@ class NCBIAssembliesReport(Command):
         parser.add_argument('-t', '--to-genome-size', help='To genome size. Format int or float{T|G|M|K}')
         parser.add_argument('-F', '--from-date', help='Project from data')
         parser.add_argument('-T', '--to-date', help='Project to data')
+        parser.add_argument('-m', '--method', help='Filter by assembly method used in the project')
         # Output
         parser.add_argument('-o', '--output', default='assemblies.xlsx', help='Output filename')
         parser.add_argument('-p', '--print', action='store_true', help='Print results instead of exporting them')

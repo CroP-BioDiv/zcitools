@@ -81,12 +81,12 @@ _chat_to_test = sorted(_char_to_ext.items(), reverse=True, key=lambda x: x[1])
 
 
 def int_2_human(n):
-    if n < 1000:  # Not: '0.1K' is longer string than '125'
-        return str(n)
     for c, e in _chat_to_test:
-        if n > 10**(e - 1):
+        if n >= 10**e:
+            if n >= 10**(e + 2):  # 3 digits
+                return f"{n // 10**e}{c}"
             return f'{round(n / 10**e, 1)}{c}'
-    raise ZCItoolsValueError(f"Integer {n} is not convertable?!")
+    return str(n)
 
 
 def human_2_int(s):

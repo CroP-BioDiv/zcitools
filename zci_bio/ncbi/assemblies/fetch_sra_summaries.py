@@ -4,7 +4,7 @@ from common_utils.misc import split_list, YYYYMMDD_2_date, int_2_human, human_2_
 from common_utils.xml_dict import XmlDict
 from common_utils.step_database import StepDatabase
 from common_utils.import_method import import_pandas
-from common_utils.show import print_hierarchical_table
+from common_utils.data_types.table import HierarchicalTable
 from ...utils.entrez import Entrez
 
 _sra_columns = (
@@ -142,12 +142,9 @@ def group_sra_data(step_data, sra_step):
     with StepDatabase([sra_step]) as db:
         column_data_types, rows = db.select_all_tables(
             "bio_project, instrument_model, library_paired, " +
-            "COUNT(*) as count, SUM(total_spots) as spots, SUM(total_bases) as bases",
+            "SUM(total_spots) as total_spots, SUM(total_bases) as total_bases, COUNT(*) as count",
             group_by_part="bio_project, instrument_model, library_paired")
 
-    # Add Giga columns
-    rows = [r + (int_2_human(r[-2]), int_2_human(r[-1])) for r in rows]
-    column_data_types += [('spots_G', 'str'), ('bases_G', 'str')]
     #
     step = TableStep(sra_step.project, step_data, remove_data=True)
     step.set_table_data(rows, column_data_types)
@@ -157,15 +154,22 @@ def group_sra_data(step_data, sra_step):
 
 def make_report(assemblies, sra, params):
     assem_columns = (
-        'bio_project', 'date', 'assembly_method', 'total_length', 'organism_name',
-        'contig_count', 'contig_N50', 'contig_L50')
+        'bio_project', 'date', 'assembly_method', 'total_length', 'coverage', 'organism_name',
+        'contig_count', 'contig_N50')  # , 'contig_L50'
     # 'scaffold_count', 'scaffold_N50', 'scaffold_L50', 'scaffold_N75', 'scaffold_N90')
-    sra_columns = ('instrument_model', 'library_paired', 'count', 'spots_G', 'bases_G')
+    sra_columns = ['instrument_model', 'library_paired', 'total_spots', 'total_bases', 'count']
     #
-    rows = [['BioProject', 'Date', 'Method', 'Genome length', 'Organism', 'Contigs', 'C N50', 'C L50'],
-            ['', 'Instrument', 'Paired', 'Count', 'Spots', 'Bases', '', '']]
+    columns = [['BioProject', 'Date', 'Method', 'Genome length', 'Coverage', 'Organism', 'Contigs', 'C N50'],  # 'C L50'
+               ['Instrument', 'Paired', 'Spots', 'Bases', 'Count']]
+    data_types = [['str', 'date', 'str', 'int', 'decimal', 'str', 'int', 'int'],
+                  ['str', 'int', 'int', 'int', 'int']]
+    table = HierarchicalTable(columns, data_types)
     #
-    where_part = ["assembly_method != ''"]
+    where_part = []
+    if params.method:
+        where_part.append(f"UPPER(assembly_method) like '%{params.method.upper()}%'")
+    else:
+        where_part.append("assembly_method != ''")
     if params.from_genome_size:
         where_part.append(f"total_length >= {human_2_int(params.from_genome_size)}")
     if params.to_genome_size:
@@ -183,13 +187,17 @@ def make_report(assemblies, sra, params):
             for x in projects:
                 sras = db.select_result(f"SELECT {','.join(sra_columns)} FROM b WHERE bio_project = '{x[0]}'")
                 if sras:
-                    x = list(x)
-                    x[3] = int_2_human(x[3])
-                    rows.append(x)
-                    rows.extend(('',) + y + ('', '') for y in sras)
+                    table.append_row(0, x)
+                    table.extend_rows(1, sras)
+
+            # Post-format data in more readable form
+            table.update_column(0, 'Coverage', lambda x: round(x, 1) if x else x)
+            table.update_column(0, 'Genome length', int_2_human, update_data_type='str')
+            table.update_column(1, 'Spots', int_2_human, update_data_type='str')
+            table.update_column(1, 'Bases', int_2_human, update_data_type='str')
+            # ToDo: add real coverage
 
     if params.print:
-        print_hierarchical_table(rows[:2], rows[2:], show_limit=7)
+        table.print(show_limit=7)
     else:
-        df = import_pandas().DataFrame(rows, columns=None)
-        df.to_excel(params.output_filename, index=False)
+        table.to_excel(params.output)
