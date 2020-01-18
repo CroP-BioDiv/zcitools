@@ -75,6 +75,31 @@ def YYYYMMDD_2_date(s):
     return datetime.date(*map(int, nums))
 
 
+#
+_char_to_ext = dict(T=12, G=9, M=6, K=3)
+_chat_to_test = sorted(_char_to_ext.items(), reverse=True, key=lambda x: x[1])
+
+
+def int_2_human(n):
+    if n < 1000:  # Not: '0.1K' is longer string than '125'
+        return str(n)
+    for c, e in _chat_to_test:
+        if n > 10**(e - 1):
+            return f'{round(n / 10**e, 1)}{c}'
+    raise ZCItoolsValueError(f"Integer {n} is not convertable?!")
+
+
+def human_2_int(s):
+    if isinstance(s, int):
+        return s
+    if s.isdigit():
+        return int(s)
+    e = _char_to_ext.get(s[-1].upper())
+    if e:
+        return round(float(s[:-1]) * 10**e)
+    raise ZCItoolsValueError(f"String {s} is not an integer!")
+
+
 def time_it(f):
     @wraps(f)
     def wrap(*args, **kw):

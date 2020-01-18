@@ -127,11 +127,12 @@ class StringBox(StringListBox):
 class StringColumns(Box):
     # Simple table from given data
     def __init__(self, rows, header=None, max_data_length=None, padding=1):
+        # Note: header element is string or tuple if header is in more columns
         if header:
             num_cols = len(header)
         else:
             num_cols = len(rows[0])
-        assert all(len(r) == num_cols for r in rows), [r for r in rows if len(r) != num_cols]
+        assert all(len(r) == num_cols for r in rows), (num_cols, [r for r in rows if len(r) != num_cols])
 
         # Make strings, to be sure
         rows = [[str(cell) for cell in r] for r in rows]
@@ -146,7 +147,12 @@ class StringColumns(Box):
             rows = [[_f(cell) for cell in r] for r in rows]
 
         if header:
-            columns = [StringListBox([h, '-' * len(h)] + lines, padding=padding) for h, *lines in zip(header, *rows)]
+            if isinstance(header[0], (tuple, list)):
+                columns = [StringListBox(list(h) + ['-' * len(h)] + lines, padding=padding)
+                           for h, *lines in zip(header, *rows)]
+            else:
+                columns = [StringListBox([h, '-' * len(h)] + lines, padding=padding)
+                           for h, *lines in zip(header, *rows)]
         else:
             columns = [StringListBox(lines, padding=padding) for lines in zip(*rows)]
 

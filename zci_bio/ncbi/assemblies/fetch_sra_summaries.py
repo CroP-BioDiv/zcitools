@@ -1,9 +1,10 @@
 from collections import defaultdict
 from step_project.common.table.steps import TableStep, TableGroupedStep
-from common_utils.misc import split_list, YYYYMMDD_2_date
+from common_utils.misc import split_list, YYYYMMDD_2_date, int_2_human, human_2_int
 from common_utils.xml_dict import XmlDict
 from common_utils.step_database import StepDatabase
 from common_utils.import_method import import_pandas
+from common_utils.show import print_hierarchical_table
 from ...utils.entrez import Entrez
 
 _sra_columns = (
@@ -134,12 +135,6 @@ def extract_data(record):
     )
 
 
-def _in_G(n):
-    if n > 10**8:
-        return f'{round(n / 10**9, 1)}G'
-    return f'{round(n / 10**6, 1)}M'
-
-
 def group_sra_data(step_data, sra_step):
     # Creates step from this select statement
     # SELECT bio_project, instrument_model, library_paired, COUNT(*), SUM(total_spots), SUM(total_bases)
@@ -151,7 +146,7 @@ def group_sra_data(step_data, sra_step):
             group_by_part="bio_project, instrument_model, library_paired")
 
     # Add Giga columns
-    rows = [r + (_in_G(r[-2]), _in_G(r[-1])) for r in rows]
+    rows = [r + (int_2_human(r[-2]), int_2_human(r[-1])) for r in rows]
     column_data_types += [('spots_G', 'str'), ('bases_G', 'str')]
     #
     step = TableStep(sra_step.project, step_data, remove_data=True)
@@ -160,7 +155,7 @@ def group_sra_data(step_data, sra_step):
     return step
 
 
-def make_report(assemblies, sra, output_filename):
+def make_report(assemblies, sra, params):
     assem_columns = (
         'bio_project', 'date', 'assembly_method', 'total_length', 'organism_name',
         'contig_count', 'contig_N50', 'contig_L50')
@@ -169,15 +164,32 @@ def make_report(assemblies, sra, output_filename):
     #
     rows = [['BioProject', 'Date', 'Method', 'Genome length', 'Organism', 'Contigs', 'C N50', 'C L50'],
             ['', 'Instrument', 'Paired', 'Count', 'Spots', 'Bases', '', '']]
-    with StepDatabase([assemblies, sra]) as db:
-        db.cursor.execute("CREATE INDEX xx ON b (bio_project)")  # For speed
-        for x in db.select_result(f"SELECT {','.join(assem_columns)} FROM a WHERE assembly_method != '' ORDER BY date"):
-            sras = db.select_result(f"SELECT {','.join(sra_columns)} FROM b WHERE bio_project = '{x[0]}'")
-            if sras:
-                x = list(x)
-                x[3] = _in_G(x[3])
-                rows.append(x)
-                rows.extend(('',) + y for y in sras)
+    #
+    where_part = ["assembly_method != ''"]
+    if params.from_genome_size:
+        where_part.append(f"total_length >= {human_2_int(params.from_genome_size)}")
+    if params.to_genome_size:
+        where_part.append(f"total_length <= {human_2_int(params.to_genome_size)}")
+    if params.from_date:
+        where_part.append(f"date >= '{params.from_date}'")
+    if params.to_date:
+        where_part.append(f"date >= '{params.to_date}'")
 
-    df = import_pandas().DataFrame(rows, columns=None)
-    df.to_excel(output_filename, index=False)
+    with StepDatabase([assemblies, sra]) as db:
+        projects = db.select_result(
+            f"SELECT {','.join(assem_columns)} FROM a WHERE {' AND '.join(where_part)} ORDER BY date")
+        if projects:
+            db.cursor.execute("CREATE INDEX xx ON b (bio_project)")  # For speed
+            for x in projects:
+                sras = db.select_result(f"SELECT {','.join(sra_columns)} FROM b WHERE bio_project = '{x[0]}'")
+                if sras:
+                    x = list(x)
+                    x[3] = int_2_human(x[3])
+                    rows.append(x)
+                    rows.extend(('',) + y + ('', '') for y in sras)
+
+    if params.print:
+        print_hierarchical_table(rows[:2], rows[2:], show_limit=7)
+    else:
+        df = import_pandas().DataFrame(rows, columns=None)
+        df.to_excel(params.output_filename, index=False)

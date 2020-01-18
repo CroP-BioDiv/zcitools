@@ -47,7 +47,14 @@ class NCBIAssembliesReport(Command):
     def set_arguments(parser):
         parser.add_argument('assemblies', help='Input table step with assemblies')
         parser.add_argument('sra', help='Input table step with sra summaries')
+        # Filters
+        parser.add_argument('-f', '--from-genome-size', help='From genome size. Format int or float{T|G|M|K}')
+        parser.add_argument('-t', '--to-genome-size', help='To genome size. Format int or float{T|G|M|K}')
+        parser.add_argument('-F', '--from-date', help='Project from data')
+        parser.add_argument('-T', '--to-date', help='Project to data')
+        # Output
         parser.add_argument('-o', '--output', default='assemblies.xlsx', help='Output filename')
+        parser.add_argument('-p', '--print', action='store_true', help='Print results instead of exporting them')
 
     def _prev_steps(self):
         return [self.args.assemblies, self.args.sra]
@@ -57,4 +64,4 @@ class NCBIAssembliesReport(Command):
         ps = self.args
         assem = self.project.read_step(ps.assemblies, check_data_type=('table_grouped', 'table'))
         sra = self.project.read_step(ps.sra, check_data_type=('table_grouped', 'table'))
-        return make_report(assem, sra, ps.output)
+        return make_report(assem, sra, ps)
