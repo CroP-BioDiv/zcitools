@@ -90,12 +90,18 @@ class Cache:
             elif os.path.isdir(f):
                 self._save_directory(zip_f, d)
 
+    def get_record_filename(self, record_ident):
+        return os.path.join(self.cache_dir, record_ident)
+
+    def ensure_location(self):
+        ensure_directory(self.cache_dir)
+
     def set_record(self, record_ident, *step_files):
         if not self._dir_exists:
             ensure_directory(self.cache_dir)
             self._dir_exists = True
 
-        with ZipFile(os.path.join(self.cache_dir, record_ident), mode='w', compression=ZIP_BZIP2) as zip_f:
+        with ZipFile(self.get_record_filename(record_ident), mode='w', compression=ZIP_BZIP2) as zip_f:
             for f in step_files:
                 if os.path.isfile(f):
                     self._save_file(zip_f, f)
@@ -105,11 +111,11 @@ class Cache:
                     raise ZCItoolsValueError(f"Cache: file/directory to store ({f}) doesn't exist!")
 
     def has_record(self, record_ident):
-        return self._dir_exists and os.path.isfile(os.path.join(self.cache_dir, record_ident))
+        return self._dir_exists and os.path.isfile(self.get_record_filename(record_ident))
 
     def get_record(self, record_ident, save_location, info=False):
         # Extract record data into given location.
-        zip_filename = os.path.join(self.cache_dir, record_ident)
+        zip_filename = self.get_record_filename(record_ident)
         if os.path.isfile(zip_filename):
             with ZipFile(zip_filename, 'r') as zip_f:
                 for z_i in zip_f.infolist():

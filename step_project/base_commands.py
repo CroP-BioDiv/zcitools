@@ -21,14 +21,14 @@ Class has to implement:
  - _HELP                 : (attribute) command help text
  - set_arguments(parser) : (static method) sets command's arguments
  - run(step_data/step/-) : runs command with given arguments
+ - cache_identifier()    : returns None or dict(static=bool, data_identifier=list of strings)
+                           Uniquelly specify how step data is created from project start.
+                           Used for caching data.
 
 Create new step command also has to implement:
  - _PRESENTATION         : (attribute) bool describing is step presentation.
  - finish(step_object)   : finish previously created step. Used when editing is neeed.
  - prev_steps()          : returns list of input steps
- - cache_identifier()    : returns None or dict(static=bool, data_identifier=list of strings)
-                           Uniquelly specify how step data is created from project start.
-                           Used for caching data.
 
 Create step command's run() method can store additional data for finish() method.
 It is good practice to store that data in file finish.yml.
@@ -38,6 +38,8 @@ It is good practice to store that data in file finish.yml.
 class Command:
     _COMMAND_TYPE = None  # General work
     _COMMAND = None
+    _CACHE_DIR_PROJECT = '_project_cache_'
+    _CACHE_DIR_GLOBAL = os.path.join('..', '..', '_global_cache_')  # Note: not so global cache :-)
 
     def __init__(self, project, args):
         self.project = project
@@ -53,22 +55,28 @@ class Command:
     def run(self):
         raise NotImplementedError(f'Method {self.__class__.__name__}.run() is not implemented!')
 
+    # Caching
+    def cache_identifier(self):
+        return None
+
+    def get_cache_object(self):
+        d = self.cache_identifier()
+        if d:
+            _dir = self._CACHE_DIR_GLOBAL if d['static'] else self._CACHE_DIR_PROJECT
+            if _dir:
+                return Cache(os.path.join(_dir, *d['data_identifier']))
+
 
 class CreateStepCommand(Command):
     _COMMAND_TYPE = 'new_step'
     _PRESENTATION = False
     _STEP_BASE_NAME = None
-    _CACHE_DIR_PROJECT = '_project_cache_'
-    _CACHE_DIR_GLOBAL = os.path.join('..', '..', '_global_cache_')  # Note: not so global cache :-)
 
     def prev_steps(self):
         return [os.path.normpath(p) for p in self._prev_steps()]
 
     def _prev_steps(self):
         return []
-
-    def cache_identifier(self):
-        return None
 
     def run(self, step_data):
         raise NotImplementedError(f'Method {self.__class__.__name__}.run(step_data) is not implemented!')
@@ -78,14 +86,6 @@ class CreateStepCommand(Command):
 
     def finish(self, step_obj):
         pass
-
-    # Caching
-    def get_cache_object(self):
-        d = self.cache_identifier()
-        if d:
-            _dir = self._CACHE_DIR_GLOBAL if d['static'] else self._CACHE_DIR_PROJECT
-            if _dir:
-                return Cache(os.path.join(_dir, *d['data_identifier']))
 
 
 class CreateStepFromStepCommand(CreateStepCommand):
