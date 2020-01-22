@@ -18,8 +18,8 @@ Steps:
  - run zcit command: zcit.py finish {step_name}
 
 Notes:
- - Clustal Omega executable (clustalo) should be on the PATH or
-   environment variable CLUSTAL_OMEGA_EXE should point to it.
+ - QTLCartographer executable (Zmapqtl) should be on the PATH or
+   environment variable QTL_CART_PERMUTATION_EXE should point to it.
  - It is good to use command screen for running the script.
    screen -dm "python3 {script_name}"
 """
