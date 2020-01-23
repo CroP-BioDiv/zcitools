@@ -8,6 +8,7 @@ from zipfile import ZipFile, ZIP_BZIP2
 # Settings
 settings_defaults = dict(
     ps_viewer='evince',
+    image_viewer='gpicview',
     email=None,
 )
 

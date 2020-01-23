@@ -7,7 +7,7 @@ import random
 import subprocess
 from concurrent.futures import ThreadPoolExecutor
 import multiprocessing
-from zipfile import ZipFile
+from zipfile import ZipFile, ZIP_BZIP2
 
 _DEFAULT_EXE_NAME = 'Zmapqtl'
 _ENV_VAR = 'QTL_CART_PERMUTATION_EXE'
@@ -104,7 +104,7 @@ def run(locale=True, threads=None):
 
     # Zip files
     if not locale:
-        with ZipFile('output.zip', 'w') as output:
+        with ZipFile('output.zip', 'w', compression=ZIP_BZIP2) as output:
             for f in output_files:
                 output.write(f)
 
