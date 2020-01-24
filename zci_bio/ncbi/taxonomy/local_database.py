@@ -73,9 +73,10 @@ def create_database(cache_obj, force=False, force_db=False):
         sql_cs = dict((c.split(' ', 1)[0], i) for i, c in enumerate(_rankedlineage_columns))
         # not_empty_idx = [sql_cs[c] for c in ('species', 'genus', 'family')]
         # s_idx = sql_cs['superkingdom']  # not in ('Archaea', 'Bacteria', 'Eukaryota'))
-        k_idx = sql_cs['kingdom']  # 'Viridiplantae'
-        rankedlineage = _read_rows_dict(zip_f, 'rankedlineage', lambda row: row[k_idx] == 'Viridiplantae')
-            # lambda row: any(row[i] for i in not_empty_idx) and row[s_idx] == 'Eukaryota')
+        # k_idx = sql_cs['kingdom']  # 'Viridiplantae'
+        p_idx = sql_cs['phylum']  # 'Streptophyta'
+        rankedlineage = _read_rows_dict(zip_f, 'rankedlineage', lambda row: row[p_idx] == 'Streptophyta')
+        # lambda row: any(row[i] for i in not_empty_idx) and row[s_idx] == 'Eukaryota')
         print('  Info: read rankedlineage', len(rankedlineage))
 
         nodes = _read_rows_dict(zip_f, 'nodes', lambda row: row[0] in rankedlineage)
@@ -118,7 +119,7 @@ def _add_columns(columns, rows, table_data, sql_columns, *add_columns):
 
 
 def _fill_table(conn, cursor, zip_f, table_name, columns):
-    _fill_whole_table(conn, cursor, table_name, columns, _read_rows(zip_f, table_name))
+    _fill_whole_table(conn, cursor, table_name, columns, list(_read_rows(zip_f, table_name)))
 
 
 def _fill_whole_table(conn, cursor, table_name, columns, rows):
@@ -134,7 +135,7 @@ def _fill_whole_table(conn, cursor, table_name, columns, rows):
 
 def _read_rows(zip_f, table_name):
     rows = zip_f.read(f'{table_name}.dmp').decode('utf-8').splitlines()
-    return [[x.strip() for x in r[:-2].split('\t|\t')] for r in rows]
+    return ([x.strip() for x in r[:-2].split('\t|\t')] for r in rows)
 
 
 def _read_rows_dict(zip_f, table_name, filter_method):
