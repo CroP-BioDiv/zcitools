@@ -10,8 +10,9 @@ class NCBITaxonomySet(Command):
 
     @staticmethod
     def set_arguments(parser):
-        parser.add_argument('-f', '--force', action='store_true', help='Force downloading data and databas creation')
+        parser.add_argument('-f', '--force', action='store_true', help='Force downloading data and database creation')
+        parser.add_argument('-d', '--force-db', action='store_true', help='Force databas creation')
 
     def run(self):
         from .local_database import create_database
-        return create_database(self.get_cache_object(), force=self.args.force)
+        return create_database(self.get_cache_object(), force=self.args.force, force_db=self.args.force_db)
