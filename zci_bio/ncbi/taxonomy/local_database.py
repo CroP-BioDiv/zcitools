@@ -74,8 +74,9 @@ def create_database(cache_obj, force=False, force_db=False):
         # not_empty_idx = [sql_cs[c] for c in ('species', 'genus', 'family')]
         # s_idx = sql_cs['superkingdom']  # not in ('Archaea', 'Bacteria', 'Eukaryota'))
         # k_idx = sql_cs['kingdom']  # 'Viridiplantae'
-        p_idx = sql_cs['phylum']  # 'Streptophyta'
-        rankedlineage = _read_rows_dict(zip_f, 'rankedlineage', lambda row: row[p_idx] == 'Streptophyta')
+        # p_idx = sql_cs['phylum']  # 'Streptophyta'
+        c_idx = sql_cs['class']  # 'Magnoliopsida'
+        rankedlineage = _read_rows_dict(zip_f, 'rankedlineage', lambda row: row[c_idx] == 'Magnoliopsida')
         # lambda row: any(row[i] for i in not_empty_idx) and row[s_idx] == 'Eukaryota')
         print('  Info: read rankedlineage', len(rankedlineage))
 
