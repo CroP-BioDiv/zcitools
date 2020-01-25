@@ -4,7 +4,7 @@
 ZCI_MAIN_DIR=/home/ZCI
 
 ZCITOOLS=$ZCI_MAIN_DIR/zcitools/zcitools
-ZCI_PROGRAM_PATHS = `$ZCITOOLS/bin/find_paths.py $ZCI_MAIN_DIR/programs -s`
+ZCI_PROGRAM_PATHS=`$ZCITOOLS/bin/find_paths.py $ZCI_MAIN_DIR/programs -s`
 
 export PATH=$ZCITOOLS/bin:$ZCI_PROGRAM_PATHS:$PATH
 export PYTHONPATH=$ZCITOOLS:$PYTHONPATH

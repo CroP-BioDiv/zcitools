@@ -8,10 +8,8 @@ def find_paths(directory, shell_format=False):
     for group in os.listdir(directory):
         g_dir = os.path.join(directory, group)
         if os.path.isdir(g_dir):
-            print(g_dir)
             for program in os.listdir(g_dir):
                 bin_dir = os.path.join(g_dir, program, 'current', 'bin')
-                print('  ', bin_dir)
                 if os.path.isdir(bin_dir):
                     bin_dirs.append(bin_dir)
 
