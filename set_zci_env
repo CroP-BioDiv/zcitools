@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# Set main ZCI directory
+ZCI_LOCATION=/home/ZCI
+
+ZCITOOLS=$ZCI_LOCATION/zciools/zcitools
+ZCI_PROGRAM_PATHS = `$ZCITOOLS/bin/find_paths.py $ZCI_LOCATION/programs -s`
+
+export PATH=$ZCITOOLS/bin:$ZCI_PROGRAM_PATHS:$PATH
+export PYTHONPATH=$ZCITOOLS:$PYTHONPATH
