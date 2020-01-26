@@ -32,16 +32,16 @@ class SequenceReadsStep(NonProjectCommand):
         parser.add_argument(
             '-o', '--output-filename', default=False, nargs='?', help='Save data. Default <dir>/sequence_reads.yml')
         #
-        parser.add_argument('-i', '--instrument', help='Stores instrument to reads')
-        parser.add_argument('-l', '--read-length', type=int, help='Stores read length to reads')
-        parser.add_argument('-g', '--gap-length', type=int, help='Stores gap length to reads')
+        parser.add_argument('-p', '--platform', default='Illumina', help='Sequencing platform')
+        parser.add_argument('-l', '--read-length', type=int, help='Read length')
+        parser.add_argument('-i', '--insert-length', type=int, help='Insert length')
 
     def run(self):
         import os.path
         from ..utils.sequence_reads import SequenceReads
         args = self.args
         seq_reads = SequenceReads.from_directory(
-            args.directory, instrument=args.instrument, read_length=args.read_length, gap_length=args.gap_length)
+            args.directory, platform=args.platform, read_length=args.read_length, insert_length=args.insert_length)
         print('Sequence reads data:')
         seq_reads.print_data()
         if args.output_filename is not False:  # False means that -o is not set. None means -o without value

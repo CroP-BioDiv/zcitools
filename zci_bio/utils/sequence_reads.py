@@ -9,19 +9,21 @@ from common_utils.file_utils import write_yaml, read_yaml, print_yaml
 # It is used to store data in clean form. This data can be used as input parameters for tools (assemblers.)
 # Data for single reads and paired reads are stored, with there properties.
 # - reads
-# - - instrument: x
+# - - platform: x
 #   - read_length: 150
-#   - files: [r.fastq.gz, ...]
+#   - file: r.fastq.gz
 # - pair_reads:
-# - - instrument: x
+# - - platform: x
 #   - read_length: 150
-#   - gap_length: 300
-#   - files: [[r1.fastq.gz, r2.fastq.gz], ...]
+#   - insert_length: 300
+#   - file_1: r1.fastq.gz
+#   - file_2: r2.fastq.gz
 
-_defaults_reads = dict(instrument=None, read_length=None)
-_defaults_paired_reads = dict(instrument=None, read_length=None, gap_length=None)
+_defaults_reads = dict(platform=None, read_length=None)
+_defaults_paired_reads = dict(platform=None, read_length=None, insert_length=None)
 _omit_files = set(['.adapter.', '.lowqual.'])
 _re_12 = re.compile(r'[^0-9][12][^0-9]')
+_fasta_gz = re.compile(r'fast[aq]\.gz$')
 
 
 class SequenceReads:
@@ -39,11 +41,17 @@ class SequenceReads:
             for r in data.get('paired_reads', []):
                 self.add_paired_read(r)
 
+    #
+    def __iter__(self):
+        for r in self.reads:
+            yield 'S', r
+        for r in self.paired_reads:
+            yield 'PE', r
+
+    #
     def _add_read_files(self, in_arr, r, defaults):
-        d = dict(defaults)
-        d.update(r)
-        d['files'] = list(d['files'])  # Copy it!
-        in_arr.append(d)
+        in_arr.append(dict(defaults))
+        in_arr[-1].update(r)
 
     def add_read(self, r):
         self._add_read_files(self.reads, r, _defaults_reads)
@@ -58,19 +66,32 @@ class SequenceReads:
         print_yaml(dict(reads=self.reads, paired_reads=self.paired_reads))
 
     #
+    def add_relative_path(self, _dir):
+        for r in self.reads:
+            r['file'] = os.path.join(_dir, r['file'])
+        for r in self.paired_reads:
+            r['file_1'] = os.path.join(_dir, r['file_1'])
+            r['file_2'] = os.path.join(_dir, r['file_2'])
+
+    #
     @staticmethod
-    def from_file(filename):
-        data = read_yaml(filename)
-        return SequenceReads(data=data)
+    def from_file(filename, relative_dir=None):
+        sr = SequenceReads(data=read_yaml(filename))
+        _dir = os.path.dirname(filename)
+        if relative_dir:
+            _dir = os.path.join(relative_dir, _dir) if _dir else relative_dir
+        if _dir:
+            sr.add_relative_path(_dir)
+        return sr
 
     @staticmethod
-    def from_directory(directory, instrument=None, read_length=None, gap_length=None):
+    def from_directory(directory, platform=None, read_length=None, insert_length=None):
         # Put lot of (file naming) heuristics in this!
         reads = []  # Just files
         paired_reads = []
 
         files_to_proc = set(f for f in os.listdir(directory)
-                            if f.endswith('fastq.gz') and
+                            if _fasta_gz.search(f) and
                             all(x not in f for x in _omit_files) and
                             os.path.isfile(os.path.join(directory, f)))
 
@@ -91,7 +112,7 @@ class SequenceReads:
 
         #
         return SequenceReads(
-            reads=[dict(files=reads, instrument=instrument, read_length=read_length)] if reads else None,
+            reads=[dict(file=r, platform=platform, read_length=read_length) for r in reads],
             paired_reads=[
-                dict(files=paired_reads, instrument=instrument, read_length=read_length, gap_length=gap_length)]
-            if paired_reads else None)
+                dict(file_1=f1, file_2=f2, platform=platform, read_length=read_length, insert_length=insert_length)
+                for f1, f2 in paired_reads])

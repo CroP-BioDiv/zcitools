@@ -128,7 +128,7 @@ class RunCommand:
         else:
             parser.add_argument('command', help=command)
 
-        if command_cls.get_command_type() == 'new_step':
+        if command_cls._COMMAND_TYPE == 'new_step':
             parser.add_argument('-N', '--step-num', type=int, help='Step num prefix')
             parser.add_argument('-D', '--step-description', help='Step description')
         command_cls.set_arguments(parser)
