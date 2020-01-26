@@ -1,9 +1,32 @@
 import os.path
 import sys
 import argparse
+from collections import defaultdict
 from common_utils.file_utils import write_yaml, read_yaml
 from common_utils.exceptions import ZCItoolsValueError
 from .common import registered_commands as common_commands, registered_steps as common_steps
+
+_zci_general_help = """Usage: python {exe} <command> <arguments>
+Help: python {exe} help <command>
+
+Commands:
+{commands}"""
+
+
+def _format_commands(commands_map, group, filter_m):
+    cmd_groups = defaultdict(dict)
+    for cmd, cls in commands_map.items():
+        if filter_m(cls):
+            cmd_groups[cls._COMMAND_GROUP or ''][cmd] = cls  # Override None with ''
+    if not cmd_groups:
+        return ''
+    bb = '\n'
+    ret = [f'{group} commands:']
+    for c_g, cls in sorted(cmd_groups.items()):
+        ret.append(f'  {c_g or "General"}:')
+        max_l = max(len(c) for c in cls.keys())
+        ret.extend(f"    {cmd.ljust(max_l)} {cl._HELP.strip().split(bb)[0]}" for cmd, cl in sorted(cls.items()))
+    return '\n' + '\n'.join(ret) + '\n'
 
 
 class RunCommand:
@@ -44,10 +67,15 @@ class RunCommand:
                 parser = self._get_parser(command, True)
                 parser.print_help()
             else:
-                print(f"""Usage: python {sys.argv[0]} <command> <arguments>
-        Help: python {sys.argv[0]} help <command>
+                commands = _format_commands(
+                    self.commands_map, 'Non-project', lambda cl: not cl._PROJECT_COMMAND)
+                commands += _format_commands(
+                    self.commands_map, 'Project', lambda cl: cl._PROJECT_COMMAND and not cl._COMMAND_TYPE)
+                commands += _format_commands(
+                    self.commands_map, 'Step', lambda cl: cl._PROJECT_COMMAND and cl._COMMAND_TYPE)
+                # commands = ', '.join(sorted(self.commands_map.keys()))
 
-        Command is one of: {', '.join(sorted(self.commands_map.keys()))}""")
+                print(_zci_general_help.format(exe=sys.argv[0], commands=commands))
             return
 
         command = sys.argv[1].lower()
@@ -99,7 +127,8 @@ class RunCommand:
             parser.add_argument(command, help=command)
         else:
             parser.add_argument('command', help=command)
-        if command != 'init':
+
+        if command_cls.get_command_type() == 'new_step':
             parser.add_argument('-N', '--step-num', type=int, help='Step num prefix')
             parser.add_argument('-D', '--step-description', help='Step description')
         command_cls.set_arguments(parser)

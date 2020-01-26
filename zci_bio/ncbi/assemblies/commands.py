@@ -3,6 +3,7 @@ from step_project.base_commands import ProjectCommand, CreateStepCommand, Create
 
 class NCBIAssembliesList(CreateStepCommand):
     _COMMAND = 'ncbi_assemblies_fetch'
+    _COMMAND_GROUP = 'NCBI'
     _HELP = "Creates table step from NCBI genome assemblies data"
     _STEP_BASE_NAME = 'ncbi_assemblies'
 
@@ -21,6 +22,7 @@ class NCBIAssembliesList(CreateStepCommand):
 
 class NCBISraSummary(CreateStepFromStepCommand):
     _COMMAND = 'ncbi_sra_summary'
+    _COMMAND_GROUP = 'NCBI'
     _HELP = "Fetch SRA summaries for bio projects in given table"
     _INPUT_STEP_DATA_TYPE = 'table'
 
@@ -31,6 +33,7 @@ class NCBISraSummary(CreateStepFromStepCommand):
 
 class NCBISraGroup(CreateStepFromStepCommand):
     _COMMAND = 'ncbi_sra_group'
+    _COMMAND_GROUP = 'NCBI'
     _HELP = "Creates table step with aggregated data from NCBI SRA summary data"
     _INPUT_STEP_DATA_TYPE = ('table_grouped', 'table')
 
@@ -41,6 +44,7 @@ class NCBISraGroup(CreateStepFromStepCommand):
 
 class NCBIAssembliesReport(ProjectCommand):
     _COMMAND = 'ncbi_assemblies_report'
+    _COMMAND_GROUP = 'NCBI'
     _HELP = "Creates excel filestep with aggregated data from NCBI SRA summary data"
 
     @staticmethod
