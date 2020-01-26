@@ -1,7 +1,7 @@
-from step_project.base_commands import Command
+from step_project.base_commands import ProjectCommand
 
 
-class Graph(Command):
+class Graph(ProjectCommand):
     _COMMAND = 'graph'
     _HELP = "Show project structure as a graph"
 

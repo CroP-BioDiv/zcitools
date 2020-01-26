@@ -1,4 +1,4 @@
-import os.path
+import os
 from common_utils.cache import Cache
 
 """
@@ -35,11 +35,12 @@ It is good practice to store that data in file finish.yml.
 """
 
 
-class Command:
+class _Command:
+    _PROJECT_COMMAND = True
     _COMMAND_TYPE = None  # General work
     _COMMAND = None
+    _COMMAND_GROUP = None
     _CACHE_DIR_PROJECT = '_project_cache_'
-    _CACHE_DIR_GLOBAL = os.path.join('..', '..', '_global_cache_')  # Note: not so global cache :-)
 
     def __init__(self, project, args):
         self.project = project
@@ -62,12 +63,24 @@ class Command:
     def get_cache_object(self):
         d = self.cache_identifier()
         if d:
-            _dir = self._CACHE_DIR_GLOBAL if d['static'] else self._CACHE_DIR_PROJECT
+            if d['static']:
+                # Default is not so global cache :-)
+                _dir = os.environ['ZCI_GLOBAL_CACHE'] or os.path.join('..', '..', '_global_cache_')
+            else:
+                _dir = self._CACHE_DIR_PROJECT
             if _dir:
                 return Cache(os.path.join(_dir, *d['data_identifier']))
 
 
-class CreateStepCommand(Command):
+class ProjectCommand(_Command):
+    pass
+
+
+class NonProjectCommand(_Command):
+    _PROJECT_COMMAND = False
+
+
+class CreateStepCommand(ProjectCommand):
     _COMMAND_TYPE = 'new_step'
     _PRESENTATION = False
     _STEP_BASE_NAME = None

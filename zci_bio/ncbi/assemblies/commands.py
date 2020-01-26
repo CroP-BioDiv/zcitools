@@ -1,4 +1,4 @@
-from step_project.base_commands import Command, CreateStepCommand, CreateStepFromStepCommand
+from step_project.base_commands import ProjectCommand, CreateStepCommand, CreateStepFromStepCommand
 
 
 class NCBIAssembliesList(CreateStepCommand):
@@ -39,7 +39,7 @@ class NCBISraGroup(CreateStepFromStepCommand):
         return group_sra_data(step_data, self._input_step())
 
 
-class NCBIAssembliesReport(Command):
+class NCBIAssembliesReport(ProjectCommand):
     _COMMAND = 'ncbi_assemblies_report'
     _HELP = "Creates excel filestep with aggregated data from NCBI SRA summary data"
 

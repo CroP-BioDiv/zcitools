@@ -1,5 +1,5 @@
 import os.path
-from step_project.base_commands import Command, CreateStepCommand
+from step_project.base_commands import ProjectCommand, CreateStepCommand
 
 # Check base.py for description
 
@@ -23,7 +23,7 @@ Additional arguments specify how to interpret input data.
         return create_table_step(self.project, step_data, args.filename, data_format=args.format, columns=args.columns)
 
 
-class SQLSelect(Command):
+class SQLSelect(ProjectCommand):
     _COMMAND = 'select'
     _HELP = "SQL select query on table steps"
     _PRESENTATION = False

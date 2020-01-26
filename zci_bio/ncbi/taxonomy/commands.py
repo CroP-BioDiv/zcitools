@@ -1,7 +1,7 @@
-from step_project.base_commands import Command
+from step_project.base_commands import NonProjectCommand
 
 
-class NCBITaxonomySet(Command):
+class NCBITaxonomySet(NonProjectCommand):  # Works only with cache
     _COMMAND = 'ncbi_taxonomy_set'
     _HELP = "Download data and creates SQLite database in global cache"
 

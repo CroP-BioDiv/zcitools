@@ -8,3 +8,6 @@ ZCI_PROGRAM_PATHS=`$ZCITOOLS/bin/find_paths.py $ZCI_MAIN_DIR/programs -s`
 
 export PATH=$ZCITOOLS/bin:$ZCI_PROGRAM_PATHS:$PATH
 export PYTHONPATH=$ZCITOOLS:$PYTHONPATH
+
+# Used by zcit.py commands
+export ZCI_GLOBAL_CACHE=$ZCI_MAIN_DIR/zcitools/_global_cache_

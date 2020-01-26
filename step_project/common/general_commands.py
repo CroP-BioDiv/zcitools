@@ -1,9 +1,9 @@
 # Note: importing is done in run() methods to prevent crashes because of not used missing libraries!
 from types import SimpleNamespace
-from step_project.base_commands import Command
+from step_project.base_commands import ProjectCommand
 
 
-class InitProject(Command):
+class InitProject(ProjectCommand):
     _COMMAND = 'init'
     _HELP = "Initialize project in given directory name."
 
@@ -17,7 +17,7 @@ class InitProject(Command):
         init_project(self.args.dirname, self.args.description)
 
 
-class Unfinish(Command):
+class Unfinish(ProjectCommand):
     _COMMAND = 'unfinish'
     _HELP = "Undo finish step"
 
@@ -33,7 +33,7 @@ class Unfinish(Command):
             step.save_description(step.get_type_desciption() or dict(), completed=False)
 
 
-class Finish(Command):
+class Finish(ProjectCommand):
     _COMMAND = 'finish'
     _HELP = "Finish step that needed editing."
 
@@ -53,7 +53,7 @@ class Finish(Command):
             command_obj.finish(step)
 
 
-class Clean(Command):
+class Clean(ProjectCommand):
     _COMMAND = 'clean'
     _HELP = "Remove not needed step data (cache and processed files)"
 
@@ -72,7 +72,7 @@ class Clean(Command):
                     step.clean_files()
 
 
-class CleanCache(Command):
+class CleanCache(ProjectCommand):
     _COMMAND = 'cache'
     _HELP = "Remove cache of given steps"
 
@@ -86,7 +86,7 @@ class CleanCache(Command):
             step.remove_cache_files()
 
 
-class Show(Command):
+class Show(ProjectCommand):
     _COMMAND = 'show'
     _HELP = "Print step data"
 

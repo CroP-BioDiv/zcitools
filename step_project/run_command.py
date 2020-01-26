@@ -6,7 +6,7 @@ from common_utils.exceptions import ZCItoolsValueError
 from .common import registered_commands as common_commands, registered_steps as common_steps
 
 
-class StepProject:
+class RunCommand:
     def __init__(self, registered_commands=None, registered_steps=None):
         self.commands_map = dict()  # command -> command class that processes it
         self.steps_map = dict()
@@ -62,9 +62,8 @@ class StepProject:
 
         # General work
         if not command_type:
-            if command != 'init':
-                if not self._check_is_project_valid():
-                    return
+            if command_obj._PROJECT_COMMAND and command != 'init' and not self._check_is_project_valid():
+                return
             command_obj.run()
 
         # Create new step

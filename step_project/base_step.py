@@ -27,7 +27,7 @@ class Step:
     _IS_COLLECTION = False
 
     def __init__(self, project, step_data, remove_data=False, update_mode=False):
-        assert project.__class__.__name__ == 'StepProject', self.__class__.__name__  # For now
+        assert project.__class__.__name__ == 'RunCommand', self.__class__.__name__  # For now
         self.project = project
         self._step_data = step_data
         # step_data['step_name'] is string or list of strings for substeps

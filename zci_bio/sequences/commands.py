@@ -1,4 +1,4 @@
-from step_project.base_commands import Command, CreateStepCommand
+from step_project.base_commands import ProjectCommand, CreateStepCommand
 
 
 class FetchSequencesStep(CreateStepCommand):
@@ -22,7 +22,7 @@ class FetchSequencesStep(CreateStepCommand):
         return fetch_sequences(step_data, step, self.get_cache_object())
 
 
-class SequenceReadsStep(Command):
+class SequenceReadsStep(ProjectCommand):
     _COMMAND = 'sequence_reads'
     _HELP = "Browse given directory and find default sequences reads data."
 
