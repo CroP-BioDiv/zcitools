@@ -107,8 +107,9 @@ class SequenceReads:
                 if other_f in files_to_proc:
                     files_to_proc.discard(other_f)
                     paired_reads.append([f, other_f])
-                else:
-                    reads.append(f)
+                    break
+            else:
+                reads.append(f)
 
         #
         return SequenceReads(
