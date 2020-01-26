@@ -62,7 +62,7 @@ class RunCommand:
 
         # General work
         if not command_type:
-            if command_obj._PROJECT_COMMAND and command != 'init' and not self._check_is_project_valid():
+            if command_obj._PROJECT_COMMAND and not self._check_is_project_valid():
                 return
             command_obj.run()
 

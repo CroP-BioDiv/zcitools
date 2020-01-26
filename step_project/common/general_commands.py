@@ -1,9 +1,9 @@
 # Note: importing is done in run() methods to prevent crashes because of not used missing libraries!
 from types import SimpleNamespace
-from step_project.base_commands import ProjectCommand
+from step_project.base_commands import ProjectCommand, NonProjectCommand
 
 
-class InitProject(ProjectCommand):
+class InitProject(NonProjectCommand):
     _COMMAND = 'init'
     _HELP = "Initialize project in given directory name."
 
