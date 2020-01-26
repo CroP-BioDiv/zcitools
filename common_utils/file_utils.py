@@ -121,6 +121,10 @@ def read_yaml(filename):
             return yaml.load(r, Loader=yaml.CLoader)
 
 
+def print_yaml(data):
+    print(yaml.dump(data, default_flow_style=False))
+
+
 # ZipFile
 def extract_from_zip(zip_f, zip_filename, output_filename):
     with open(output_filename, 'wb') as save_f:
