@@ -11,3 +11,16 @@ export PYTHONPATH=$ZCITOOLS:$PYTHONPATH
 
 # Used by zcit.py commands
 export ZCI_GLOBAL_CACHE=$ZCI_MAIN_DIR/zcitools/_global_cache_
+
+# Autocomplete
+_zcit()
+{
+    local cur opts
+    COMPREPLY=()
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    opts=$(${ZCITOOLS}/bin/zcit.py list_commands | grep -v "Warning:")
+
+    COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+    return 0
+}
+complete -F _zcit zcit.py

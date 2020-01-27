@@ -78,6 +78,12 @@ class RunCommand:
                 print(_zci_general_help.format(exe=sys.argv[0], commands=commands))
             return
 
+        if len(sys.argv) == 2 and sys.argv[1].lower() == 'list_commands':
+            cmds = set(self.commands_map.keys())
+            cmds.add('help')
+            print(' '.join(sorted(cmds)))
+            return
+
         command = sys.argv[1].lower()
         if command not in self.commands_map:
             print(f'Command "{command}" is not supported!')
