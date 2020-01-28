@@ -35,3 +35,12 @@ class NCBITaxonomyNearSpecies(NCBITaxonomySet):  # Works only with cache
     def run(self):
         from .local_database import taxonomy_tree
         return taxonomy_tree(self.get_cache_object(), self.args)
+
+
+class NCBITaxonomyWithAssembly(NCBITaxonomyNearSpecies):  # Works only with cache
+    _COMMAND = 'ncbi_taxonomy_assembly'
+    _HELP = "Show taxonomy tree where species have assembly"
+
+    def run(self):
+        from .local_database import taxonomy_tree_assembly
+        return taxonomy_tree_assembly(self.get_cache_object(), self.args)

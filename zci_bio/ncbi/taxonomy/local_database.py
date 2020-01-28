@@ -1,10 +1,13 @@
 import os.path
 import sqlite3
+import datetime
 from zipfile import ZipFile, ZIP_BZIP2
 from common_utils.net_utils import download_url
 from common_utils.file_utils import silent_remove_file
 from common_utils.exceptions import ZCItoolsValueError
 from common_utils.terminal_layout import TreeBox
+from common_utils.misc import split_list
+from ...utils.entrez import Entrez
 
 # Database is created with new_taxdump data. Check readme file:
 # ftp://ftp.ncbi.nih.gov/pub/taxonomy/new_taxdump/taxdump_readme.txt
@@ -12,6 +15,7 @@ from common_utils.terminal_layout import TreeBox
 # Data and database file are located in cache directory with names taxonomy.zip and taxonomy.db.
 _NCBI_ZIP_FILENAME = 'taxonomy.zip'
 _DB_FILENAME = 'taxonomy.db'
+_NUM_QUERY_SPECIES = 500
 
 _gencode_columns = (
     'code_id INTEGER NOT NULL PRIMARY KEY', 'abbreviation TEXT', 'name TEXT', 'cde TEXT', 'starts TEXT')
@@ -40,6 +44,7 @@ _short_ranks = dict(
     subspecies='ssp', subtribe='st', tribe='t', varietas='var')
 _short_ranks['no rank'] = 'no'
 _short_ranks['species group'] = 'sp g'
+_ranks_have_ncbi_data = ('species', 'subspecies', 'varietas', 'no rank')
 
 _taxa_column_names = ('tax_id', 'parent_tax_id', 'rank', 'tax_name', 'species', 'genus', 'family')
 
@@ -113,7 +118,10 @@ def create_database(cache_obj, force=False, force_db=False):
         cursor.execute(f"CREATE INDEX taxa_species ON taxa ('species')")
         cursor.execute(f"CREATE INDEX taxa_genus ON taxa ('genus')")
         cursor.execute(f"CREATE INDEX taxa_family ON taxa ('family')")
-        # ToDo: create indices
+
+        # NCBI calls cache data
+        cursor.execute(
+            "CREATE TABLE cached_data (tax_id INTEGER, tag TEXT, date TEXT, value TEXT, PRIMARY KEY (tax_id, tag))")
 
     conn.commit()
     conn.close()
@@ -160,23 +168,10 @@ def _read_rows_dict(zip_f, table_name, filter_method):
 # ---------------------------------------------------------
 # Query taxa
 # ---------------------------------------------------------
-def taxonomy_tree(cache_obj, params):
-    db_filename = cache_obj.get_record_filename(_DB_FILENAME)
-
-    if not os.path.isfile(db_filename):
-        print("Error: Taxonomy database doesn't exist!")
-        return
-
-    tt = _TaxonomyTree(
-        db_filename, params.rank, params.tax_name,
-        rank_heigh=params.height.split(',') if params.height else None,
-        rank_low=params.depth.split(',') if params.depth else None)
-    tt.print_tree()
-
-
 class _TaxonomyNode:
     def __init__(self, cursor, row, rank_low):
         self.row = row  # dict
+        self._data = None
         #
         if rank_low and row['rank'] in rank_low:
             self.children = []
@@ -184,10 +179,22 @@ class _TaxonomyNode:
             cursor.execute(f'SELECT * FROM taxa WHERE parent_tax_id = {row["tax_id"]}')
             # Note: fetchall() is important, since same cursor is used in this recursion!
             self.children = [_TaxonomyNode(cursor, _tax_to_dict(c_row), rank_low) for c_row in cursor.fetchall()]
-            # if self.children:
-            #     print(row['rank'], row['tax_name'], len(self.children))
 
-    label = property(lambda self: f"({_short_ranks[self.row['rank']]}) {self.row['tax_name']}")
+    @property
+    def label(self):
+        if self._data:
+            return f"({_short_ranks[self.row['rank']]}) {self.row['tax_name']} [{self._data}]"
+        return f"({_short_ranks[self.row['rank']]}) {self.row['tax_name']}"
+
+    def _get_nodes_of_rank(self, ranks, nodes):
+        if self.row['rank'] in ranks:
+            nodes[self.row['tax_id']] = self
+        for c in self.children:
+            c._get_nodes_of_rank(ranks, nodes)
+
+    def _filter_with_data(self):
+        self.children = [c for c in self.children if c._filter_with_data()]
+        return self._data or bool(self.children)
 
 
 class _TaxonomyTree:
@@ -235,7 +242,6 @@ class _TaxonomyTree:
     def _ancestor_start_row(self, row, rank_heigh):
         start_row = row
         while True:
-            print('_ancestor_start_row', rank_heigh, row)
             ac_row = self.cursor.execute(f'SELECT * FROM taxa WHERE tax_id = {row["parent_tax_id"]}').fetchone()
             if not ac_row:
                 return start_row
@@ -245,8 +251,85 @@ class _TaxonomyTree:
             #
             row = ac_row
 
+    #
+    def set_data_to_nodes_of_rank(self, tag, ranks, fetch_method):
+        # Find nodes to check
+        nodes = dict()
+        self.root._get_nodes_of_rank(ranks, nodes)
+
+        # What is cached
+        self.cursor.execute(
+            f"SELECT * FROM cached_data WHERE tag = '{tag}' and tax_id in ({','.join(map(str, nodes.keys()))})")
+        for row in self.cursor:
+            nodes[row[0]]._data = row[-1]  # Can be None
+            nodes.pop(row[0])
+
+        if nodes:
+            f_data = fetch_method(nodes)
+            for tax_id, value in f_data.items():
+                nodes[tax_id]._data = value
+            # Store into database
+            d = str(datetime.date.today())  # ISO format
+            self.cursor.executemany(f'INSERT INTO cached_data VALUES (?, ?, ?, ?)',
+                                    [(tax_id, tag, d, f_data.get(tax_id)) for tax_id, n in nodes.items()])
+            self.conn.commit()
+        #
+        self.root._filter_with_data()
+
+    #
     def print_tree(self):
         if not self.root:
             print('No tree!')
             return
         print(TreeBox(self.root))
+
+
+#
+def _get_tree(cache_obj, params):
+    db_filename = cache_obj.get_record_filename(_DB_FILENAME)
+
+    if not os.path.isfile(db_filename):
+        print("Error: Taxonomy database doesn't exist!")
+        return
+
+    return _TaxonomyTree(
+        db_filename, params.rank, params.tax_name,
+        rank_heigh=params.height.split(',') if params.height else None,
+        rank_low=params.depth.split(',') if params.depth else None)
+
+
+def taxonomy_tree(cache_obj, params):
+    with _get_tree(cache_obj, params) as tt:
+        tt.print_tree()
+
+
+def taxonomy_tree_assembly(cache_obj, params):
+    with _get_tree(cache_obj, params) as tt:
+        tt.set_data_to_nodes_of_rank('assembly', _ranks_have_ncbi_data, _find_assemblies)
+        tt.print_tree()
+
+
+def _find_assemblies(sp_nodes):
+    entrez = Entrez()
+
+    # Fetch assembly ids
+    print(f'Info: seaching for {len(sp_nodes)} species!', flush=True)
+    assemblies = []
+    for ors in split_list([n.row['tax_name'] for n in sp_nodes.values()], _NUM_QUERY_SPECIES):
+        print('.', end='', flush=True)
+        data = entrez.esearch(db='assembly', term=' OR '.join(f'"{o}"[ORGN]' for o in ors), retmax=_NUM_QUERY_SPECIES)
+        assemblies.extend(data['IdList'])
+    print()
+
+    # Fetch assemblies to see what species are in
+    print(f'Info: seaching for {len(assemblies)} assemblies!', flush=True)
+    ret = dict()
+    for ass_ids in split_list(list(assemblies), _NUM_QUERY_SPECIES):
+        print('.', end='', flush=True)
+        records = entrez.esummary(db='assembly', id=','.join(ass_ids), retmax=_NUM_QUERY_SPECIES)
+        # (?) a['SpeciesTaxid']
+        # for a in records['DocumentSummarySet']['DocumentSummary']:
+        #     print(a['SpeciesTaxid'], a['Taxid'], a['AssemblyAccession'])
+        ret.update((int(a['Taxid']), a['AssemblyAccession']) for a in records['DocumentSummarySet']['DocumentSummary']
+                   if int(a['Taxid']) in sp_nodes)
+    return ret
