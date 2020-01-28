@@ -157,3 +157,16 @@ class StringColumns(Box):
             columns = [StringListBox(lines, padding=padding) for lines in zip(*rows)]
 
         super().__init__('c', boxes=columns)
+
+
+class TreeBox(Box):
+    # root has interface attr children (list) and attr label (str)
+    def __init__(self, root, direction='column'):
+        self.direction = direction[0].lower()  # For get_opposite_direction()
+        #
+        boxes = [StringBox(root.label)]
+        if len(root.children) == 1:
+            boxes.append(TreeBox(root.children[0], direction))
+        else:
+            boxes.append(Box(self.get_opposite_direction(), boxes=[TreeBox(c) for c in root.children]))
+        super().__init__(direction, boxes=boxes)

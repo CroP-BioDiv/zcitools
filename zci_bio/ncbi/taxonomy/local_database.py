@@ -4,6 +4,7 @@ from zipfile import ZipFile, ZIP_BZIP2
 from common_utils.net_utils import download_url
 from common_utils.file_utils import silent_remove_file
 from common_utils.exceptions import ZCItoolsValueError
+from common_utils.terminal_layout import TreeBox
 
 # Database is created with new_taxdump data. Check readme file:
 # ftp://ftp.ncbi.nih.gov/pub/taxonomy/new_taxdump/taxdump_readme.txt
@@ -33,6 +34,18 @@ _taxidlineage_columns = ('tax_id INTEGER NOT NULL PRIMARY KEY', 'lineage TEXT')
 
 _delnodes_columns = ('tax_id INTEGER NOT NULL PRIMARY KEY',)
 _merged_columns = ('old_tax_id INTEGER NOT NULL PRIMARY KEY', 'new_tax_id INTEGER')
+_short_ranks = dict(
+    family='f', forma='forma', genus='gen', order='o', section='section', series='series',
+    species='sp', subclass='scl', subfamily='sfam', subgenus='sg', suborder='so', subsection='ssec',
+    subspecies='ssp', subtribe='st', tribe='t', varietas='var')
+_short_ranks['no rank'] = 'no'
+_short_ranks['species group'] = 'sp g'
+
+_taxa_column_names = ('tax_id', 'parent_tax_id', 'rank', 'tax_name', 'species', 'genus', 'family')
+
+
+def _tax_to_dict(row):
+    return dict(zip(_taxa_column_names, row))
 
 
 def create_database(cache_obj, force=False, force_db=False):
@@ -92,10 +105,11 @@ def create_database(cache_obj, force=False, force_db=False):
         _add_columns(
             columns, rows, rankedlineage, _rankedlineage_columns,
             'tax_name', 'species', 'genus', 'family')  # , 'order_', 'class', 'phylum', 'kingdom', 'superkingdom')
-        _add_columns(columns, rows, taxidlineage, _taxidlineage_columns, 'lineage')
+        # _add_columns(columns, rows, taxidlineage, _taxidlineage_columns, 'lineage')
 
         _fill_whole_table(conn, cursor, 'taxa', columns, rows)
 
+        cursor.execute(f"CREATE INDEX taxa_parent_tax_id ON taxa ('parent_tax_id')")
         cursor.execute(f"CREATE INDEX taxa_species ON taxa ('species')")
         cursor.execute(f"CREATE INDEX taxa_genus ON taxa ('genus')")
         cursor.execute(f"CREATE INDEX taxa_family ON taxa ('family')")
@@ -141,3 +155,98 @@ def _read_rows(zip_f, table_name):
 
 def _read_rows_dict(zip_f, table_name, filter_method):
     return dict((r[0], r) for r in _read_rows(zip_f, table_name) if filter_method(r))
+
+
+# ---------------------------------------------------------
+# Query taxa
+# ---------------------------------------------------------
+def taxonomy_tree(cache_obj, params):
+    db_filename = cache_obj.get_record_filename(_DB_FILENAME)
+
+    if not os.path.isfile(db_filename):
+        print("Error: Taxonomy database doesn't exist!")
+        return
+
+    tt = _TaxonomyTree(
+        db_filename, params.rank, params.tax_name,
+        rank_heigh=params.height.split(',') if params.height else None,
+        rank_low=params.depth.split(',') if params.depth else None)
+    tt.print_tree()
+
+
+class _TaxonomyNode:
+    def __init__(self, cursor, row, rank_low):
+        self.row = row  # dict
+        #
+        if rank_low and row['rank'] in rank_low:
+            self.children = []
+        else:
+            cursor.execute(f'SELECT * FROM taxa WHERE parent_tax_id = {row["tax_id"]}')
+            # Note: fetchall() is important, since same cursor is used in this recursion!
+            self.children = [_TaxonomyNode(cursor, _tax_to_dict(c_row), rank_low) for c_row in cursor.fetchall()]
+            # if self.children:
+            #     print(row['rank'], row['tax_name'], len(self.children))
+
+    label = property(lambda self: f"({_short_ranks[self.row['rank']]}) {self.row['tax_name']}")
+
+
+class _TaxonomyTree:
+    # Represent taxonomy tree.
+    # Root is given with given name and rank, or it's ancestor.
+    # Optional depth is given with rank_low.
+    def __init__(self, db_filename, rank, tax_name, rank_heigh=None, rank_low=None):
+        if not os.path.isfile(db_filename):
+            raise ZCItoolsValueError(f"Taxonomy database {db_filename} doesn't exist!")
+
+        self.conn = sqlite3.connect(db_filename)
+        self.cursor = self.conn.cursor()
+
+        # Find start row
+        self.start_row = self._start_row(rank, tax_name)
+        if self.start_row and rank_heigh:
+            self.start_row = self._ancestor_start_row(self.start_row, rank_heigh)
+
+        # Find subtree
+        self.root = None
+        if self.start_row:
+            self.root = _TaxonomyNode(self.cursor, self.start_row, rank_low)
+
+    def close(self):
+        self.conn.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+
+    #
+    def _start_row(self, rank, tax_name):
+        self.cursor.execute('SELECT * FROM taxa WHERE rank = ? and tax_name LIKE ? LIMIT 2', (rank, tax_name + '%'))
+        rows = self.cursor.fetchall()
+        if not rows:
+            print('No rows fetched with given filter!')
+            return
+        if len(rows) == 2:
+            print('More rows fetched with given filter!')
+            return
+        return _tax_to_dict(rows[0])
+
+    def _ancestor_start_row(self, row, rank_heigh):
+        start_row = row
+        while True:
+            print('_ancestor_start_row', rank_heigh, row)
+            ac_row = self.cursor.execute(f'SELECT * FROM taxa WHERE tax_id = {row["parent_tax_id"]}').fetchone()
+            if not ac_row:
+                return start_row
+            ac_row = _tax_to_dict(ac_row)
+            if ac_row['rank'] in rank_heigh:
+                return ac_row
+            #
+            row = ac_row
+
+    def print_tree(self):
+        if not self.root:
+            print('No tree!')
+            return
+        print(TreeBox(self.root))
