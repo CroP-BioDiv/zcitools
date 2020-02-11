@@ -12,6 +12,7 @@ class AnnotationExtract(NonProjectCommand):  # Works only with given file
         parser.add_argument('-i', '--input-format', help='Force input format')
         # parser.add_argument('-o', '--output-format', default='fasta', help='Output format')
         parser.add_argument('-d', '--output-directory', default='.', help='Output directory')
+        parser.add_argument('-t', '--filter-type', default='CDS', help='Filter feature type')
 
     def run(self):
         import os.path
@@ -23,6 +24,7 @@ class AnnotationExtract(NonProjectCommand):  # Works only with given file
         od = args.output_directory
         BioIO = import_bio_seq_io()
         ensure_directory(od)
+        type_ = args.filter_type
 
         for i_filename in args.input_files:
             # Note: One sequence in one file!
@@ -33,7 +35,7 @@ class AnnotationExtract(NonProjectCommand):  # Works only with given file
                 write_fasta(
                     os.path.join(od, f"extract_{basename_no_ext(i_filename)}.fasta"),
                     ((feature_qualifiers_to_desc(f), str(f.extract(seq_rec).seq))
-                     for f in seq_rec.features if f.type == 'CDS'))
+                     for f in seq_rec.features if f.type == type_ and 'gene' in f.qualifiers))
 
 
 class GeSeqStep(CreateStepFromStepCommand):
