@@ -1,5 +1,39 @@
-from step_project.base_commands import CreateStepFromStepCommand
+from step_project.base_commands import NonProjectCommand, CreateStepFromStepCommand
 from common_utils.exceptions import ZCItoolsValueError
+
+
+class AnnotationExtract(NonProjectCommand):  # Works only with given file
+    _COMMAND = 'annotation_extract'
+    _HELP = "Extract annotation parts into separate file(s)"
+
+    @staticmethod
+    def set_arguments(parser):
+        parser.add_argument('input_files', nargs='+', help='Input filenames')
+        parser.add_argument('-i', '--input-format', help='Force input format')
+        # parser.add_argument('-o', '--output-format', default='fasta', help='Output format')
+        parser.add_argument('-d', '--output-directory', default='.', help='Output directory')
+
+    def run(self):
+        import os.path
+        from ..utils.import_methods import import_bio_seq_io
+        from ..utils.helpers import get_bio_io_type, feature_qualifiers_to_desc
+        from common_utils.file_utils import ensure_directory, write_fasta, basename_no_ext
+
+        args = self.args
+        od = args.output_directory
+        BioIO = import_bio_seq_io()
+        ensure_directory(od)
+
+        for i_filename in args.input_files:
+            # Note: One sequence in one file!
+            with open(i_filename, 'r') as in_s:
+                seq_rec = BioIO.read(in_s, get_bio_io_type(i_filename, args.input_format))
+                # ToDo: filtrirati po necemu?
+                # ToDo: sortirati po necemu?
+                write_fasta(
+                    os.path.join(od, f"extract_{basename_no_ext(i_filename)}.fasta"),
+                    ((feature_qualifiers_to_desc(f), str(f.extract(seq_rec).seq))
+                     for f in seq_rec.features if f.type == 'CDS'))
 
 
 class GeSeqStep(CreateStepFromStepCommand):

@@ -197,3 +197,7 @@ def extension_no_dot(filename):
 
 def filetype_from_ext(filename):
     return _ext_to_filetype.get(extension_no_dot(filename))
+
+
+def basename_no_ext(filename):
+    return os.path.splitext(os.path.basename(filename))[0]

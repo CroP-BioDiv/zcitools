@@ -1,14 +1,16 @@
 import os.path
 from .import_methods import import_bio_seq_io
+from common_utils.file_utils import extension_no_dot
 
 # Methods for this and that
 
 # Biopyhton helpers
-_bio_ext_2_type = dict(
+bio_io_known_formats = frozenset(['genbank', 'fasta'])
+ext_2_bio_io_type = dict(
     gb='genbank', gbff='genbank',
     fa='fasta',  fas='fasta',
 )
-_bio_ext_2_type = dict(('.' + e, t) for e, t in _bio_ext_2_type.items())
+_bio_ext_2_type = dict(('.' + e, t) for e, t in ext_2_bio_io_type.items())
 
 
 def feature_location_desc(location):
@@ -73,3 +75,11 @@ def concatenate_sequences(output_filename, input_filenames):
         for in_f in input_filenames:
             with open(in_f, 'r') as seq:
                 SeqIO.write(list(SeqIO.parse(seq, _bio_ext_2_type[os.path.splitext(in_f)[1]])), out_seqs, output_type)
+
+
+def get_bio_io_type(filename, format_):
+    if not format_:
+        ext = extension_no_dot(filename)
+        format_ = ext_2_bio_io_type.get(ext, ext)
+    assert format_ in bio_io_known_formats, (filename, format_)
+    return format_
