@@ -190,8 +190,10 @@ _ext_to_filetype = dict(
 )
 
 
-def filetype_from_ext(filename):
+def extension_no_dot(filename):
     _, ext = os.path.splitext(filename)
-    if ext:
-        ext = ext[1:]
-    return _ext_to_filetype.get(ext)
+    return ext[1:] if ext else ext
+
+
+def filetype_from_ext(filename):
+    return _ext_to_filetype.get(extension_no_dot(filename))

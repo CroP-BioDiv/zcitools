@@ -332,4 +332,5 @@ def _find_assemblies(sp_nodes):
         #     print(a['SpeciesTaxid'], a['Taxid'], a['AssemblyAccession'])
         ret.update((int(a['Taxid']), a['AssemblyAccession']) for a in records['DocumentSummarySet']['DocumentSummary']
                    if int(a['Taxid']) in sp_nodes)
+    print()
     return ret
