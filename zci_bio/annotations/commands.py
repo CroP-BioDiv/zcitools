@@ -2,7 +2,8 @@ from step_project.base_commands import NonProjectCommand, CreateStepFromStepComm
 from common_utils.exceptions import ZCItoolsValueError
 
 
-class AnnotationExtract(NonProjectCommand):  # Works only with given file
+# ToDo: ove prebaciti da rade s dummy annotation step objektom. Treba imati proxy feature objekt!
+class AnnotationExtract(NonProjectCommand):
     _COMMAND = 'annotation_extract'
     _HELP = "Extract annotation parts into separate file(s)"
 
@@ -22,22 +23,51 @@ class AnnotationExtract(NonProjectCommand):  # Works only with given file
 
         args = self.args
         od = args.output_directory
-        BioIO = import_bio_seq_io()
+        SeqIO = import_bio_seq_io()
         ensure_directory(od)
         type_ = args.filter_type
 
         for i_filename in args.input_files:
             # Note: One sequence in one file!
-            with open(i_filename, 'r') as in_s:
-                seq_rec = BioIO.read(in_s, get_bio_io_type(i_filename, args.input_format))
-                # ToDo: filtrirati po necemu?
-                # ToDo: sortirati po necemu?
-                write_fasta(
-                    os.path.join(od, f"extract_{basename_no_ext(i_filename)}.fasta"),
-                    ((feature_qualifiers_to_desc(f), str(f.extract(seq_rec).seq))
-                     for f in seq_rec.features if f.type == type_ and 'gene' in f.qualifiers))
+            seq_rec = SeqIO.read(i_filename, get_bio_io_type(i_filename, args.input_format))
+            # ToDo: filtrirati po necemu?
+            # ToDo: sortirati po necemu?
+            write_fasta(
+                os.path.join(od, f"extract_{basename_no_ext(i_filename)}.fasta"),
+                ((feature_qualifiers_to_desc(f), str(f.extract(seq_rec).seq))
+                 for f in seq_rec.features if f.type == type_ and 'gene' in f.qualifiers))
 
 
+class AnnotationGroup(AnnotationExtract):  # Works only with given file
+    _COMMAND = 'annotation_group'
+    _HELP = "Extract annotation parts and group them in files"
+
+    def run(self):
+        import os.path
+        from collections import defaultdict
+        from ..utils.import_methods import import_bio_seq_io
+        from ..utils.helpers import get_bio_io_type
+        from common_utils.file_utils import ensure_directory, write_fasta
+
+        args = self.args
+        od = args.output_directory
+        SeqIO = import_bio_seq_io()
+        ensure_directory(od)
+        genes = defaultdict(dict)  # gene -> dict(species -> data)
+
+        for i_filename in args.input_files:
+            for seq in SeqIO.parse(i_filename, get_bio_io_type(i_filename, args.input_format)):
+                name = seq.id
+                split_on = name.index('_')
+                gene = name[:split_on]
+                species = name[(split_on + 1):]
+                genes[gene][species] = seq.seq
+
+        for gene, data in genes.items():
+            write_fasta(os.path.join(od, f'{gene}.fasta'), sorted(data.items()))
+
+
+# ---------------------------------------------------------
 class GeSeqStep(CreateStepFromStepCommand):
     _COMMAND = 'ge_seq'
     _HELP = "Annotates chloroplast sequences with GeSeq"
