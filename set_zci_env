@@ -10,7 +10,7 @@ export PATH=$ZCITOOLS/bin:$ZCI_PROGRAM_PATHS:$PATH
 export PYTHONPATH=$ZCITOOLS:$PYTHONPATH
 
 # Used by zcit.py commands
-export ZCI_GLOBAL_CACHE=$ZCI_MAIN_DIR/zcitools/_global_cache_
+export ZCI_GLOBAL_CACHE=$ZCI_MAIN_DIR/caches/_global_cache_
 
 # Autocomplete
 _zcit()
