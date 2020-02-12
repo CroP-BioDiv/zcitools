@@ -80,6 +80,17 @@ def cast_table_data(data_types, rows):
 
 
 #
+def column_name_2_type(name):
+    name = name.lower()
+    if name == 'seq_ident':
+        return 'seq_ident'
+    if name in ('date', 'datum'):
+        return 'date'
+    # ToDo: ...
+    return 'str'
+
+
+#
 def table_data_2_pandas(column_data_types, rows):
     columns, data_types = zip(*column_data_types)
     rows = cast_table_data(data_types, rows)

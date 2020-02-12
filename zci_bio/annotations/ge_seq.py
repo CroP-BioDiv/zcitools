@@ -3,7 +3,7 @@ from zipfile import ZipFile
 from .steps import AnnotationsStep
 from ..utils.helpers import split_sequences
 from common_utils.misc import split_list
-from common_utils.file_utils import copy_file, extract_from_zip
+from common_utils.file_utils import extract_from_zip, write_str_in_file
 
 _re_zip_genbank = re.compile('GeSeqJob-[0-9]*-[0-9]*_(.*)_GenBank.gb')
 
@@ -61,6 +61,7 @@ def create_ge_seq_data(step_data, sequences_step, cache):
 
         # Store instructions
         write_str_in_file(step.step_file('INSTRUCTIONS.txt'), _instructions.format(step_name=step_data['step_name']))
+        print(f'Check step instruction ({step.directory}/INSTRUCTIONS.txt)!')
 
     #
     step.set_sequences(all_sequences)

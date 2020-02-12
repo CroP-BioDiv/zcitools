@@ -1,4 +1,5 @@
-import os.path
+import os
+import shutil
 from .import_methods import import_bio_seq_io
 from common_utils.file_utils import extension_no_dot
 
@@ -83,3 +84,14 @@ def get_bio_io_type(filename, format_):
         format_ = ext_2_bio_io_type.get(ext, ext)
     assert format_ in bio_io_known_formats, (filename, format_)
     return format_
+
+
+def fetch_our_sequence(seq_ident, in_dir):
+    dirs = os.environ.get('ZCI_OUR_SEQUENCES')
+    if dirs:
+        for _dir in dirs.split(':'):
+            for f in os.listdir(_dir):
+                name, ext = os.path.splitext(f)
+                if name == seq_ident:
+                    shutil.copyfile(os.path.join(_dir, f), os.path.join(in_dir, f))
+                    return ext

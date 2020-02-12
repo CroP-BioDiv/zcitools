@@ -30,7 +30,7 @@ class Entrez:
     def efetch(self, filename, **kwargs):
         # Saves into filename
         self._sleep()
-        with entrez.efetch(**kwargs) as handle:
+        with self.entrez.efetch(**kwargs) as handle:
             with open(filename, 'w') as out:
                 out.write(handle.read())
 

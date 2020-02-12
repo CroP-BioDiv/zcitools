@@ -12,6 +12,9 @@ export PYTHONPATH=$ZCITOOLS:$PYTHONPATH
 # Used by zcit.py commands
 export ZCI_GLOBAL_CACHE=$ZCI_MAIN_DIR/caches/_global_cache_
 
+# Set our seqrunces paths
+export ZCI_OUR_SEQUENCES=$ZCI_MAIN_DIR/data/assemblies
+
 # Autocomplete
 _zcit()
 {

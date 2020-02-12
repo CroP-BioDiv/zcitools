@@ -117,6 +117,7 @@ class OGDRAW(CreateStepFromStepCommand):
     def set_arguments(parser):
         parser.add_argument('step', help='Input sequences step')
         parser.add_argument('-f', '--image_format', default='ps', help='One of: svg, pdf, ps, png, jpg, tif, gif')
+        parser.add_argument('-s', '--sequences', help="Filter only sequences, separate seq_idents by ';'.")
 
     def cache_identifier(self):
         step_commnad = self._input_step().get_command()  # Depends on annotation process
@@ -127,7 +128,7 @@ class OGDRAW(CreateStepFromStepCommand):
         img_f = self.args.image_format.lower()
         if img_f not in self._IMAGE_FORMATS:
             raise ZCItoolsValueError(f'Given format {img_f} is not supported!')
-        return create_ogdraw(step_data, img_f, self._input_step(), self.get_cache_object())
+        return create_ogdraw(step_data, img_f, self._input_step(), self.get_cache_object(), sequences=sequences)
 
     def finish(self, step_obj):
         from .ogdraw import finish_ogdraw

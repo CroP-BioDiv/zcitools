@@ -38,9 +38,9 @@ FAQ: https://chlorobox.mpimp-golm.mpg.de/OGDraw-FAQ.html
 """
 
 
-def create_ogdraw(step_data, image_format, annotations_step, cache):
+def create_ogdraw(step_data, image_format, annotations_step, cache, sequences=None):
     step = ImagesStep(annotations_step.project, step_data, remove_data=True)
-    all_images = sorted(annotations_step.all_sequences())
+    all_images = sorted(sequences.split(';') if sequences else annotations_step.all_sequences())
 
     # Fetch cached sequences
     to_fetch = step.get_cached_records(cache, all_images, info=True)

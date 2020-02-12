@@ -1,10 +1,19 @@
 from .steps import SequencesStep
 from ..utils.entrez import Entrez
+from ..utils.helpers import fetch_our_sequence
 
 
 def fetch_sequences(step_data, table_step, cache):
     step = SequencesStep(table_step.project, step_data, update_mode=True)
-    all_sequences = [ni for ni in table_step.get_column_values_by_type('seq_ident') if not step.sequence_exists(ni)]
+
+    all_sequences = []
+    for ni in table_step.get_column_values_by_type('seq_ident'):
+        if not step.sequence_exists(ni):
+            ext = fetch_our_sequence(ni, step.directory)
+            if ext:
+                step.add_sequence_file(ni + ext)
+            else:
+                all_sequences.append(ni)
 
     # Fetch cached sequences
     to_fetch = step.get_cached_records(cache, all_sequences, info=True)
