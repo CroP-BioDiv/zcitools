@@ -6,6 +6,7 @@ from common_utils.exceptions import ZCItoolsValueError
 class AnnotationExtract(NonProjectCommand):
     _COMMAND = 'annotation_extract'
     _HELP = "Extract annotation parts into separate file(s)"
+    _COMMAND_GROUP = 'Bio'
 
     @staticmethod
     def set_arguments(parser):

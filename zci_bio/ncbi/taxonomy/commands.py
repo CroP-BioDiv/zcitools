@@ -4,6 +4,7 @@ from step_project.base_commands import NonProjectCommand
 class NCBITaxonomySet(NonProjectCommand):  # Works only with cache
     _COMMAND = 'ncbi_taxonomy_set'
     _HELP = "Download data and creates SQLite database in global cache"
+    _COMMAND_GROUP = 'NCBI'
 
     def cache_identifier(self):
         return dict(static=True, data_identifier=['NCBI', 'taxonomy'])

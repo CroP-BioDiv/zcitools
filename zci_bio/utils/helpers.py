@@ -78,6 +78,12 @@ def concatenate_sequences(output_filename, input_filenames):
                 SeqIO.write(list(SeqIO.parse(seq, _bio_ext_2_type[os.path.splitext(in_f)[1]])), out_seqs, output_type)
 
 
+def convert_sequence_file(input_filename, output_filename, input_format=None, output_format=None):
+    import_bio_seq_io().convert(
+        input_filename, get_bio_io_type(input_filename, input_format),
+        output_filename, get_bio_io_type(output_filename, output_format))
+
+
 def get_bio_io_type(filename, format_):
     if not format_:
         ext = extension_no_dot(filename)

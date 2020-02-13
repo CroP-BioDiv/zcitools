@@ -25,6 +25,7 @@ class FetchSequencesStep(CreateStepCommand):
 class SequenceReadsStep(NonProjectCommand):
     _COMMAND = 'sequence_reads'
     _HELP = "Browse given directory and find default sequences reads data."
+    _COMMAND_GROUP = 'Bio'
 
     @staticmethod
     def set_arguments(parser):
@@ -46,3 +47,23 @@ class SequenceReadsStep(NonProjectCommand):
         seq_reads.print_data()
         if args.output_filename is not False:  # False means that -o is not set. None means -o without value
             seq_reads.write_data(args.output_filename or os.path.join(args.directory, 'sequence_reads.yml'))
+
+
+class ConvertSequence(NonProjectCommand):
+    _COMMAND = 'convert_sequence'
+    _HELP = "Converts sequence(s) data to given format"
+
+    @staticmethod
+    def set_arguments(parser):
+        parser.add_argument('input_filename', help='Input sequence file')
+        parser.add_argument('output_filename', help='Output sequence file')
+        parser.add_argument(
+            '-i', '--input-format', help='Input sequence format, if not given deduced by file extention.')
+        parser.add_argument(
+            '-o', '--output-format', help='Output sequence format, if not given deduced by file extention.')
+
+    def run(self):
+        from ..utils.helpers import convert_sequence_file
+        a = self.args
+        convert_sequence_file(
+            a.input_filename, a.output_filename, input_format=a.input_format, output_format=a.output_format)
