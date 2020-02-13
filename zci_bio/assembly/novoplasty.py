@@ -59,7 +59,7 @@ def novoplasty_run(project, step_data, params):
         read_length=read.get('read_length', ''),
         insert_size=read.get('insert_length', ''),
         platform=read.get('platform', '').lower() or 'illumina',  # illumina or ion
-        read_1=read.get('file' if rt == 'S' else 'file_1'),
+        read_1=read.get('file' if rt == 'SE' else 'file_1'),
         read_2=read.get('file_2', ''),
         single_paired=rt) for num, (rt, read) in enumerate(sr)]
 
