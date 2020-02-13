@@ -128,7 +128,8 @@ class OGDRAW(CreateStepFromStepCommand):
         img_f = self.args.image_format.lower()
         if img_f not in self._IMAGE_FORMATS:
             raise ZCItoolsValueError(f'Given format {img_f} is not supported!')
-        return create_ogdraw(step_data, img_f, self._input_step(), self.get_cache_object(), sequences=sequences)
+        return create_ogdraw(
+            step_data, img_f, self._input_step(), self.get_cache_object(), sequences=self.args.sequences)
 
     def finish(self, step_obj):
         from .ogdraw import finish_ogdraw

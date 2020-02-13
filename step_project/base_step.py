@@ -79,8 +79,8 @@ class Step:
 
     # Description methods
     def save_description(self, type_description, create=True, completed=True):
+        self._step_data['completed'] = completed
         pd = dict(self._step_data)
-        pd['completed'] = completed
         if create:
             pd['created'] = datetime.datetime.now().isoformat()
             pd['updated'] = None

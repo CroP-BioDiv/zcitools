@@ -122,6 +122,10 @@ class RunCommand:
                 log = read_yaml('project_log.yml')
                 if not log or log[-1] != step_data:
                     write_yaml([step_data], 'project_log.yml', mode='a')  # Appends yml list
+
+                if not step_obj.is_completed():
+                    print(f'Step is not finished, check instruction ({step_obj.directory}/INSTRUCTIONS.txt)!')
+
             else:
                 print("Warning: create step command didn't return step object!")
 
