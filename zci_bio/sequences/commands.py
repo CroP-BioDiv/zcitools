@@ -36,13 +36,14 @@ class SequenceReadsStep(NonProjectCommand):
         parser.add_argument('-p', '--platform', default='Illumina', help='Sequencing platform')
         parser.add_argument('-l', '--read-length', type=int, help='Read length')
         parser.add_argument('-i', '--insert-length', type=int, help='Insert length')
+        parser.add_argument('-s', '--output-as-single-reads', action='store_true',
+                            help='Paired end data represent as not paired end.')
 
     def run(self):
         import os.path
         from ..utils.sequence_reads import SequenceReads
         args = self.args
-        seq_reads = SequenceReads.from_directory(
-            args.directory, platform=args.platform, read_length=args.read_length, insert_length=args.insert_length)
+        seq_reads = SequenceReads.from_directory(args.directory, args)
         print('Sequence reads data:')
         seq_reads.print_data()
         if args.output_filename is not False:  # False means that -o is not set. None means -o without value

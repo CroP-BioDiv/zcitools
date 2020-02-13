@@ -85,7 +85,7 @@ class SequenceReads:
         return sr
 
     @staticmethod
-    def from_directory(directory, platform=None, read_length=None, insert_length=None):
+    def from_directory(directory, params):
         # Put lot of (file naming) heuristics in this!
         reads = []  # Just files
         paired_reads = []
@@ -95,25 +95,28 @@ class SequenceReads:
                             all(x not in f for x in _omit_files) and
                             os.path.isfile(os.path.join(directory, f)))
 
-        for f in list(sorted(files_to_proc)):  # Iterate through set copy
-            if f not in files_to_proc:
-                continue
-            files_to_proc.discard(f)  # To be sure :-)
+        if params.as_single_reads:
+            reads = sorted(files_to_proc)
+        else:
+            for f in list(sorted(files_to_proc)):  # Iterate through set copy
+                if f not in files_to_proc:
+                    continue
+                files_to_proc.discard(f)  # To be sure :-)
 
-            # Find {1|2} between non numbers
-            for m in _re_12.finditer(f):
-                s1, s2 = m.span()
-                other_f = f"{f[:s1 + 1]}{2 if f[s1 + 1] == '1' else 1}{f[s2 - 1:]}"
-                if other_f in files_to_proc:
-                    files_to_proc.discard(other_f)
-                    paired_reads.append([f, other_f])
-                    break
-            else:
-                reads.append(f)
+                # Find {1|2} between non numbers
+                for m in _re_12.finditer(f):
+                    s1, s2 = m.span()
+                    other_f = f"{f[:s1 + 1]}{2 if f[s1 + 1] == '1' else 1}{f[s2 - 1:]}"
+                    if other_f in files_to_proc:
+                        files_to_proc.discard(other_f)
+                        paired_reads.append([f, other_f])
+                        break
+                else:
+                    reads.append(f)
 
         #
         return SequenceReads(
-            reads=[dict(file=r, platform=platform, read_length=read_length) for r in reads],
+            reads=[dict(file=r, platform=params.platform, read_length=params.read_length) for r in reads],
             paired_reads=[
-                dict(file_1=f1, file_2=f2, platform=platform, read_length=read_length, insert_length=insert_length)
+                dict(file_1=f1, file_2=f2, platform=params.platform, read_length=params.read_length, insert_length=params.insert_length)
                 for f1, f2 in paired_reads])
