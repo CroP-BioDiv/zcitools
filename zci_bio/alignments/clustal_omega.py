@@ -96,7 +96,8 @@ def create_clustal_data(step_data, annotations_step, cache, alignments, run):
         if 'w' in alignments:
             substep = step.create_substep('whole')
             seq_files.append(_add_sequences(
-                substep, 'whole', sequences, [annotations_step.get_sequence(seq_ident) for seq_ident in sequences]))
+                substep, 'whole', sequences,
+                [(seq_ident, annotations_step.get_sequence(seq_ident)) for seq_ident in sequences]))
 
     # Store files desc
     files_to_zip = [d['filename'] for d in seq_files]  # files to zip

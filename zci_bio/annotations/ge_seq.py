@@ -13,7 +13,7 @@ Open web page: https://chlorobox.mpimp-golm.mpg.de/geseq.html
 For each FASTA file sequences_<num>.fa do:
 
 FASTA file(s) to annotate
- * Upload file: {step_name}/sequences.fa
+ * Upload file: {step_name}/sequences_<num>.fa
  * (check) Circular
  * (check) Sequence source: Plastid
 

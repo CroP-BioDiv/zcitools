@@ -11,6 +11,7 @@ class ClustalO(CreateStepFromStepCommand):
     _ALIGNMENTS = (('w', 'whole'),
                    ('gs', 'genes single'), ('gc', 'genes concatenate'),
                    ('cs', 'CDS single'), ('cc', 'CDS concatenated'))
+    _SUPPORTED_ALIGNS = set(a for a, _ in _ALIGNMENTS)
     # Note: no global caching
 
     @staticmethod
@@ -22,11 +23,10 @@ class ClustalO(CreateStepFromStepCommand):
 
     def run(self, step_data):
         from .clustal_omega import create_clustal_data
-        sup_aligns = [a for a, _ in self._ALIGNMENTS]
         align_params = [a.lower() for a in self.args.alignments]
-        align_params = [a for a in align_params if a in sup_aligns]
-        if not align_params:
-            raise ZCItoolsValueError('No valid alignments set ({self.args.alignments}).')
+        not_sup_params = [a for a in align_params if a not in self._SUPPORTED_ALIGNS]
+        if not_sup_params:
+            raise ZCItoolsValueError(f'No valid alignments set ({", ".join(sorted(not_sup_params))}).')
         return create_clustal_data(step_data, self._input_step(), self.get_cache_object(), align_params, self.args.run)
 
     def finish(self, step_obj):
