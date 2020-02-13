@@ -44,7 +44,7 @@ class SequenceReads:
     #
     def __iter__(self):
         for r in self.reads:
-            yield 'S', r
+            yield 'SE', r
         for r in self.paired_reads:
             yield 'PE', r
 
