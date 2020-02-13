@@ -36,7 +36,7 @@ class SequenceReadsStep(NonProjectCommand):
         parser.add_argument('-p', '--platform', default='Illumina', help='Sequencing platform')
         parser.add_argument('-l', '--read-length', type=int, help='Read length')
         parser.add_argument('-i', '--insert-length', type=int, help='Insert length')
-        parser.add_argument('-s', '--output-as-single-reads', action='store_true',
+        parser.add_argument('-s', '--as-single-reads', action='store_true',
                             help='Paired end data represent as not paired end.')
 
     def run(self):
