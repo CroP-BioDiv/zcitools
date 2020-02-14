@@ -13,6 +13,7 @@ _ENV_VAR = 'CLUSTAL_OMEGA_EXE'
 # From my observations Clustal Omega usage of more threads is limited to part of calculation.
 # Because of that is seems to me that lot of small jobs is good to run parallel and use more
 # threads only for long jobs.
+# Also long jobs are run with more threads but in parallel
 #
 # Calculation strategy:
 #  - First run short sequences on one thread. Sort them from longer (short) to shorter.
@@ -41,13 +42,13 @@ def _alignment_file(f):
     return os.path.join(os.path.dirname(f), 'alignment.phy')
 
 
-def _run_single(clustalo_exe, filename, output_file):
-    cmd = f"{clustalo_exe} -i {filename} -o {output_file} --outfmt=phy --threads=1"
+def _run_single(clustalo_exe, filename, output_file, threads):
+    cmd = f"{clustalo_exe} -i {filename} -o {output_file} --outfmt=phy --threads={threads}"
     print(f"Command: {cmd}")
     os.system(cmd)
 
 
-def run(locale=True, threads=None):
+def run(locale=True, threads=None, long_parallel=3):  # usually there are max 3 long files: w, gc, cc
     # Note: run from step's directory!!!
     clustalo_exe = _find_exe(_DEFAULT_EXE_NAME, _ENV_VAR)
     threads = threads or multiprocessing.cpu_count()
@@ -63,14 +64,15 @@ def run(locale=True, threads=None):
         with ThreadPoolExecutor(max_workers=threads) as executor:
             for d in short_files:
                 outputs.append(_alignment_file(d['filename']))
-                executor.submit(_run_single, clustalo_exe, d['filename'], outputs[-1])
+                executor.submit(_run_single, clustalo_exe, d['filename'], outputs[-1], 1)
 
-    for d in long_files:
-        for d in long_files:
-            outputs.append(_alignment_file(d['filename']))
-            cmd = f"{clustalo_exe} -i {d['filename']} -o {outputs[-1]} --outfmt=phy --threads={threads}"
-            print(f"Command: {cmd}")
-            os.system(cmd)
+    if long_files:
+        long_parallel = min(long_parallel, len(long_files))
+        threads = threads // long_parallel
+        with ThreadPoolExecutor(max_workers=long_parallel) as executor:
+            for d in long_files:
+                outputs.append(_alignment_file(d['filename']))
+                executor.submit(_run_single, clustalo_exe, d['filename'], outputs[-1], threads)
 
     # Zip files
     if not locale:
@@ -81,4 +83,6 @@ def run(locale=True, threads=None):
 
 if __name__ == '__main__':
     import sys
-    run(locale=False, threads=int(sys.argv[1]) if len(sys.argv) > 1 else None)
+    run(locale=False,
+        threads=int(sys.argv[1]) if len(sys.argv) > 1 else None,
+        long_parallel=int(sys.argv[2]) if len(sys.argv) > 2 else 3)
