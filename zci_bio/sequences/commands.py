@@ -1,4 +1,5 @@
 from step_project.base_commands import NonProjectCommand, CreateStepCommand
+from common_utils.exceptions import ZCItoolsValueError
 
 
 class FetchSequencesStep(CreateStepCommand):
@@ -68,3 +69,29 @@ class ConvertSequence(NonProjectCommand):
         a = self.args
         convert_sequence_file(
             a.input_filename, a.output_filename, input_format=a.input_format, output_format=a.output_format)
+
+
+class ChangeSequence(NonProjectCommand):
+    _COMMAND = 'change_sequence'
+    _HELP = "Change sequence(s) data to given (in some way) and save result"
+
+    @staticmethod
+    def set_arguments(parser):
+        parser.add_argument('method', help='Change method: revert, translate')
+        parser.add_argument('input_filename', help='Input sequence file')
+        parser.add_argument('output_filename', help='Output sequence file')
+        parser.add_argument(
+            '-i', '--input-format', help='Input sequence format, if not given deduced by file extention.')
+        parser.add_argument(
+            '-o', '--output-format', help='Output sequence format, if not given deduced by file extention.')
+        parser.add_argument('-p', '--position', type=int, help='Translate position')
+
+    def run(self):
+        from ..utils.helpers import change_sequence_data
+        a = self.args
+        method = a.method.lower()
+        if method not in ('revert', 'translate'):
+            raise ZCItoolsValueError(f"Not known method {a.method}!")
+        change_sequence_data(
+            method, a.input_filename, a.output_filename,
+            input_format=a.input_format, output_format=a.output_format, position=a.position)

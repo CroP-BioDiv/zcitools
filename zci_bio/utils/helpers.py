@@ -84,6 +84,32 @@ def convert_sequence_file(input_filename, output_filename, input_format=None, ou
         output_filename, get_bio_io_type(output_filename, output_format))
 
 
+def change_sequence_data(method, input_filename, output_filename, input_format=None, output_format=None, position=None):
+    SeqIO = import_bio_seq_io()
+    from Bio.Seq import Seq  # Now it is safe to make an import
+    from Bio.SeqRecord import SeqRecord
+
+    input_format = get_bio_io_type(input_filename, input_format)
+    output_format = get_bio_io_type(output_filename, output_format)
+    with open(output_filename, 'w') as out_seqs:
+        with open(input_filename, 'r') as in_seqs:
+            for rec in SeqIO.parse(in_seqs, input_format):
+                if method == 'revert':
+                    seq = str(rec.seq)[::-1]
+                elif method == 'translate':
+                    assert position
+                    seq = str(rec.seq)
+                    seq = seq[position:] + seq[:position]
+                else:
+                    assert False, method
+
+                # Note: featues/annotations not transfered!
+                SeqIO.write(
+                    SeqRecord(Seq(seq, rec.seq.alphabet), id=rec.id, name=rec.name, description=rec.description),
+                    out_seqs, output_format)
+
+
+#
 def get_bio_io_type(filename, format_):
     if not format_:
         ext = extension_no_dot(filename)
