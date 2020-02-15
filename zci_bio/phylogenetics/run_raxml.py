@@ -62,7 +62,7 @@ def _run(raxml_exe, run_dir, input_file, threads):
         subprocess.run([raxml_exe, '-s', input_file, '-T', str(threads), '-q', 'partitions.ind'] + _stat_args,
                        cwd=run_dir, stdout=subprocess.DEVNULL)
     else:
-        print(f"Command: cd {run_dir}; {raxml_exe} -s {input_file} {_stat_cmd}")
+        print(f"Command: cd {run_dir}; {raxml_exe} -s {input_file} -T {threads} {_stat_cmd}")
         subprocess.run([raxml_exe, '-s', input_file, '-T', str(threads)] + _stat_args,
                        cwd=run_dir, stdout=subprocess.DEVNULL)
 
@@ -92,7 +92,7 @@ def run(locale=True, threads=None):
     if not locale:
         with ZipFile('output.zip', 'w') as output:
             for f in data_files:
-                d = os.path.dirname(['filename'])
+                d = os.path.dirname(f['filename'])
                 for x in _OUTPUT_FILES:
                     output.write(os.path.join(d, x))
 
