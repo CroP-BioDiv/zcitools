@@ -1,10 +1,13 @@
 import re
 import os
-from ..run import run_raxml
+from . import run_raxml
 from zci_bio.phylogenetics.steps import RAxMLStep, RAxMLSteps
 from common_utils.file_utils import copy_file, unzip_file, list_zip_files, write_yaml, read_yaml, \
     run_module_script, set_run_instructions
 from common_utils.exceptions import ZCItoolsValueError
+from ..alignments.alignment_map_indices import AlignmentMapIndices
+from ..utils.helpers import read_alignment
+
 
 _re_raxml_output = re.compile(r'^RAxML_.*\.raxml_output')
 
@@ -28,14 +31,24 @@ Notes:
 """
 
 
-def _copy_alignment_file(align_step, in_step, files_to_proc):
+def _copy_alignment_file(align_step, in_step, files_to_proc, set_partitions):
     a_f = in_step.step_file('alignment.phy')
     copy_file(align_step.get_phylip_file(), a_f)
-    files_to_proc.append(dict(filename=a_f, short=align_step.is_short()))
+    alignment = read_alignment(a_f)
+    partitions = None
+    #
+    if set_partitions and align_step.is_composite():
+        partitions = in_step.step_file('partitions.ind')
+        ami = AlignmentMapIndices(alignment=alignment)
+        ami = align_step.get_alignment_map_indices()
+        ami.create_raxml_partitions(align_step.iterate_partitions(), partitions)
+    #
+    files_to_proc.append(dict(
+        filename=a_f, short=align_step.is_short(), length=len(alignment[0]), partitions=partitions))
 
 
-def create_raxml_data(step_data, alignment_step, cache, run):
-    # List of dicts with attrs: filename, short
+def create_raxml_data(step_data, alignment_step, cache, set_partitions, run):
+    # List of dicts with attrs: filename, short, partitions (filename or None)
     # This data is used to optimize calculation
     files_to_proc = []
 
@@ -45,14 +58,14 @@ def create_raxml_data(step_data, alignment_step, cache, run):
             substep = step.create_substep(align_step.get_local_name())
             substep.set_sequences(align_step.all_sequences())
             substep.seq_sequence_type(align_step.get_sequence_type())
-            _copy_alignment_file(align_step, substep, files_to_proc)
+            _copy_alignment_file(align_step, substep, files_to_proc, set_partitions)
             #
             substep.save(completed=False)
     else:
         step = RAxMLStep(alignment_step.project, step_data, remove_data=True)
         step.set_sequences(alignment_step.all_sequences())
         step.seq_sequence_type(alignment_step.get_sequence_type())
-        _copy_alignment_file(alignment_step, step, files_to_proc)
+        _copy_alignment_file(alignment_step, step, files_to_proc, set_partitions)
 
     # Store files desc
     files_to_zip = [d['filename'] for d in files_to_proc]  # files to zip

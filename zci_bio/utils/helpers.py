@@ -1,6 +1,6 @@
 import os
 import shutil
-from .import_methods import import_bio_seq_io
+from .import_methods import import_bio_seq_io, import_bio_align_io
 from common_utils.file_utils import extension_no_dot
 
 # Methods for this and that
@@ -12,6 +12,11 @@ ext_2_bio_io_type = dict(
     fa='fasta',  fas='fasta',
 )
 _bio_ext_2_type = dict(('.' + e, t) for e, t in ext_2_bio_io_type.items())
+
+align_io_known_formats = frozenset(['phylip'])
+ext_2_align_io_type = dict(
+    phy='phylip',
+)
 
 
 def feature_location_desc(location):
@@ -53,6 +58,11 @@ def feature_qualifiers_to_desc(feature):
 
 
 # Sequences
+def read_sequence(filename, format=None):
+    with open(filename, 'r') as in_data:
+        return import_bio_seq_io().read(in_data, get_bio_io_type(filename, format))
+
+
 def split_sequences(input_filename, output_ext):
     SeqIO = import_bio_seq_io()
     input_type = _bio_ext_2_type[os.path.splitext(input_filename)[1]]
@@ -110,6 +120,24 @@ def change_sequence_data(method, input_filename, output_filename, input_format=N
 
 
 #
+def write_annotated_sequence(filename, id_, seq, annotation, output_format=None, name=None, description=None):
+    SeqIO = import_bio_seq_io()
+    from Bio.Seq import Seq  # Now it is safe to make an import
+    from Bio.SeqRecord import SeqRecord
+    from Bio.SeqFeature import SeqFeature, FeatureLocation
+    from Bio.Alphabet import DNAAlphabet
+
+    output_format = get_bio_io_type(filename, output_format)
+    with open(filename, 'w') as out_seqs:
+        features = [SeqFeature(location=FeatureLocation(f_i, t_i), type=ft, id=n, qualifiers=dict(gene=n))
+                    for ft, n, f_i, t_i in annotation]
+        SeqIO.write(
+            SeqRecord(Seq(seq, DNAAlphabet()),
+                      id=id_, name=name, description=str(description), features=features),
+            out_seqs, output_format)
+
+
+#
 def get_bio_io_type(filename, format_):
     if not format_:
         ext = extension_no_dot(filename)
@@ -118,6 +146,21 @@ def get_bio_io_type(filename, format_):
     return format_
 
 
+# ALignments
+def read_alignment(filename, format=None):
+    with open(filename, 'r') as in_data:
+        return import_bio_align_io().read(in_data, get_align_io_type(filename, format))
+
+
+def get_align_io_type(filename, format_):
+    if not format_:
+        ext = extension_no_dot(filename)
+        format_ = ext_2_align_io_type.get(ext, ext)
+    assert format_ in align_io_known_formats, (filename, format_)
+    return format_
+
+
+#
 def fetch_our_sequence(seq_ident, in_dir):
     dirs = os.environ.get('ZCI_OUR_SEQUENCES')
     if dirs:

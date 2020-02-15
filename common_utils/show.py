@@ -37,10 +37,10 @@ def print_ls_like_list(title, data, sort=False, width=None, min_rows_to_split=No
 
     # Find number of data columns.
     num_data = len(data)
+    padding = 1
     if min_rows_to_split and num_data < min_rows_to_split:
         num_c = 1
     else:
-        padding = 1
         lengths = [len(d) for d in data]
         max_l = max(lengths)
         min_l = min(lengths)

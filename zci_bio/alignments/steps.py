@@ -1,18 +1,21 @@
 import os.path
 from step_project.base_step import Step, StepCollection
 from common_utils.exceptions import ZCItoolsValueError
-from common_utils.file_utils import read_fasta_identifiers
+from common_utils.file_utils import read_fasta_identifiers, write_lines_in_file
 from common_utils.misc import sets_equal
-from ..utils.import_methods import import_bio_align_io, import_bio_alphabet
+from ..utils.import_methods import import_bio_seq_io, import_bio_align_io, import_bio_alphabet
 
 
 class AlignmentStep(Step):
     """
 Stores an alignment between 2 or more sequences.
 Data is stored:
- - desription.yml stores list of sequence identifiers to align and type of these sequences.
- - sequences.fa stores sequences to align
- - alignments.phy stores alignment
+ - desription.yml    : list of sequence identifiers to align and type of these sequences.
+ - sequences.fa      : sequences to align
+ - alignments.phy    : alignment
+ - <seq_ident>.parts : sequence partitions. If alignment is on only one feature that these files are not stored.
+                       File has lines of format: <end index> <description>.
+                       Note: this should be real partition. Covers whole sequence
 """
     # ToDo: other alignment formats?
     _STEP_TYPE = 'alignment'
@@ -53,6 +56,10 @@ Data is stored:
         self.save_description(dict(sequences=sorted(self._sequences), sequence_type=self._seq_type),
                               create=create, completed=completed)
 
+    def store_partitions(self, seq_ident, partitions):
+        assert seq_ident in self._sequences, seq_ident
+        write_lines_in_file(self.step_file(f'{seq_ident}.parts'), [f'{n} {desc}' for n, desc in partitions])
+
     # Retrieve data methods
     def all_sequences(self):
         return self._sequences
@@ -62,6 +69,9 @@ Data is stored:
 
     def is_short(self):
         return self._seq_type == 'gene'
+
+    def is_composite(self):  # Contains more genes
+        return self._seq_type != 'gene'
 
     def get_phylip_file(self):
         f = self.step_file('alignment.phy')
@@ -79,6 +89,28 @@ Data is stored:
             Alphabet = import_bio_alphabet()
             AlignIO.convert(p_f, 'phylip', f, 'nexus', alphabet=Alphabet.generic_dna)
             return f
+
+    #
+    def iterate_partitions(self):
+        for seq_ident in self._sequences:
+            p = self.get_partitions(seq_ident)
+            if p:
+                yield seq_ident, p
+
+    def get_partitions(self, seq_ident):
+        # Returns None or list of integers
+        f = self.step_file(f'{seq_ident}.parts')
+        if os.path.isfile(f):
+            ret = []
+            with open(f, 'r') as r:
+                for line in r.readlines():
+                    n, d = line.strip().split(' ', maxsplit=1)
+                    ret.append((int(n), d))
+            return ret
+
+    def get_alignment_map_indices(self):
+        from .alignment_map_indices import AlignmentMapIndices
+        return AlignmentMapIndices(filename=self.step_file('alignment.phy'))
 
     # Show data
     def show_data(self, params=None):

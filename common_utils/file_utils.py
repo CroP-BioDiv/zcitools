@@ -93,6 +93,11 @@ def write_str_in_file(filename, s):
         r.write(s)
 
 
+def write_lines_in_file(filename, lines):
+    with open(filename, 'w') as r:
+        r.write('\n'.join(lines))
+
+
 def read_file_as_str(filename):
     with open(filename, 'r') as r:
         return r.read()

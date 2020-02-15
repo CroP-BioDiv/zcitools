@@ -12,11 +12,13 @@ class RAxML(CreateStepFromStepCommand):
     @staticmethod
     def set_arguments(parser):
         parser.add_argument('step', help='Input sequences step')
+        parser.add_argument('-p', '--no-partitions', action='store_true', help='Do not set partitions')
         parser.add_argument('-r', '--run', action='store_true', help='Run RAxML locale')
 
     def run(self, step_data):
         from .raxml import create_raxml_data
-        return create_raxml_data(step_data, self._input_step(), self.get_cache_object(), self.args.run)
+        return create_raxml_data(step_data, self._input_step(), self.get_cache_object(),
+                                 not self.args.no_partitions, self.args.run)
 
     def finish(self, step_obj):
         from .raxml import finish_raxml_data

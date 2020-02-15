@@ -3,6 +3,8 @@
 import os
 import yaml
 import shutil
+import subprocess
+from concurrent.futures import ThreadPoolExecutor
 import multiprocessing
 from zipfile import ZipFile
 
@@ -18,7 +20,8 @@ _OUTPUT_FILES = (
 
 
 # Calculation strategy:
-#  - Just run calculations with given number of threads. Fist short, than long.
+#  - Short alignment run in parallel
+#  - Long ones serial
 #
 # Notes:
 #  - Output files are create in directory where RAxML is run with extension raxml_output (set in command with switch -n)
@@ -43,6 +46,27 @@ def _find_exe(default_exe, env_var):
     return exe
 
 
+_stat_cmd = "-n raxml_output -m GTRGAMMA -f a -# 1000 -x 12345 -p 12345 > /dev/null"
+_stat_args = [
+    '-n', 'raxml_output',
+    '-m', 'GTRGAMMA',
+    '-f', 'a',
+    '-#', '1000',
+    '-x', '12345',
+    '-p', '12345']
+
+
+def _run(raxml_exe, run_dir, input_file, threads):
+    if os.path.isfile(os.path.join(run_dir, 'partitions.ind')):
+        print(f"Command: cd {run_dir}; {raxml_exe} -s {input_file} {_stat_cmd} -T {threads} -q partitions.ind")
+        subprocess.run([raxml_exe, '-s', input_file] + _stat_args + ['-T', str(threads), '-q', 'partitions.ind'],
+                       cwd=run_dir)  # , stdout=subprocess.DEVNULL)
+    else:
+        print(f"Command: cd {run_dir}; {raxml_exe} -s {input_file} {_stat_cmd}")
+        subprocess.run([raxml_exe, '-s', input_file] + _stat_args + ['-T', str(threads)],
+                       cwd=run_dir)  # , stdout=subprocess.DEVNULL)
+
+
 def run(locale=True, threads=None):
     raxml_exe = _find_exe(_DEFAULT_EXE_NAME, _ENV_VAR)
     threads = threads or multiprocessing.cpu_count()
@@ -50,26 +74,33 @@ def run(locale=True, threads=None):
     # Files to run
     with open('finish.yml', 'r') as r:
         data_files = yaml.load(r, Loader=yaml.CLoader)  # dict with attrs: filename, short
-    files = [d['filename'] for d in data_files if d['short']] + \
-        [d['filename'] for d in data_files if not d['short']]
+    short_files = sorted((d for d in data_files if d['short']), key=lambda x: -x['length'])
+    long_files = sorted((d for d in data_files if not d['short']), key=lambda x: x['length'])
 
-    output_dirs = []
-    step_dir = os.getcwd()
-    for f in files:
-        _dir, f = os.path.split(f)
-        output_dirs.append(_dir)
-        os.chdir(_dir)
-        # ToDo: other arguments as parameters
-        cmd = f"{raxml_exe} -s {f} -n raxml_output -m GTRGAMMA -f a -# 1000 -x 12345 -p 12345 -T {threads} > /dev/null"
-        print(f"Cmd: {cmd}")
-        os.system(cmd)
-        os.chdir(step_dir)
+    print(threads, short_files)
+    print(long_files)
+    if short_files:
+        with ThreadPoolExecutor(max_workers=threads) as executor:
+            for d in short_files:
+                _dir, f = os.path.split(d['filename'])
+                executor.submit(_run, raxml_exe, os.path.abspath(_dir), f, 1)
+
+    if long_files:
+        # long_parallel = min(long_parallel, len(long_files))
+        # threads = threads // long_parallel
+        long_parallel = len(long_files)
+        with ThreadPoolExecutor(max_workers=long_parallel) as executor:
+            for d in long_files:
+                _dir, f = os.path.split(d['filename'])
+                # print(raxml_exe, _dir, f)
+                # executor.submit(_run, raxml_exe, os.path.abspath(_dir), f, threads)
+                _run(raxml_exe, os.path.abspath(_dir), f, threads)
 
     # Zip files
     if not locale:
         with ZipFile('output.zip', 'w') as output:
-            for f in files:
-                d = os.path.dirname(f)
+            for f in data_files:
+                d = os.path.dirname(['filename'])
                 for x in _OUTPUT_FILES:
                     output.write(os.path.join(d, x))
 
