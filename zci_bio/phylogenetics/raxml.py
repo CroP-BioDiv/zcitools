@@ -33,8 +33,8 @@ Notes:
 
 def _copy_alignment_file(align_step, in_step, files_to_proc, set_partitions):
     a_f = in_step.step_file('alignment.phy')
-    copy_file(align_step.get_phylip_file(), a_f)
-    alignment = read_alignment(a_f)
+    orig_phy = align_step.get_phylip_file()
+    alignment = read_alignment(orig_phy)
     partitions = None
     #
     if set_partitions and align_step.is_composite():
@@ -42,6 +42,18 @@ def _copy_alignment_file(align_step, in_step, files_to_proc, set_partitions):
         ami = AlignmentMapIndices(alignment=alignment)
         ami = align_step.get_alignment_map_indices()
         ami.create_raxml_partitions(align_step.iterate_partitions(), partitions)
+    #
+    if max(len(seq_ident) for seq_ident in align_step.all_sequences()) == 10:
+        # If max length of ident is 10, than RAxML is confused about real ident length
+        # Add trailing space to idents
+        for seq in alignment:
+            seq.id += ' '
+        from ..utils.import_methods import import_bio_align_io
+        with open(a_f, "w") as handle:
+            count = import_bio_align_io().write(alignment, handle, 'phylip')
+    else:
+        copy_file(orig_phy, a_f)
+
     #
     files_to_proc.append(dict(
         filename=a_f, short=align_step.is_short(), length=len(alignment[0]), partitions=partitions))
@@ -51,6 +63,7 @@ def create_raxml_data(step_data, alignment_step, cache, set_partitions, run):
     # List of dicts with attrs: filename, short, partitions (filename or None)
     # This data is used to optimize calculation
     files_to_proc = []
+    files_to_zip = []
 
     if alignment_step._IS_COLLECTION:
         step = RAxMLSteps(alignment_step.project, step_data, remove_data=True)
@@ -69,6 +82,8 @@ def create_raxml_data(step_data, alignment_step, cache, set_partitions, run):
 
     # Store files desc
     files_to_zip = [d['filename'] for d in files_to_proc]  # files to zip
+    files_to_zip.extend(filter(None, (d['partitions'] for d in files_to_proc)))
+
     # Remove step directory from files since run script is called from step directory
     for d in files_to_proc:
         d['filename'] = step.strip_step_dir(d['filename'])

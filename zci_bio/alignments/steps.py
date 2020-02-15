@@ -71,7 +71,7 @@ Data is stored:
         return self._seq_type == 'gene'
 
     def is_composite(self):  # Contains more genes
-        return self._seq_type != 'gene'
+        return self._seq_type == 'genes'
 
     def get_phylip_file(self):
         f = self.step_file('alignment.phy')

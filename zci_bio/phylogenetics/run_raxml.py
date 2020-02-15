@@ -58,13 +58,13 @@ _stat_args = [
 
 def _run(raxml_exe, run_dir, input_file, threads):
     if os.path.isfile(os.path.join(run_dir, 'partitions.ind')):
-        print(f"Command: cd {run_dir}; {raxml_exe} -s {input_file} {_stat_cmd} -T {threads} -q partitions.ind")
-        subprocess.run([raxml_exe, '-s', input_file] + _stat_args + ['-T', str(threads), '-q', 'partitions.ind'],
-                       cwd=run_dir)  # , stdout=subprocess.DEVNULL)
+        print(f"Command: cd {run_dir}; {raxml_exe} -s {input_file} -T {threads} -q partitions.ind {_stat_cmd}")
+        subprocess.run([raxml_exe, '-s', input_file, '-T', str(threads), '-q', 'partitions.ind'] + _stat_args,
+                       cwd=run_dir, stdout=subprocess.DEVNULL)
     else:
         print(f"Command: cd {run_dir}; {raxml_exe} -s {input_file} {_stat_cmd}")
-        subprocess.run([raxml_exe, '-s', input_file] + _stat_args + ['-T', str(threads)],
-                       cwd=run_dir)  # , stdout=subprocess.DEVNULL)
+        subprocess.run([raxml_exe, '-s', input_file, '-T', str(threads)] + _stat_args,
+                       cwd=run_dir, stdout=subprocess.DEVNULL)
 
 
 def run(locale=True, threads=None):
@@ -77,8 +77,6 @@ def run(locale=True, threads=None):
     short_files = sorted((d for d in data_files if d['short']), key=lambda x: -x['length'])
     long_files = sorted((d for d in data_files if not d['short']), key=lambda x: x['length'])
 
-    print(threads, short_files)
-    print(long_files)
     if short_files:
         with ThreadPoolExecutor(max_workers=threads) as executor:
             for d in short_files:
@@ -86,15 +84,9 @@ def run(locale=True, threads=None):
                 executor.submit(_run, raxml_exe, os.path.abspath(_dir), f, 1)
 
     if long_files:
-        # long_parallel = min(long_parallel, len(long_files))
-        # threads = threads // long_parallel
-        long_parallel = len(long_files)
-        with ThreadPoolExecutor(max_workers=long_parallel) as executor:
-            for d in long_files:
-                _dir, f = os.path.split(d['filename'])
-                # print(raxml_exe, _dir, f)
-                # executor.submit(_run, raxml_exe, os.path.abspath(_dir), f, threads)
-                _run(raxml_exe, os.path.abspath(_dir), f, threads)
+        for d in long_files:
+            _dir, f = os.path.split(d['filename'])
+            _run(raxml_exe, os.path.abspath(_dir), f, threads)
 
     # Zip files
     if not locale:
