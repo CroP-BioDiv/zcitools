@@ -159,6 +159,11 @@ class StringColumns(Box):
         super().__init__('c', boxes=columns)
 
 
+class TableByColumns(StringColumns):
+    def __init__(self, columns, padding=1):
+        super().__init__(list(zip(*columns)))
+
+
 class TreeBox(Box):
     # root has interface attr children (list) and attr label (str)
     def __init__(self, root, direction='column'):

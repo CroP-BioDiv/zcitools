@@ -3,6 +3,7 @@ from step_project.base_step import Step, StepCollection
 from common_utils.exceptions import ZCItoolsValueError
 from common_utils.file_utils import read_fasta_identifiers, write_lines_in_file
 from common_utils.misc import sets_equal
+from common_utils.terminal_layout import TableByColumns
 from ..utils.import_methods import import_bio_seq_io, import_bio_align_io, import_bio_alphabet
 
 
@@ -12,7 +13,7 @@ Stores an alignment between 2 or more sequences.
 Data is stored:
  - desription.yml    : list of sequence identifiers to align and type of these sequences.
  - sequences.fa      : sequences to align
- - alignments.phy    : alignment
+ - alignments.phy|fa : alignment
  - <seq_ident>.parts : sequence partitions. If alignment is on only one feature that these files are not stored.
                        File has lines of format: <end index> <description>.
                        Note: this should be real partition. Covers whole sequence
@@ -31,7 +32,7 @@ Data is stored:
 
     def _check_data(self):
         # Check does alignment file exist
-        if not os.path.isfile(self.step_file('alignment.phy')):
+        if all(not os.path.isfile(self.step_file(a)) for a in ('alignment.phy', 'alignment.fa')):
             raise ZCItoolsValueError(f'No alignment file for step {self.directory}!')
 
         # Check are all sequences in sequence file
@@ -73,10 +74,18 @@ Data is stored:
     def is_composite(self):  # Contains more genes
         return self._seq_type == 'genes'
 
+    def get_alignment_obj(self):
+        for f, t in (('alignment.phy', 'phylip'), ('alignment.fa', 'fasta')):
+            f = self.step_file(f)
+            if os.path.isfile(f):
+                with open(f) as in_f:
+                    return import_bio_align_io().read(in_f, t)
+
     def get_phylip_file(self):
         f = self.step_file('alignment.phy')
         if os.path.isfile(f):
             return f
+        assert False, 'ToDo: fa -> phy'
         # ToDo: when other formats are in, change this
 
     def get_nexus_file(self):
@@ -115,6 +124,22 @@ Data is stored:
     # Show data
     def show_data(self, params=None):
         print('Alignment', self.directory, self._seq_type)
+
+    def diff_matrix(self):
+        seqs = dict((seq.name, seq.seq) for seq in self.get_alignment_obj())
+        seq_idents = sorted(seqs.keys())
+
+        num_s = len(seq_idents)
+        em = [''] * num_s
+        columns = [['', ''] + seq_idents[1:]]
+        for i, s1 in enumerate(seq_idents):
+            print(seqs[s1][:100])
+            col = [s1, sum(int(c != '-') for c in seqs[s1])] + ['-'] * i
+            columns.append(col)
+            for s2 in seq_idents[i + 1:]:
+                col.append(sum(int(c1 != c2) for c1, c2 in zip(seqs[s1], seqs[s2])))
+
+        print(TableByColumns(columns))
 
 
 class AlignmentsStep(StepCollection):

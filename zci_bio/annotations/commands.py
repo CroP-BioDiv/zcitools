@@ -1,5 +1,41 @@
-from step_project.base_commands import NonProjectCommand, CreateStepFromStepCommand
+from step_project.base_commands import ProjectCommand, NonProjectCommand, CreateStepFromStepCommand
 from common_utils.exceptions import ZCItoolsValueError
+
+
+class AnnotationDiff(ProjectCommand):
+    _COMMAND = 'annotation_diff'
+    _HELP = "Displays sequence distance marix based on annotation"
+    _COMMAND_GROUP = 'Bio'
+
+    @staticmethod
+    def set_arguments(parser):
+        parser.add_argument('step', help='Input step')
+
+    def run(self):
+        step = self.project.read_step(self.args.step, check_data_type='alignment')
+        return step.diff_matrix()
+
+
+class AnnotationChloroplast(ProjectCommand):
+    _COMMAND = 'annotation_chloroplast'
+    _HELP = "Displays simplified chloroplast annotation"
+    _COMMAND_GROUP = 'Bio'
+
+    @staticmethod
+    def set_arguments(parser):
+        parser.add_argument('step', help='Input step')
+        parser.add_argument('-n', '--num-genes', default=1, type=int, help='Number of genes to display on region ends')
+        parser.add_argument('-t', '--feature-type', default='gene', help='Feature type: gene or CDS')
+        parser.add_argument('-f', '--features', help='List of features to take. Format feature1;feature2;...')
+        parser.add_argument('-s', '--sequences', help='List of sequences to print. Format seq1;seq2;...')
+
+    def run(self):
+        a = self.args
+        step = self.project.read_step(a.step, check_data_type='annotations')
+        return step.chloroplast_annotation(num_genes=a.num_genes,
+                                           feature_type=a.feature_type,
+                                           features=a.features.split(';') if a.features else None,
+                                           sequences=a.sequences.split(';') if a.sequences else None)
 
 
 # ToDo: ove prebaciti da rade s dummy annotation step objektom. Treba imati proxy feature objekt!
