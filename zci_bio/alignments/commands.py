@@ -5,7 +5,7 @@ from common_utils.file_utils import get_settings
 
 class ClustalO(CreateStepFromStepCommand):
     _COMMAND = 'clustal'
-    _HELP = "Align sequences with Clustal Omega"
+    _HELP = "Align sequences using Clustal Omega"
     _STEP_BASE_NAME = 'Clustal'
     _INPUT_STEP_DATA_TYPE = 'annotations'
     _ALIGNMENTS = (('w', 'whole'),
@@ -27,11 +27,29 @@ class ClustalO(CreateStepFromStepCommand):
         not_sup_params = [a for a in align_params if a not in self._SUPPORTED_ALIGNS]
         if not_sup_params:
             raise ZCItoolsValueError(f'No valid alignments set ({", ".join(sorted(not_sup_params))}).')
-        return create_clustal_data(step_data, self._input_step(), self.get_cache_object(), align_params, self.args.run)
+        return create_clustal_data(step_data, self._input_step(), align_params, self.args.run)
 
     def finish(self, step_obj):
         from .clustal_omega import finish_clustal_data
-        finish_clustal_data(step_obj, self.get_cache_object())
+        finish_clustal_data(step_obj)
+
+
+class MAFFT(ClustalO):
+    _COMMAND = 'mafft'
+    _HELP = "Align sequences using MAFFT"
+    _STEP_BASE_NAME = 'MAFFT'
+
+    def run(self, step_data):
+        from .mafft import create_mafft_data
+        align_params = [a.lower() for a in self.args.alignments]
+        not_sup_params = [a for a in align_params if a not in self._SUPPORTED_ALIGNS]
+        if not_sup_params:
+            raise ZCItoolsValueError(f'No valid alignments set ({", ".join(sorted(not_sup_params))}).')
+        return create_mafft_data(step_data, self._input_step(), align_params, self.args.run)
+
+    def finish(self, step_obj):
+        from .mafft import finish_mafft_data
+        finish_mafft_data(step_obj)
 
 
 class mVISTA(CreateStepFromStepCommand):
