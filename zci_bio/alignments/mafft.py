@@ -1,8 +1,9 @@
 import os.path
 from . import run_mafft
-from common_utils.misc import sets_equal
-from common_utils.file_utils import unzip_file, list_zip_files, read_yaml
-from common_utils.exceptions import ZCItoolsValueError
+from .common_methods import create_alignment_data
+# from common_utils.misc import sets_equal
+# from common_utils.file_utils import unzip_file, list_zip_files, read_yaml
+# from common_utils.exceptions import ZCItoolsValueError
 
 _instructions = """
 Steps:
@@ -23,5 +24,5 @@ Notes:
 """
 
 
-def create_clustal_data(step_data, annotations_step, alignments, run):
+def create_mafft_data(step_data, annotations_step, alignments, run):
     return create_alignment_data(step_data, annotations_step, alignments, run, run_mafft, _instructions)
