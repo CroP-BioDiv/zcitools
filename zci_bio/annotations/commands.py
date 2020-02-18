@@ -30,12 +30,14 @@ class AnnotationChloroplast(ProjectCommand):
         parser.add_argument('-s', '--sequences', help='List of sequences to print. Format seq1;seq2;...')
 
     def run(self):
+        from .chloroplast import chloroplast_annotation
         a = self.args
-        step = self.project.read_step(a.step, check_data_type='annotations')
-        return step.chloroplast_annotation(num_genes=a.num_genes,
-                                           feature_type=a.feature_type,
-                                           features=a.features.split(';') if a.features else None,
-                                           sequences=a.sequences.split(';') if a.sequences else None)
+        chloroplast_annotation(
+            self.project.read_step(a.step, check_data_type='annotations'),
+            num_genes=a.num_genes,
+            feature_type=a.feature_type,
+            features=a.features.split(';') if a.features else None,
+            sequences=a.sequences.split(';') if a.sequences else None)
 
 
 # ToDo: ove prebaciti da rade s dummy annotation step objektom. Treba imati proxy feature objekt!

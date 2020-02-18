@@ -4,7 +4,6 @@ from step_project.base_step import Step
 from common_utils.misc import sets_equal
 from common_utils.show import print_table
 from common_utils.cache import cache_args
-from common_utils.terminal_layout import StringColumns
 from ..utils.import_methods import import_bio_seq_io
 from ..utils.helpers import feature_qualifiers_to_desc, feature_location_desc, concatenate_sequences
 
@@ -191,58 +190,3 @@ Annotations are stored:
     def _intersect_features(self, data):
         # data is dict seq_ident -> dict (gene -> num occurences)
         return set.intersection(*(set(g.keys()) for g in data.values()))
-
-    #
-    def chloroplast_annotation(self, num_genes=1, feature_type='gene', features=None, sequences=None):
-        sequences = (self._sequences & set(sequences)) if sequences else self._sequences
-        rows = []
-        for seq_ident in sorted(sequences):
-            seq = self.get_sequence_record(seq_ident)
-            rep_regs = [f for f in seq.features if f.type == 'repeat_region']
-            if len(rep_regs) != 2:
-                print(f"Sequence {seq_ident} doesn't have inverted repeats!")
-                continue
-            ira, irb = rep_regs
-            if len(seq) != irb.location.end:
-                print(f"  warning ({seq_ident}): sequence's IRB doesn't end on sequence end!")
-
-            locs = [(1, ira.location.start),
-                    (ira.location.start, ira.location.end),
-                    (ira.location.end, irb.location.start)]
-            regions = [[] for _ in range(4)]
-            borders = [[] for _ in range(4)]
-            for f in sorted((f for f in seq.features if f.type == feature_type and f.location),
-                            key=lambda x: x.location.start):
-                ls = f.location.start
-                le = f.location.end
-                if le < ls:
-                    borders[0].append(f)
-                else:
-                    for bi, (i1, i2) in enumerate(locs):
-                        if le <= i2:
-                            regions[bi].append(f)
-                            break
-                        elif ls < i2:
-                            borders[bi + 1].append(f)
-                            break
-                    else:
-                        regions[-1].append(f)
-            #
-            header = ['|', 'LSC', '  |', 'IRa', '  |', 'SSC', '  |', 'IRb']
-            indices = ['', '', str(ira.location.start), '', str(ira.location.end), '', str(irb.location.start), '']
-            row = []
-
-            for i in range(4):
-                row.append(borders[i][0].qualifiers['gene'][0] if borders[i] else '')
-                rs = regions[i]
-                if len(rs) <= 2 * num_genes:
-                    row.append(' '.join(r.qualifiers['gene'][0] for r in rs))
-                else:
-                    row.append(' '.join(r.qualifiers['gene'][0] for r in rs[:num_genes]) + ' ... ' +
-                               ' '.join(r.qualifiers['gene'][0] for r in rs[-num_genes:]))
-
-            #
-            rows.append([seq_ident] + [''] * 7)
-            rows.extend([indices, header, row])
-        #
-        print(StringColumns(rows))
