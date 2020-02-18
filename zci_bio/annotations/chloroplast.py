@@ -16,7 +16,7 @@ def _irb_start_end(irb):
 def chloroplast_annotation(annotations, num_genes=1, feature_type='gene', features=None, sequences=None):
     sequences = (annotations._sequences & set(sequences)) if sequences else annotations._sequences
     rows = []
-    have_first_col = False
+    with_first_col = False
     for seq_ident in sorted(sequences):
         seq = annotations.get_sequence_record(seq_ident)
         rep_regs = [f for f in seq.features if f.type == 'repeat_region']
@@ -40,6 +40,7 @@ def chloroplast_annotation(annotations, num_genes=1, feature_type='gene', featur
             le = f.location.end
             if le < ls:
                 borders[0].append(f)
+                with_first_col = True
             else:
                 for bi, (i1, i2) in enumerate(locs):
                     if le <= i2:
@@ -53,8 +54,6 @@ def chloroplast_annotation(annotations, num_genes=1, feature_type='gene', featur
         # Checks
         if any(len(b) > 1 for b in borders):
             print(f"  warning ({seq_ident}): more features on border!", [len(b) for b in borders])
-        if borders[0]:
-            have_first_col = True
         #
         header = ['|', f'LSC ({len(regions[0])})', '  |', f'IRa ({len(regions[1])})', '  |',
                   f'SSC ({len(regions[2])})', '  |', f'IRb  ({len(regions[3])})']
@@ -73,8 +72,9 @@ def chloroplast_annotation(annotations, num_genes=1, feature_type='gene', featur
 
         #
         rows.append([seq_ident, str(len(seq)), f'({len(features_s)})'] + [''] * 5)
-        rows.extend([indices, header, row])
+        rows.extend([indices, header, row, [''] * len(row)])
+
     #
-    if not have_first_col:
-        rows = [r[1:] if i % 3 else r[:-1] for i, r in enumerate(rows)]
+    if not with_first_col:
+        rows = [r[1:] if i % 5 else r[:-1] for i, r in enumerate(rows)]
     print(StringColumns(rows))
