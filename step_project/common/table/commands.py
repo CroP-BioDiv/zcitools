@@ -17,6 +17,7 @@ Additional arguments specify how to interpret input data.
         parser.add_argument('-f', '--data-format', help='Input data format (if needed). Values: excel, csv, txt')
         parser.add_argument('-c', '--columns', help='Columns. Format name1,type1:name2,type2:...')
         parser.add_argument('-H', '--has-header', action='store_true', help='Input csv file has header')
+        parser.add_argument('-d', '--delimiter', default=';', help='csv delimiter')
 
     def run(self, step_data):
         from .input_file import create_table_step

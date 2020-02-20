@@ -18,6 +18,8 @@ def create_table_step(project, step_data, params):
         raise ZCItoolsValueError(f"Data format for input table is not specified or found! Filename {params.filename}.")
 
     columns = [x.split(',') for x in params.columns.split(':')] if params.columns else None
+    if columns:
+        columns = [(c[0], column_name_2_type(c[0])) if len(c) == 1 else c for c in columns]
 
     # Read data.
     data = None
@@ -28,7 +30,7 @@ def create_table_step(project, step_data, params):
         data = sorted(data)
     elif data_format == 'csv':
         with open(params.filename, 'r') as incsv:
-            reader = csv.reader(incsv, delimiter=';', quotechar='"')
+            reader = csv.reader(incsv, delimiter=params.delimiter, quotechar='"')
             if params.has_header:
                 header = next(reader)  # Skip header
                 if not columns:

@@ -107,6 +107,9 @@ Table data is stored in table.csv with header, separator ;, quote character ".
             _write_csv(self._get_table_filename(), self._columns, self._rows)
 
     # Retrieve data methods
+    def has_column(self, column_name):
+        return any(c == column_name for c, _ in self._columns)
+
     def get_column_with_data_types(self):
         return self._columns
 

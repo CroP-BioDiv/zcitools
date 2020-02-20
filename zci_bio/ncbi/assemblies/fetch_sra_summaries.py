@@ -33,8 +33,9 @@ def fetch_sra_summaries(step_data, table_step):
     step.set_columns(_sra_columns)
     step.save()  # To store step as it is
     step.known_groups()
+    bp_column = 'bio_project' if table_step.has_column('bio_project') else 'BioProject'
     #
-    to_proc = table_step.get_column_values('bio_project') - set(step.known_groups())
+    to_proc = table_step.get_column_values(bp_column) - set(step.known_groups())
     if to_proc:
         entrez = Entrez()
         num_grouped_sras = 2000
