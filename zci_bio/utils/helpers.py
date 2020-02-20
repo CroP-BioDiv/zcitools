@@ -1,7 +1,7 @@
 import os
 import shutil
 from .import_methods import import_bio_seq_io, import_bio_align_io
-from common_utils.file_utils import extension_no_dot
+from common_utils.file_utils import extension_no_dot, basename_no_ext
 
 # Methods for this and that
 
@@ -61,6 +61,11 @@ def feature_qualifiers_to_desc(feature):
 def read_sequence(filename, format=None):
     with open(filename, 'r') as in_data:
         return import_bio_seq_io().read(in_data, get_bio_io_type(filename, format))
+
+
+def read_sequences(filename, format=None):
+    with open(filename, 'r') as in_data:
+        return list(import_bio_seq_io().parse(in_data, get_bio_io_type(filename, format)))
 
 
 def split_sequences(input_filename, output_ext):
@@ -135,6 +140,31 @@ def write_annotated_sequence(filename, id_, seq, annotation, output_format=None,
             SeqRecord(Seq(seq, DNAAlphabet()),
                       id=id_, name=name, description=str(description), features=features),
             out_seqs, output_format)
+
+
+def read_raw_sequences_from_all(input_data, extensions=None):
+    # Yields seq_ident
+    # ToDo: from alignment file
+    if os.path.isfile(input_data):
+        seqs = read_sequences(input_data)
+        # yield seq.id, seq.seq
+        if len(seqs) == 1:
+            yield basename_no_ext(input_data), seqs[0].seq
+        else:
+            for seq in seqs:
+                yield basename_no_ext(seq.id), seq.seq  # Removes <.num> from NC_num<.num>
+    elif os.path.isdir(input_data):
+        # ToDo: implement from step
+        # if os.path.isfile(os.path.join(input_data, 'description.yml')):
+        #     # step read
+        #     pass
+        # else:
+        for f in os.listdir(input_data):
+            ext = extension_no_dot(f)
+            if ext in ext_2_bio_io_type and (not extensions or ext in extensions):
+                seq = read_sequence(os.path.join(input_data, f))
+                # yield seq.id, seq.seq
+                yield basename_no_ext(f), seq.seq
 
 
 #

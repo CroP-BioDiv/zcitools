@@ -95,3 +95,39 @@ class ChangeSequence(NonProjectCommand):
         change_sequence_data(
             method, a.input_filename, a.output_filename,
             input_format=a.input_format, output_format=a.output_format, position=a.position)
+
+
+class SequencesEqual(NonProjectCommand):
+    _COMMAND = 'sequences_equal'
+    _HELP = """Check are given sets of sequences equal.
+Sequence(s) can be one sequence file, directory with sequence files,
+or step directory of type sequences, annotations or alignements"""
+
+    @staticmethod
+    def set_arguments(parser):
+        parser.add_argument('left', help='Left hand side sequence(s)')
+        parser.add_argument('right', help='Right hand side sequence(s)')
+        parser.add_argument('-e', '--extensions', help='Files with only given extensions. Format ext1;ext2')
+
+    def run(self):
+        from ..utils.helpers import read_raw_sequences_from_all
+        extensions = self.args.extensions.split(';') if self.args.extensions else None
+        errors = []
+        left = dict(read_raw_sequences_from_all(self.args.left, extensions=extensions))
+        # right = dict(read_raw_sequences_from_all(self.args.right, extensions=extensions))
+        # print(sorted(right.keys()))
+        not_in_right = set(left.keys())
+        for seq_ident, r_seq in read_raw_sequences_from_all(self.args.right, extensions=extensions):
+            l_seq = left.get(seq_ident)
+            if l_seq:
+                not_in_right.discard(seq_ident)
+                if r_seq != l_seq:
+                    errors.append(f'Differs {seq_ident}, left {len(l_seq)}, right {len(r_seq)}!')
+            else:
+                errors.append(f'Not in left {seq_ident}!')
+        if not_in_right:
+            errors.append(f'Not in right {", ".join(sorted(not_in_right))}!')
+        if errors:
+            print('ERRORS:')
+            for e in errors:
+                print(e)
