@@ -52,7 +52,7 @@ Annotations are stored:
         return self.get_sequence_record(seq_ident).seq
 
     def _iterate_records(self, filter_seqs=None):
-        for seq_ident in filter_seqs or self._sequences:
+        for seq_ident in sorted(filter_seqs or self._sequences):
             yield seq_ident, self.get_sequence_record(seq_ident)
 
     def concatenate_seqs_genbank(self, filename, seq_idents):

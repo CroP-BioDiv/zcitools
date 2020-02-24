@@ -29,6 +29,7 @@ class ChloroplastOrientate(CreateStepFromStepCommand):
     _COMMAND = 'chloroplast_orientate'
     _HELP = "Orientate chloroplast sequences in standard way"
     _COMMAND_GROUP = 'Chloroplast'
+    _INPUT_STEP_DATA_TYPE = 'annotations'
 
     def run(self, step_data):
         from .orientate import orientate_chloroplast

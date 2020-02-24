@@ -10,14 +10,10 @@ class _Interval(namedtuple('_Interval', 'start, end')):
         assert 0 <= start < end, (start, end)
         return super(_Interval, cls).__new__(cls, start, end)
 
-    # Interval data
     def intersects(self, b):
-        if self.start <= b.start < self.end:
-            return True
-        if self.start < b.end <= self.end:
-            return True
-        if b.start <= self.start < b.end:
-            return True
+        return (self.start <= b.start < self.end) or \
+            (self.start < b.end <= self.end) or \
+            (b.start <= self.start < b.end)
 
 
 class Feature:
@@ -28,6 +24,7 @@ class Feature:
         self.name = name
         if not name and feature:
             self.name = feature.qualifiers['gene'][0]  # For now
+        self.feature = feature
 
         # Chec
         assert sum(int(bool(x)) for x in (feature, intervals, interval)) == 1, (feature, intervals, interval)
@@ -108,7 +105,6 @@ class Partition:
         ret = defaultdict(list)
         for f in features:
             in_ps = [p for p in self._parts if p.intersects(f)]
-            print(f.name, in_ps)
             l_ps = len(in_ps)
             assert l_ps
             if l_ps == 1:
