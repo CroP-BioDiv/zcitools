@@ -1,5 +1,4 @@
-from step_project.base_commands import ProjectCommand, NonProjectCommand, \
-    CreateStepFromStepCommand, CreateStepFromStepCommand_CommonDB
+from step_project.base_commands import ProjectCommand, NonProjectCommand, CreateStepFromStepCommand_CommonDB
 from common_utils.exceptions import ZCItoolsValueError
 
 
@@ -117,7 +116,7 @@ class CPGAVAS(CreateStepFromStepCommand_CommonDB):
 
 
 # Presentations
-class OGDRAW(CreateStepFromStepCommand):
+class OGDRAW(CreateStepFromStepCommand_CommonDB):
     _COMMAND = 'ogdraw'
     _HELP = "Create OGDraw images of annotations"
     _STEP_BASE_NAME = 'OGDraw'
@@ -127,11 +126,9 @@ class OGDRAW(CreateStepFromStepCommand):
 
     @staticmethod
     def set_arguments(parser):
-        parser.add_argument('step', help='Input sequences step')
+        CreateStepFromStepCommand_CommonDB.set_arguments(parser)
         parser.add_argument('-f', '--image_format', default='ps', help='One of: svg, pdf, ps, png, jpg, tif, gif')
         parser.add_argument('-s', '--sequences', help="Filter only sequences, separate seq_idents by ';'.")
-        dbs = CreateStepFromStepCommand.get_sequence_dbs()
-        parser.add_argument('-d', '--database', default='base', help=f'Database to use: {", ".join(dbs)}')
 
     def db_identifier(self):
         step_command = self._input_step().get_command()  # Depends on annotation process
