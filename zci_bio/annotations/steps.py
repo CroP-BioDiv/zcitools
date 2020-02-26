@@ -41,9 +41,12 @@ Annotations are stored:
     def all_sequences(self):
         return self._sequences
 
+    def get_sequence_filename(self, seq_ident):
+        return self.step_file(seq_ident + '.gb')
+
     @cache_args
     def get_sequence_record(self, seq_ident):
-        with open(self.step_file(seq_ident + '.gb'), 'r') as in_s:
+        with open(self.get_sequence_filename(seq_ident), 'r') as in_s:
             seq_record = import_bio_seq_io().read(in_s, 'genbank')
             assert seq_ident == seq_record.id, (seq_ident, seq_record.id)
         return seq_record
@@ -55,8 +58,8 @@ Annotations are stored:
         for seq_ident in sorted(filter_seqs or self._sequences):
             yield seq_ident, self.get_sequence_record(seq_ident)
 
-    def concatenate_seqs_genbank(self, filename, seq_idents):
-        concatenate_sequences(filename, [self.step_file(si + '.gb') for si in filter_seqs or self._sequences])
+    def concatenate_seqs_genbank(self, filename, seq_idents, filter_seqs=None):
+        concatenate_sequences(filename, [self.get_sequence_filename(si) for si in filter_seqs or self._sequences])
 
     #
     def extract_shared_features(self, feature_type, filter_seqs=None):

@@ -38,12 +38,12 @@ FAQ: https://chlorobox.mpimp-golm.mpg.de/OGDraw-FAQ.html
 """
 
 
-def create_ogdraw(step_data, image_format, annotations_step, cache, sequences=None):
+def create_ogdraw(step_data, image_format, annotations_step, common_db, sequences=None):
     step = ImagesStep(annotations_step.project, step_data, remove_data=True)
     all_images = sorted(sequences.split(';') if sequences else annotations_step.all_sequences())
 
-    # Fetch cached sequences
-    to_fetch = step.get_cached_records(cache, all_images, info=True)
+    # Fetch common db sequences
+    to_fetch = step.get_common_db_records(common_db, all_images, info=True)
 
     # If OGDraw is done on GeSeq data, than jpg images are already in
     if image_format == 'jpg':
@@ -70,7 +70,7 @@ def create_ogdraw(step_data, image_format, annotations_step, cache, sequences=No
         write_str_in_file(step.step_file('INSTRUCTIONS.txt'),
                           _instructions.format(step_name=step_data['step_name'], image_format=image_format))
         # Store image format used
-        write_yaml(step.step_file('finish.yml'), dict(image_format=image_format, sequences=sequences))
+        write_yaml(dict(image_format=image_format, sequences=sequences), step.step_file('finish.yml'))
 
     #
     step.set_images(all_images)
@@ -78,7 +78,7 @@ def create_ogdraw(step_data, image_format, annotations_step, cache, sequences=No
     return step
 
 
-def finish_ogdraw(step_obj, cache):
+def finish_ogdraw(step_obj, common_db):
     # Note: original files are left in directory
 
     # Check files ogdraw-result-<num>-<hash>.zip
@@ -117,7 +117,7 @@ def finish_ogdraw(step_obj, cache):
     step_obj._check_data()
     step_obj.save(create=False)
 
-    # Set into the cache
-    if cache:
+    # Set into the common db
+    if common_db:
         for image_ident in added_images:
-            cache.set_record(image_ident, step_obj.step_file(f'{image_ident}.{image_format}'))
+            common_db.set_record(image_ident, step_obj.step_file(f'{image_ident}.{image_format}'))

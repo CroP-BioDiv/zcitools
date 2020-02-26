@@ -48,12 +48,12 @@ Documentation: https://chlorobox.mpimp-golm.mpg.de/gs_documentation.html
 """
 
 
-def create_ge_seq_data(step_data, sequences_step, cache):
+def create_ge_seq_data(step_data, sequences_step, common_db):
     step = AnnotationsStep(sequences_step.project, step_data, remove_data=True)
     all_sequences = list(sequences_step.all_sequences())
 
-    # Fetch cached sequences
-    to_fetch = step.get_cached_records(cache, all_sequences, info=True)
+    # Fetch common DB sequences
+    to_fetch = step.get_common_db_records(common_db, all_sequences, info=True)
 
     # Store sequence
     if to_fetch:
@@ -69,7 +69,7 @@ def create_ge_seq_data(step_data, sequences_step, cache):
     return step
 
 
-def finish_ge_seq_data(step_obj, cache):
+def finish_ge_seq_data(step_obj, common_db):
     # Note: original files are left in directory
     # ToDo: inverted_region 126081..1 !!! To_ind > from_ind!!!
     # First check job-results-<num>.zip file
@@ -99,7 +99,7 @@ def finish_ge_seq_data(step_obj, cache):
     step_obj._check_data()
     step_obj.save(create=False)
 
-    # Set into the cache
-    if cache:
+    # Set into the common DB
+    if common_db:
         for seq_ident in added_seqs:
-            cache.set_record(seq_ident, step_obj.step_file(seq_ident + '.gb'))
+            common_db.set_record(seq_ident, step_obj.step_file(seq_ident + '.gb'))

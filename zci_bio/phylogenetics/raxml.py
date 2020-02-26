@@ -59,7 +59,7 @@ def _copy_alignment_file(align_step, in_step, files_to_proc, set_partitions):
         filename=a_f, short=align_step.is_short(), length=len(alignment[0]), partitions=partitions))
 
 
-def create_raxml_data(step_data, alignment_step, cache, set_partitions, run):
+def create_raxml_data(step_data, alignment_step, set_partitions, run):
     # List of dicts with attrs: filename, short, partitions (filename or None)
     # This data is used to optimize calculation
     files_to_proc = []
@@ -102,7 +102,7 @@ def create_raxml_data(step_data, alignment_step, cache, set_partitions, run):
     return step
 
 
-def finish_raxml_data(step_obj, cache):
+def finish_raxml_data(step_obj):
     output_f = step_obj.step_file('output.zip')
     if not os.path.isfile(output_f):
         raise ZCItoolsValueError('No calculation output file output.zip!')

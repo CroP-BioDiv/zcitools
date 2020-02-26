@@ -148,10 +148,10 @@ class Step:
             if self._is_cache_file(f):
                 silent_remove(self.step_file(f))
 
-    def get_cached_records(self, cache, record_idents, info=False):
+    def get_common_db_records(self, common_db, record_idents, info=False):
         # Returns list of records that where not processed
-        if cache:
-            return cache.get_records(record_idents, self.directory, info=info)
+        if common_db:
+            return common_db.get_records(record_idents, self.directory, info=info)
         return record_idents
 
     def clean_files(self):

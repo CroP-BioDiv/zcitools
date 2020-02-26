@@ -17,12 +17,11 @@ class RAxML(CreateStepFromStepCommand):
 
     def run(self, step_data):
         from .raxml import create_raxml_data
-        return create_raxml_data(step_data, self._input_step(), self.get_cache_object(),
-                                 not self.args.no_partitions, self.args.run)
+        return create_raxml_data(step_data, self._input_step(), not self.args.no_partitions, self.args.run)
 
     def finish(self, step_obj):
         from .raxml import finish_raxml_data
-        finish_raxml_data(step_obj, self.get_cache_object())
+        finish_raxml_data(step_obj)
 
 
 class MrBayes(CreateStepFromStepCommand):
@@ -39,8 +38,8 @@ class MrBayes(CreateStepFromStepCommand):
 
     def run(self, step_data):
         from .mr_bayes import create_mr_bayes_data
-        return create_mr_bayes_data(step_data, self._input_step(), self.get_cache_object(), self.args.run)
+        return create_mr_bayes_data(step_data, self._input_step(), self.args.run)
 
     def finish(self, step_obj):
         from .mr_bayes import finish_mr_bayes_data
-        finish_mr_bayes_data(step_obj, self.get_cache_object())
+        finish_mr_bayes_data(step_obj)

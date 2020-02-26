@@ -132,7 +132,9 @@ class RunCommand:
     def _get_parser(self, command, for_help):
         command_cls = self.commands_map[command]
 
-        parser = argparse.ArgumentParser(description=command_cls._HELP)
+        parser = argparse.ArgumentParser(
+            description=command_cls._HELP,
+            formatter_class=argparse.ArgumentDefaultsHelpFormatter)
         if for_help:
             parser.add_argument(command, help=command)
         else:

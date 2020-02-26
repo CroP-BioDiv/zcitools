@@ -37,4 +37,4 @@ class ChloroplastOrientate(CreateStepFromStepCommand):
 
     # def finish(self, step_obj):
     #     from .ge_seq import finish_ge_seq_data
-    #     finish_ge_seq_data(step_obj, self.get_cache_object())
+    #     finish_ge_seq_data(step_obj, self.get_common_db_object())

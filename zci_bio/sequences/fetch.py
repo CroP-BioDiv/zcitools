@@ -16,7 +16,7 @@ def fetch_sequences(step_data, table_step, cache):
                 all_sequences.append(ni)
 
     # Fetch cached sequences
-    to_fetch = step.get_cached_records(cache, all_sequences, info=True)
+    to_fetch = step.get_common_db_records(cache, all_sequences, info=True)
 
     if to_fetch:
         entrez = Entrez()

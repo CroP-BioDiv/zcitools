@@ -21,7 +21,7 @@ Steps:
 """
 
 
-def create_mvista_data(step_data, annotations_step, cache, run, email):
+def create_mvista_data(step_data, annotations_step, run, email):
     step = mVISTAStep(annotations_step.project, step_data, remove_data=True)
     sequences = sorted(annotations_step.all_sequences())
 

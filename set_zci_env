@@ -10,7 +10,7 @@ export PATH=$ZCITOOLS/bin:$ZCI_PROGRAM_PATHS:$PATH
 export PYTHONPATH=$ZCITOOLS:$PYTHONPATH
 
 # Used by zcit.py commands
-export ZCI_GLOBAL_CACHE=$ZCI_MAIN_DIR/caches/_global_cache_
+export ZCI_COMMON_DB=$ZCI_MAIN_DIR/caches/_common_db_
 
 # Set our seqrunces paths
 export ZCI_OUR_SEQUENCES=$ZCI_MAIN_DIR/data/assemblies

@@ -6,7 +6,7 @@ class NCBITaxonomySet(NonProjectCommand):  # Works only with cache
     _HELP = "Download data and creates SQLite database in global cache"
     _COMMAND_GROUP = 'NCBI'
 
-    def cache_identifier(self):
+    def db_identifier(self):
         return dict(static=True, data_identifier=['NCBI', 'taxonomy'])
 
     @staticmethod
@@ -16,10 +16,10 @@ class NCBITaxonomySet(NonProjectCommand):  # Works only with cache
 
     def run(self):
         from .local_database import create_database
-        return create_database(self.get_cache_object(), force=self.args.force, force_db=self.args.force_db)
+        return create_database(self.get_common_db_object(), force=self.args.force, force_db=self.args.force_db)
 
 
-class NCBITaxonomyNearSpecies(NCBITaxonomySet):  # Works only with cache
+class NCBITaxonomyNearSpecies(NCBITaxonomySet):  # Works only with common db
     _COMMAND = 'ncbi_taxonomy_tree'
     _HELP = "Show taxonomy tree"
 
@@ -35,7 +35,7 @@ class NCBITaxonomyNearSpecies(NCBITaxonomySet):  # Works only with cache
 
     def run(self):
         from .local_database import taxonomy_tree
-        return taxonomy_tree(self.get_cache_object(), self.args)
+        return taxonomy_tree(self.get_common_db_object(), self.args)
 
 
 class NCBITaxonomyWithAssembly(NCBITaxonomyNearSpecies):  # Works only with cache
@@ -44,4 +44,4 @@ class NCBITaxonomyWithAssembly(NCBITaxonomyNearSpecies):  # Works only with cach
 
     def run(self):
         from .local_database import taxonomy_tree_assembly
-        return taxonomy_tree_assembly(self.get_cache_object(), self.args)
+        return taxonomy_tree_assembly(self.get_common_db_object(), self.args)

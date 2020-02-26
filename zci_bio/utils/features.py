@@ -70,6 +70,14 @@ class Feature:
     def intersects(self, b):
         return any(any(p1.intersects(p2) for p2 in b._intervals) for p1 in self._intervals)
 
+    def extract(self, seq):
+        # Returns Seq object
+        assert len(seq) == self.seq_length, (len(seq), self.seq_length)
+        if self.feature:
+            return self.feature.extract(seq)
+        dna = ''.join(seq.seq[p.start:p.end] for p in self._intervals)
+        return type(seq)(dna, seq.alphabet)  # Omitting import Bio.Seq
+
 
 class Partition:
     def __init__(self, parts, fill=False):
@@ -115,3 +123,11 @@ class Partition:
                 print(f'  warning: feature {f.name} in more than two parts!')
                 ret['_more_'].append(f)
         return ret
+
+    def extract_part(self, name, seq):
+        part = self.get_part_by_name(name)
+        if part:
+            return part.extract(seq)
+
+    def extract(self, seq):
+        return dict((n, p.extract(seq)) for n, p in self._parts.items())

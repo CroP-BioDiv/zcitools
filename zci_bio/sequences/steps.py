@@ -1,6 +1,6 @@
 import os.path
 from collections import defaultdict
-from step_project.base_step import Step
+from step_project.base_step import Step, StepCollection
 from common_utils.misc import sets_equal
 from common_utils.exceptions import ZCItoolsValueError
 from common_utils.show import print_table
@@ -123,3 +123,8 @@ Each sequence can be stored in one or more files in different formats.
         print_table(['seq_ident', 'Record ID', 'Length', 'Num features'],
                     [[seq_ident, seq_record.id, len(seq_record.seq), len(seq_record.features)]
                      for seq_ident, seq_record in self._iterate_records()])
+
+
+class GroupedSequencesStep(StepCollection):
+    _STEP_TYPE = 'grouped_sequences'
+    _SUBSTEP_CLASS = SequencesStep

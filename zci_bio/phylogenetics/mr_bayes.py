@@ -47,7 +47,7 @@ def _copy_alignment_file(align_step, in_step, files_to_proc):
     files_to_proc.append(dict(filename=a_f, short=align_step.is_short()))
 
 
-def create_mr_bayes_data(step_data, alignment_step, cache, run):
+def create_mr_bayes_data(step_data, alignment_step, run):
     # List of dicts with attrs: filename, short
     # This data is used to optimize calculation
     # ToDo: almost the same as raxml.py. Differs in class types, _copy_alignment_file() and file formats
@@ -88,7 +88,7 @@ def create_mr_bayes_data(step_data, alignment_step, cache, run):
     return step
 
 
-def finish_mr_bayes_data(step_obj, cache):
+def finish_mr_bayes_data(step_obj):
     output_f = step_obj.step_file('output.zip')
     if not os.path.isfile(output_f):
         raise ZCItoolsValueError('No calculation output file output.zip!')

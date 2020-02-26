@@ -1,5 +1,5 @@
 import os
-from common_utils.cache import Cache
+from common_utils.common_db import CommonDB
 
 """
 Command classes, called from zcit script.
@@ -21,9 +21,9 @@ Class has to implement:
  - _HELP                 : (attribute) command help text
  - set_arguments(parser) : (static method) sets command's arguments
  - run(step_data/step/-) : runs command with given arguments
- - cache_identifier()    : returns None or dict(static=bool, data_identifier=list of strings)
+ - db_identifier()       : returns None or dict(static=bool, data_identifier=list of strings)
                            Uniquelly specify how step data is created from project start.
-                           Used for caching data.
+                           Used to specify common DB data.
 
 Create new step command also has to implement:
  - _PRESENTATION         : (attribute) bool describing is step presentation.
@@ -32,7 +32,12 @@ Create new step command also has to implement:
 
 Create step command's run() method can store additional data for finish() method.
 It is good practice to store that data in file finish.yml.
+
 """
+
+ZCI_COMMON_DB_DIR = os.environ.get('ZCI_COMMON_DB')
+_SEQUENCE_DBS_RELATIVE_DIR = 'sequence_dbs'
+_SEQUENCE_DBS_DIR = os.path.join(ZCI_COMMON_DB_DIR, _SEQUENCE_DBS_RELATIVE_DIR) if ZCI_COMMON_DB_DIR else None
 
 
 class _Command:
@@ -40,7 +45,6 @@ class _Command:
     _COMMAND_TYPE = None  # General work
     _COMMAND = None
     _COMMAND_GROUP = None
-    _CACHE_DIR_PROJECT = '_project_cache_'
 
     def __init__(self, project, args):
         self.project = project
@@ -56,20 +60,28 @@ class _Command:
     def run(self):
         raise NotImplementedError(f'Method {self.__class__.__name__}.run() is not implemented!')
 
-    # Caching
-    def cache_identifier(self):
+    # Common DB
+    def db_identifier(self):
         return None
 
-    def get_cache_object(self):
-        d = self.cache_identifier()
-        if d:
-            if d['static']:
-                # Default is not so global cache :-)
-                _dir = os.environ['ZCI_GLOBAL_CACHE'] or os.path.join('..', '..', '_global_cache_')
-            else:
-                _dir = self._CACHE_DIR_PROJECT
-            if _dir:
-                return Cache(os.path.join(_dir, *d['data_identifier']))
+    def get_common_db_object(self):
+        if ZCI_COMMON_DB_DIR:
+            d = self.db_identifier()
+            if d:
+                return CommonDB(os.path.join(ZCI_COMMON_DB_DIR, *d['data_identifier']), base_dir=ZCI_COMMON_DB_DIR)
+
+    @staticmethod
+    def get_sequence_dbs():
+        if _SEQUENCE_DBS_DIR:
+            return [f for f in os.listdir(_SEQUENCE_DBS_DIR) if os.path.isdir(os.path.join(_SEQUENCE_DBS_DIR, f))]
+        return []
+
+    def get_sequence_db_ident(self, *idents, db=None):
+        db = db or self.args.database
+        dbs = self.get_sequence_dbs()
+        if db not in dbs:
+            raise ZCItoolsValueError(f"Database {db} doesn't exist. Possible values: {', '.join(dbs)}!")
+        return [_SEQUENCE_DBS_RELATIVE_DIR, db, *idents]
 
 
 class ProjectCommand(_Command):
@@ -115,3 +127,17 @@ class CreateStepFromStepCommand(CreateStepCommand):
     def _input_step(self):
         assert self._INPUT_STEP_DATA_TYPE
         return self.project.read_step(self.args.step, check_data_type=self._INPUT_STEP_DATA_TYPE)
+
+
+class CreateStepFromStepCommand_CommonDB(CreateStepFromStepCommand):
+    _COMMON_DB_IDENT = None  # 'sequences'
+
+    @staticmethod
+    def set_arguments(parser):
+        parser.add_argument('step', help='Input table step')
+        dbs = CreateStepFromStepCommand.get_sequence_dbs()
+        parser.add_argument('-d', '--database', default='base', help=f'Database to use: {", ".join(dbs)}')
+
+    def db_identifier(self):
+        assert self._COMMON_DB_IDENT
+        return dict(static=True, data_identifier=self.get_sequence_db_ident(self._COMMON_DB_IDENT))

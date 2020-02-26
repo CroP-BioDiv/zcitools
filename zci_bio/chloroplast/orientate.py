@@ -1,3 +1,4 @@
+from common_utils.file_utils import copy_file, write_fasta
 from ..sequences.steps import SequencesStep
 from .utils import find_regions
 from ..utils.features import Feature
@@ -12,12 +13,15 @@ from ..utils.features import Feature
 
 
 def orientate_chloroplast(step_data, annotation_step):
-    step = SequencesStep(annotation_step.project, step_data, remove_data=True)
+    step = GroupedSequencesStep(annotation_step.project, step_data, remove_data=True)
+    good = step.create_substep('good')
+    repaired = step.create_substep('repaired')
+    bad = step.create_substep('bad')
 
     for seq_ident, seq in annotation_step._iterate_records():
         partition = find_regions(seq_ident, seq)
         if not partition:
-            # ToDo: what to do?
+            # ToDo: what to do? Check is orientation good with list of genes. If not raise 
             assert False, seq_ident
             continue
 
@@ -40,16 +44,29 @@ def orientate_chloroplast(step_data, annotation_step):
             if 'rrn' in f.name:
                 ir_count += f.feature.strand
 
-        # Revert if needed
-        if lsc_count > 0:
-            assert False, f'REVERT LSC {seq_ident}'
-        if ssc_count > 0:
-            print('REVERT SSC', seq_ident)
-        if ir_count < 0:
-            assert False, f'REVERT IRs {seq_ident}'
+        an_file = annotation_step.get_sequence_filename()
+        if (lsc_count <= 0) and (ssc_count <= 0) and (ir_count >= 0):
+            # No change
+            step_f = good.step_file(os.path.basename(an_file))
+            copy_file(an_file, step_f)
+            good.add_sequence_file(step_f)
+        else:
+            parts = partition.extract(seq)  # dict name -> Seq object
+            if ssc_count > 0:
+                parts['ssc'] = parts['ssc'].reverse_complement()
+            if lsc_count > 0:
+                assert False, f'REVERT LSC {seq_ident}'
+            if ir_count < 0:
+                assert False, f'REVERT IRs {seq_ident}'
 
-        # # Ima ili nema IR-ova
-        # step.add_sequence_file(f)
+            new_seq = parts['lsc'] + parts['ira'] + parts['ssc'] + parts['irb']
+            step_f = repaired.step_file(os.path.basename(an_file))
+            write_fasta(step_f, [(seq_ident, new_seq.seq)])
+            repaired.add_sequence_file(step_f)
 
+    #
+    good.save()
+    repaired.save()
+    bad.save()
     step.save()
     return step

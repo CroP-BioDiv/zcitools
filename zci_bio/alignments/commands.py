@@ -71,8 +71,8 @@ class mVISTA(CreateStepFromStepCommand):
         email = self.args.email or get_settings()['email']
         if run and not email:
             raise ZCItoolsValueError('Email address is needed to post mVISTA data!')
-        return create_mvista_data(step_data, self._input_step(), self.get_cache_object(), run, email)
+        return create_mvista_data(step_data, self._input_step(), run, email)
 
     def finish(self, step_obj):
         from .mvista import finish_mvista_data
-        finish_mvista_data(step_obj, self.get_cache_object())
+        finish_mvista_data(step_obj)
