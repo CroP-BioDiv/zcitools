@@ -13,11 +13,18 @@ Record is implemented as zip file. It can contain any kind of data: any number o
 
 class CommonDB:
     def __init__(self, db_dir, base_dir=None):
+        assert not base_dir or db_dir.startswith(base_dir), (db_dir, base_dir)
         self.db_dir = db_dir
+        self._base_dir = base_dir
+        #
         self._strip_length = (len(base_dir) + 1) if base_dir else 0
         self._dir_exists = os.path.exists(db_dir)
         if self._dir_exists and os.path.isfile(db_dir):
             raise ZCItoolsValueError(f'Common DB location ({db_dir}) is a file!')
+
+    def get_relative_db(self, *path):
+        db_dir = os.path.normpath(os.path.join(self.db_dir, *path))
+        return CommonDB(db_dir, base_dir=self._base_dir)
 
     def _save_file(self, zip_f, f):
         # Note: step filenames are relative to project main directory. Zip filenames are stored without step_name.

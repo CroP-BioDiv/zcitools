@@ -71,6 +71,9 @@ class Step:
     def get_command(self):
         return self._step_data['command']
 
+    def get_db_ident(self):
+        return self._step_data['db_ident']
+
     def is_completed(self):
         return self._step_data['completed']
 

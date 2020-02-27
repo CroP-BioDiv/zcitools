@@ -71,6 +71,9 @@ Each sequence can be stored in one or more files in different formats.
     def all_sequences(self):
         return self._sequences.keys()
 
+    def has_sequences(self):
+        return bool(self._sequences)
+
     def _iterate_records(self):
         # Iterate through all sequences, returns Bio.SeqRecord objects.
         for seq_ident, files in sorted(self._sequences.items()):
@@ -123,8 +126,3 @@ Each sequence can be stored in one or more files in different formats.
         print_table(['seq_ident', 'Record ID', 'Length', 'Num features'],
                     [[seq_ident, seq_record.id, len(seq_record.seq), len(seq_record.features)]
                      for seq_ident, seq_record in self._iterate_records()])
-
-
-class GroupedSequencesStep(StepCollection):
-    _STEP_TYPE = 'grouped_sequences'
-    _SUBSTEP_CLASS = SequencesStep

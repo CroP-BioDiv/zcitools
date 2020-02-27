@@ -84,6 +84,7 @@ class _Command:
         return [_SEQUENCE_DBS_RELATIVE_DIR, db, *idents]
 
 
+#
 class ProjectCommand(_Command):
     pass
 
@@ -92,8 +93,8 @@ class NonProjectCommand(_Command):
     _PROJECT_COMMAND = False
 
 
-class CreateStepCommand(ProjectCommand):
-    _COMMAND_TYPE = 'new_step'
+# Create step mixins (interfaces)
+class _CreateStepsMixin:
     _PRESENTATION = False
     _STEP_BASE_NAME = None
 
@@ -103,17 +104,14 @@ class CreateStepCommand(ProjectCommand):
     def _prev_steps(self):
         return []
 
-    def run(self, step_data):
-        raise NotImplementedError(f'Method {self.__class__.__name__}.run(step_data) is not implemented!')
+    def finish(self, step_obj):
+        pass
 
     def step_base_name(self):
         return self._STEP_BASE_NAME or self._COMMAND
 
-    def finish(self, step_obj):
-        pass
 
-
-class CreateStepFromStepCommand(CreateStepCommand):
+class _CreateStepsFromStepMixin(_CreateStepsMixin):
     # Same as above, but assumes one step as input parameter
     _INPUT_STEP_DATA_TYPE = None
 
@@ -129,15 +127,47 @@ class CreateStepFromStepCommand(CreateStepCommand):
         return self.project.read_step(self.args.step, check_data_type=self._INPUT_STEP_DATA_TYPE)
 
 
-class CreateStepFromStepCommand_CommonDB(CreateStepFromStepCommand):
+class _CreateSteps_CommonDB_Mixin(_CreateStepsFromStepMixin):
     _COMMON_DB_IDENT = None  # 'sequences'
 
-    @staticmethod
-    def set_arguments(parser):
+    @classmethod
+    def set_arguments(cls, parser):
         parser.add_argument('step', help='Input table step')
-        dbs = CreateStepFromStepCommand.get_sequence_dbs()
+        dbs = cls.get_sequence_dbs()
         parser.add_argument('-d', '--database', default='base', help=f'Database to use: {", ".join(dbs)}')
 
     def db_identifier(self):
         assert self._COMMON_DB_IDENT
         return dict(static=True, data_identifier=self.get_sequence_db_ident(self._COMMON_DB_IDENT))
+
+
+# Create one step commands
+class CreateStepCommand(_CreateStepsMixin, ProjectCommand):
+    _COMMAND_TYPE = 'new_step'
+
+    def run(self, step_data):
+        raise NotImplementedError(f'Method {self.__class__.__name__}.run(step_data) is not implemented!')
+
+
+class CreateStepFromStepCommand(_CreateStepsFromStepMixin, CreateStepCommand):
+    pass
+
+
+class CreateStepFromStepCommand_CommonDB(_CreateSteps_CommonDB_Mixin, CreateStepFromStepCommand):
+    pass
+
+
+# Create more steps commands
+class CreateStepsCommand(_CreateStepsMixin, ProjectCommand):
+    _COMMAND_TYPE = 'new_steps'
+
+    def run(self, step_data, args):
+        raise NotImplementedError(f'Method {self.__class__.__name__}.run(step_data) is not implemented!')
+
+
+class CreateStepsFromStepCommand(_CreateStepsFromStepMixin, CreateStepsCommand):
+    pass
+
+
+class CreateStepsFromStepCommand_CommonDB(_CreateSteps_CommonDB_Mixin, CreateStepsFromStepCommand):
+    pass

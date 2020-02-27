@@ -90,7 +90,9 @@ class RunCommand:
             sys.exit(0)
 
         parser = self._get_parser(command, False)
-        args = parser.parse_args()
+        return self._run_command(command, parser.parse_args())
+
+    def _run_command(self, command, args):
         command_obj = self.commands_map[command](self, args)
         command_type = command_obj.get_command_type()
 
@@ -101,21 +103,37 @@ class RunCommand:
             command_obj.run()
 
         # Create new step
-        elif command_type == 'new_step':
+        elif command_type in ('new_step', 'new_steps'):
             if not self._check_is_project_valid():
                 return
 
             # Run command
             command_args = dict((k, v) for k, v in vars(args).items()
                                 if k not in ('command', 'step_num', 'step_description'))
-            step_data = dict(step_name=self._new_step_name(command_obj, args),
-                             prev_steps=command_obj.prev_steps(),
+            step_data = dict(prev_steps=command_obj.prev_steps(),
+                             db_ident=getattr(command_obj, '_COMMON_DB_IDENT', None),
                              command=command,
                              command_args=command_args,
                              cmd=' '.join(sys.argv[1:]))
-            step_obj = command_obj.run(step_data)
+            ret = None
+            if command_type == 'new_step':
+                step_data['step_name'] = self.new_step_name(command_obj, args)
+                ret = command_obj.run(step_data)
+                if ret:
+                    if not ret.is_completed():
+                        print(f'Step is not finished, check instruction ({ret.directory}/INSTRUCTIONS.txt)!')
+                else:
+                    print("Warning: create step command didn't return step object!")
+            else:
+                ret = command_obj.run(step_data)
+                if ret is not None:
+                    for s in ret:
+                        if not s.is_completed():
+                            print(f'Step is not finished, check instruction ({s.directory}/INSTRUCTIONS.txt)!')
+                else:
+                    print("Warning: create steps command didn't return any step object!")
 
-            if step_obj:
+            if ret:
                 # Store log data into project_log.yml
                 step_data = dict((k, v) for k, v in step_data.items() if k in ('cmd', 'step_name'))
                 # Do not store if step_data is equal as from last command?
@@ -123,11 +141,8 @@ class RunCommand:
                 if not log or log[-1] != step_data:
                     write_yaml([step_data], 'project_log.yml', mode='a')  # Appends yml list
 
-                if not step_obj.is_completed():
-                    print(f'Step is not finished, check instruction ({step_obj.directory}/INSTRUCTIONS.txt)!')
-
-            else:
-                print("Warning: create step command didn't return step object!")
+        else:
+            print(f"Warning: not supported command_type {command_type}?!")
 
     def _get_parser(self, command, for_help):
         command_cls = self.commands_map[command]
@@ -140,7 +155,7 @@ class RunCommand:
         else:
             parser.add_argument('command', help=command)
 
-        if command_cls._COMMAND_TYPE == 'new_step':
+        if command_cls._COMMAND_TYPE in ('new_step', 'new_steps'):
             parser.add_argument('-N', '--step-num', type=int, help='Step num prefix')
             parser.add_argument('-D', '--step-description', help='Step description')
         command_cls.set_arguments(parser)
@@ -153,7 +168,7 @@ class RunCommand:
         print('Error: script is not called on valid project!')
         return False
 
-    def _new_step_name(self, command_obj, args):
+    def new_step_name(self, command_obj, args):
         # Find step name. Format <num>_<step_base_name>[_<description>]
         prev_steps = command_obj.prev_steps()
 

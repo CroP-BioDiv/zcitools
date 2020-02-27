@@ -41,6 +41,9 @@ Annotations are stored:
     def all_sequences(self):
         return self._sequences
 
+    def has_sequences(self):
+        return bool(self._sequences)
+
     def get_sequence_filename(self, seq_ident):
         return self.step_file(seq_ident + '.gb')
 

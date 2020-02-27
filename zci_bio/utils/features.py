@@ -70,12 +70,13 @@ class Feature:
     def intersects(self, b):
         return any(any(p1.intersects(p2) for p2 in b._intervals) for p1 in self._intervals)
 
-    def extract(self, seq):
+    def extract(self, seq_record):
         # Returns Seq object
-        assert len(seq) == self.seq_length, (len(seq), self.seq_length)
+        assert len(seq_record) == self.seq_length, (len(seq_record), self.seq_length)
         if self.feature:
-            return self.feature.extract(seq)
-        dna = ''.join(seq.seq[p.start:p.end] for p in self._intervals)
+            return self.feature.extract(seq_record)
+        seq = seq_record.seq
+        dna = ''.join(str(seq)[p.start:p.end] for p in self._intervals)
         return type(seq)(dna, seq.alphabet)  # Omitting import Bio.Seq
 
 
@@ -124,10 +125,11 @@ class Partition:
                 ret['_more_'].append(f)
         return ret
 
-    def extract_part(self, name, seq):
+    def extract_part(self, name, seq_record):
         part = self.get_part_by_name(name)
         if part:
-            return part.extract(seq)
+            return part.extract(seq_record)
 
-    def extract(self, seq):
-        return dict((n, p.extract(seq)) for n, p in self._parts.items())
+    def extract(self, seq_record):
+        assert all(p.name for p in self._parts), 'All parts have to have a name!'
+        return dict((p.name, p.extract(seq_record)) for p in self._parts)
