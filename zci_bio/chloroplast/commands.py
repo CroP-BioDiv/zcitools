@@ -1,4 +1,4 @@
-from step_project.base_commands import ProjectCommand, CreateStepsFromStepCommand_CommonDB
+from step_project.base_commands import ProjectCommand, CreateStepsFromStepCommand
 
 
 class ChloroplastAnnotation(ProjectCommand):
@@ -25,7 +25,7 @@ class ChloroplastAnnotation(ProjectCommand):
             sequences=a.sequences.split(';') if a.sequences else None)
 
 
-class ChloroplastOrientate(CreateStepsFromStepCommand_CommonDB):
+class ChloroplastOrientate(CreateStepsFromStepCommand):
     _COMMAND = 'chloroplast_orientate'
     _HELP = "Orientate chloroplast sequences in standard way"
     _COMMAND_GROUP = 'Chloroplast'
@@ -34,14 +34,12 @@ class ChloroplastOrientate(CreateStepsFromStepCommand_CommonDB):
 
     @classmethod
     def set_arguments(cls, parser):
-        CreateStepsFromStepCommand_CommonDB.set_arguments(parser)
+        CreateStepsFromStepCommand.set_arguments(parser)
         parser.add_argument('-a', '--annotation-command', help='Annotation command to use on repaired seqeunces')
 
-    def db_identifier(self):
+    def sequence_db(self):
         from .orientate import CHLOROPLAST_ORIENTED_DB_NAME
-        return dict(
-            static=True,
-            data_identifier=self.get_sequence_db_ident('sequences', db=CHLOROPLAST_ORIENTED_DB_NAME))
+        return CHLOROPLAST_ORIENTED_DB_NAME
 
     def run(self, step_data):
         from .orientate import orientate_chloroplast

@@ -4,7 +4,7 @@ from step_project.base_step import Step, StepCollection
 from common_utils.misc import sets_equal
 from common_utils.exceptions import ZCItoolsValueError
 from common_utils.show import print_table
-from common_utils.file_utils import write_fasta
+from common_utils.file_utils import write_fasta, silent_remove_file
 from ..utils.import_methods import import_bio_seq_io
 
 
@@ -52,6 +52,7 @@ Each sequence can be stored in one or more files in different formats.
             # Remove other (old) files of same sequence
             for old_f in self._sequences[seq_ident]:
                 if old_f != f:
+                    print('removing', self.step_file(old_f))
                     silent_remove_file(self.step_file(old_f))
         else:
             self._sequences[seq_ident] = [f]

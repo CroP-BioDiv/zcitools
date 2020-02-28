@@ -1,4 +1,4 @@
-from step_project.base_commands import ProjectCommand, NonProjectCommand, CreateStepFromStepCommand_CommonDB
+from step_project.base_commands import ProjectCommand, NonProjectCommand, CreateStepFromStepCommand
 from common_utils.exceptions import ZCItoolsValueError
 
 
@@ -83,7 +83,7 @@ class AnnotationGroup(AnnotationExtract):  # Works only with given file
 
 
 # ---------------------------------------------------------
-class GeSeqStep(CreateStepFromStepCommand_CommonDB):
+class GeSeqStep(CreateStepFromStepCommand):
     _COMMAND = 'ge_seq'
     _HELP = "Annotates chloroplast sequences with GeSeq"
     _STEP_BASE_NAME = 'GeSeq'
@@ -96,10 +96,10 @@ class GeSeqStep(CreateStepFromStepCommand_CommonDB):
 
     def finish(self, step_obj):
         from .ge_seq import finish_ge_seq_data
-        finish_ge_seq_data(step_obj, self.get_common_db_object())
+        finish_ge_seq_data(step_obj, self.get_step_db_object(step_obj))
 
 
-class CPGAVAS(CreateStepFromStepCommand_CommonDB):
+class CPGAVAS(CreateStepFromStepCommand):
     _COMMAND = 'cpgavas'
     _HELP = "Annotates chloroplast sequences with CPGAVAS"
     _STEP_BASE_NAME = 'CPGAVAS'
@@ -116,7 +116,7 @@ class CPGAVAS(CreateStepFromStepCommand_CommonDB):
 
 
 # Presentations
-class OGDRAW(CreateStepFromStepCommand_CommonDB):
+class OGDRAW(CreateStepFromStepCommand):
     _COMMAND = 'ogdraw'
     _HELP = "Create OGDraw images of annotations"
     _STEP_BASE_NAME = 'OGDraw'
@@ -126,14 +126,13 @@ class OGDRAW(CreateStepFromStepCommand_CommonDB):
 
     @staticmethod
     def set_arguments(parser):
-        CreateStepFromStepCommand_CommonDB.set_arguments(parser)
+        CreateStepFromStepCommand.set_arguments(parser)
         parser.add_argument('-f', '--image_format', default='ps', help='One of: svg, pdf, ps, png, jpg, tif, gif')
         parser.add_argument('-s', '--sequences', help="Filter only sequences, separate seq_idents by ';'.")
 
     def db_identifier(self):
         step_command = self._input_step().get_command()  # Depends on annotation process
-        return dict(static=True, data_identifier=self.get_sequence_db_ident(
-            'OGDraw', step_command, self.args.image_format))
+        return ['OGDraw', step_command, self.args.image_format]
 
     def run(self, step_data):
         from .ogdraw import create_ogdraw
@@ -145,7 +144,7 @@ class OGDRAW(CreateStepFromStepCommand_CommonDB):
 
     def finish(self, step_obj):
         from .ogdraw import finish_ogdraw
-        finish_ogdraw(step_obj, self.get_common_db_object())
+        finish_ogdraw(step_obj, self.get_step_db_object(step_obj))
 
 
 # class RSCU(_PresentationCommand):

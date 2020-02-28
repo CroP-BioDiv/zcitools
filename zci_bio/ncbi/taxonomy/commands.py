@@ -7,7 +7,7 @@ class NCBITaxonomySet(NonProjectCommand):  # Works only with cache
     _COMMAND_GROUP = 'NCBI'
 
     def db_identifier(self):
-        return dict(static=True, data_identifier=['NCBI', 'taxonomy'])
+        return ['NCBI', 'taxonomy']
 
     @staticmethod
     def set_arguments(parser):

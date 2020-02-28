@@ -21,7 +21,3 @@ class NOVOPlastyStep(CreateStepCommand):
     def run(self, step_data):
         from .novoplasty import novoplasty_run
         return novoplasty_run(self.project, step_data, self.args)
-
-    # def finish(self, step_obj):
-    #     from .ge_seq import finish_ge_seq_data
-    #     finish_ge_seq_data(step_obj, self.get_common_db_object())

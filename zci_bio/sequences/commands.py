@@ -1,8 +1,8 @@
-from step_project.base_commands import NonProjectCommand, CreateStepFromStepCommand_CommonDB
+from step_project.base_commands import NonProjectCommand, CreateStepFromStepCommand
 from common_utils.exceptions import ZCItoolsValueError
 
 
-class FetchSequencesStep(CreateStepFromStepCommand_CommonDB):
+class FetchSequencesStep(CreateStepFromStepCommand):
     _COMMAND = 'fetch_seqs'
     _HELP = "Creates sequences step. Mandatory argument is a table step."
     _STEP_BASE_NAME = 'seqs'

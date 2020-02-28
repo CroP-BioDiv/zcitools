@@ -111,7 +111,8 @@ class RunCommand:
             command_args = dict((k, v) for k, v in vars(args).items()
                                 if k not in ('command', 'step_num', 'step_description'))
             step_data = dict(prev_steps=command_obj.prev_steps(),
-                             db_ident=getattr(command_obj, '_COMMON_DB_IDENT', None),
+                             db_identifier=command_obj.db_identifier(),
+                             sequence_db=command_obj.sequence_db(),
                              command=command,
                              command_args=command_args,
                              cmd=' '.join(sys.argv[1:]))
