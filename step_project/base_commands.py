@@ -80,12 +80,10 @@ class _Command:
     def _common_db_object(self, obj):
         if ZCI_COMMON_DB_DIR:
             idents = obj.db_identifier()
-            print('idents', idents)
             if idents:
                 if isinstance(idents, str):
                     idents = [idents]
                 db = obj.sequence_db()
-                print('db', db)
                 if db:
                     dbs = self.get_sequence_dbs()
                     if db not in dbs:
@@ -140,6 +138,9 @@ class CreateStepFromStepCommand(CreateStepCommand):
         CreateStepCommand.set_arguments(parser)
         parser.add_argument('step', help='Input sequences step')
 
+    def db_identifier(self):
+        return self._input_step().db_identifier()  # Same as in input step
+
     def _prev_steps(self):
         return [self.args.step]
 
@@ -152,6 +153,10 @@ class CreateStepFromStepCommand(CreateStepCommand):
 class CreateStepsCommand(ProjectCommand):
     _COMMAND_TYPE = 'new_steps'
     _PRESENTATION = False
+    _STEP_BASE_NAME = None
+
+    def step_base_name(self):
+        return self._STEP_BASE_NAME or self._COMMAND
 
     def prev_steps(self):
         return [os.path.normpath(p) for p in self._prev_steps()]
@@ -170,6 +175,9 @@ class CreateStepsFromStepCommand(CreateStepsCommand):
     def set_arguments(parser):
         CreateStepsCommand.set_arguments(parser)
         parser.add_argument('step', help='Input sequences step')
+
+    def db_identifier(self):
+        return self._input_step().db_identifier()  # Same as in input step
 
     def _prev_steps(self):
         return [self.args.step]

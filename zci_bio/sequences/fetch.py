@@ -15,7 +15,7 @@ Reason can be:
 
 
 def fetch_sequences(step_data, table_step, cache):
-    step = SequencesStep(table_step.project, step_data, update_mode=True)
+    step = SequencesStep(table_step.project, step_data, remove_data=True)
     sequence_db = step.sequence_db()
 
     # Fetch from our sequences

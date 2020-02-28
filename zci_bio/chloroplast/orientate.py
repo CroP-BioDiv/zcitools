@@ -35,7 +35,8 @@ def _create_step(step_cls, description, command_obj, step_data, cmd_args):
 def orientate_chloroplast(command_obj, cmd_args, step_data, annotation_step, common_db):
     bad = to_repair = None
     good_files = []
-    common_db_annot = common_db.get_relative_db('..', annotation_step.get_db_ident())
+    # ToDo: is this good? What if db_identifier() is a list?
+    common_db_annot = common_db.get_relative_db('..', annotation_step.db_identifier())
 
     for seq_ident, seq in annotation_step._iterate_records():
         an_file = annotation_step.get_sequence_filename(seq_ident)
@@ -114,7 +115,7 @@ def orientate_chloroplast(command_obj, cmd_args, step_data, annotation_step, com
     if to_repair:
         # Run annotation with same command that was used for input annotation
         annotation_command = cmd_args.annotation_command or annotation_step.get_command()
-        args = SimpleNamespace(step=to_repair.directory, database=CHLOROPLAST_ORIENTED_DB_NAME,
+        args = SimpleNamespace(step=to_repair.directory, sequence_db=CHLOROPLAST_ORIENTED_DB_NAME,
                                step_num=None, step_description=None)
         annotation_step.project._run_command(annotation_command, args)
 
