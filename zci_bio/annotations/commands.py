@@ -83,7 +83,7 @@ class AnnotationGroup(AnnotationExtract):  # Works only with given file
 
 
 # ---------------------------------------------------------
-class GeSeqStep(CreateStepFromStepCommand):
+class GeSeq(CreateStepFromStepCommand):
     _COMMAND = 'ge_seq'
     _HELP = "Annotates chloroplast sequences with GeSeq"
     _STEP_BASE_NAME = 'GeSeq'

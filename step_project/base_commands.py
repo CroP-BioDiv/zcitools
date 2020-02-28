@@ -80,6 +80,7 @@ class _Command:
     def _common_db_object(self, obj):
         if ZCI_COMMON_DB_DIR:
             idents = obj.db_identifier()
+            print(idents, type(obj))
             if idents:
                 if isinstance(idents, str):
                     idents = [idents]
@@ -139,7 +140,7 @@ class CreateStepFromStepCommand(CreateStepCommand):
         parser.add_argument('step', help='Input sequences step')
 
     def db_identifier(self):
-        return self._input_step().db_identifier()  # Same as in input step
+        return self._COMMON_DB_IDENT or self._input_step().db_identifier()
 
     def _prev_steps(self):
         return [self.args.step]
@@ -177,7 +178,7 @@ class CreateStepsFromStepCommand(CreateStepsCommand):
         parser.add_argument('step', help='Input sequences step')
 
     def db_identifier(self):
-        return self._input_step().db_identifier()  # Same as in input step
+        return self._COMMON_DB_IDENT or self._input_step().db_identifier()
 
     def _prev_steps(self):
         return [self.args.step]

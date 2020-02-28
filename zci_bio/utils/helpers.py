@@ -198,5 +198,6 @@ def fetch_our_sequence(seq_ident, in_dir):
             for f in os.listdir(_dir):
                 name, ext = os.path.splitext(f)
                 if name == seq_ident:
+                    print(f"  Our sequences fetch: {f} -> os.path.join(in_dir, f)")
                     shutil.copyfile(os.path.join(_dir, f), os.path.join(in_dir, f))
                     return ext

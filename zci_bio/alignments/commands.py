@@ -16,7 +16,7 @@ class ClustalO(CreateStepFromStepCommand):
 
     @staticmethod
     def set_arguments(parser):
-        parser.add_argument('step', help='Input sequences step')
+        CreateStepFromStepCommand.set_arguments(parser)
         parser.add_argument(
             'alignments', nargs='+', help=f"To align: {', '.join(f'{c} ({d})' for c, d in ClustalO._ALIGNMENTS)}")
         parser.add_argument('-r', '--run', action='store_true', help='Run Clustal Omega locale')
