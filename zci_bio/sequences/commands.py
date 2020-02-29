@@ -7,7 +7,14 @@ class FetchSequencesStep(CreateStepFromStepCommand):
     _HELP = "Creates sequences step. Mandatory argument is a table step."
     _STEP_BASE_NAME = 'seqs'
     _INPUT_STEP_DATA_TYPE = 'table'
-    _COMMON_DB_IDENT = 'sequences'
+
+    @staticmethod
+    def set_arguments(parser):
+        CreateStepFromStepCommand._sequence_db_set_arguments(parser)
+        CreateStepFromStepCommand.set_arguments(parser)
+
+    def common_db_identifier(self):
+        return self.sequence_db_identifier(self.args.sequence_db, 'sequences')
 
     def run(self, step_data):
         from .fetch import fetch_sequences

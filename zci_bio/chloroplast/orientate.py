@@ -35,8 +35,8 @@ def _create_step(step_cls, description, command_obj, step_data, cmd_args):
 def orientate_chloroplast(command_obj, cmd_args, step_data, annotation_step, common_db):
     bad = to_repair = None
     good_files = []
-    # ToDo: is this good? What if db_identifier() is a list?
-    common_db_annot = common_db.get_relative_db('..', annotation_step.db_identifier())
+    # ToDo: is this good? What if common_db_identifier() is a list?
+    common_db_annot = common_db.get_relative_db('..', annotation_step.common_db_identifier()[-1])
 
     for seq_ident, seq in annotation_step._iterate_records():
         an_file = annotation_step.get_sequence_filename(seq_ident)
@@ -78,10 +78,16 @@ def orientate_chloroplast(command_obj, cmd_args, step_data, annotation_step, com
             to_repair = _create_step(SequencesStep, 'to_repair', command_obj, step_data, cmd_args)
 
         new_seq = parts['lsc'] + parts['ira'] + parts['ssc'] + parts['irb']
+        assert len(seq.seq) == len(new_seq.seq), \
+            (seq_ident, len(seq.seq), len(new_seq.seq),
+                [(n, len(p)) for n, p in parts.items()],
+                [(n, len(p)) for n, p in partition.extract(seq).items()])
         base_f = os.path.basename(an_file)
         base_f = base_f.split('.')[0] + '.fa'
-        write_fasta(to_repair.step_file(base_f), [(seq_ident, str(new_seq.seq))])
+        fa_filename = to_repair.step_file(base_f)
+        write_fasta(fa_filename, [(seq_ident, str(new_seq.seq))])
         to_repair.add_sequence_file(base_f)
+        common_db.set_record(seq_ident, fa_filename)
 
     #
     mess = []

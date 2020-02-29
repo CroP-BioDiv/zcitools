@@ -1,4 +1,4 @@
-import os.path
+import os
 from zipfile import ZipFile, ZIP_BZIP2
 from .file_utils import ensure_directory
 from .exceptions import ZCItoolsValueError
@@ -10,11 +10,16 @@ Record is named by step data identifier, which depends on step type.
 Record is implemented as zip file. It can contain any kind of data: any number of files and/or directories.
 """
 
+_ZCI_COMMON_DB_DIR = os.environ.get('ZCI_COMMON_DB')
+SEQUENCE_DBS_RELATIVE_DIR = 'sequence_dbs'
+_SEQUENCE_DBS_DIR = os.path.join(_ZCI_COMMON_DB_DIR, SEQUENCE_DBS_RELATIVE_DIR) if _ZCI_COMMON_DB_DIR else None
+
 
 class CommonDB:
     def __init__(self, db_dir, base_dir=None):
         assert not base_dir or db_dir.startswith(base_dir), (db_dir, base_dir)
         self.db_dir = db_dir
+        self._idents = tuple(db_dir[(len(base_dir) + 1):].split(os.path.sep)) if base_dir else tuple()
         self._base_dir = base_dir
         #
         self._strip_length = (len(base_dir) + 1) if base_dir else 0
@@ -22,6 +27,27 @@ class CommonDB:
         if self._dir_exists and os.path.isfile(db_dir):
             raise ZCItoolsValueError(f'Common DB location ({db_dir}) is a file!')
 
+    @staticmethod
+    def get_zci_db(idents):
+        return CommonDB(os.path.join(_ZCI_COMMON_DB_DIR, *idents), base_dir=_ZCI_COMMON_DB_DIR)
+
+    @staticmethod
+    def get_zci_sequence_dbs():
+        if _SEQUENCE_DBS_DIR:
+            return [f for f in os.listdir(_SEQUENCE_DBS_DIR) if os.path.isdir(os.path.join(_SEQUENCE_DBS_DIR, f))]
+        return []
+
+    @staticmethod
+    def get_check_zci_sequence_db(db):
+        dbs = CommonDB.get_zci_sequence_dbs()
+        if db not in dbs:
+            raise ZCItoolsValueError(f"Database {db} doesn't exist. Possible values: {', '.join(dbs)}!")
+
+    def get_sequence_db(self):
+        if len(self._idents) >= 2 and self._idents[0] == SEQUENCE_DBS_RELATIVE_DIR:
+            return self._idents[1]
+
+    #
     def get_relative_db(self, *path):
         db_dir = os.path.normpath(os.path.join(self.db_dir, *path))
         return CommonDB(db_dir, base_dir=self._base_dir)
@@ -46,12 +72,17 @@ class CommonDB:
     def ensure_location(self):
         ensure_directory(self.db_dir)
 
-    def set_record(self, record_ident, *step_files):
+    def set_record(self, record_ident, *step_files, force=False):
+        rec_filename = self.get_record_filename(record_ident)
+        if not force and os.path.isfile(rec_filename):
+            print(f"  CommonDB: record {rec_filename[self._strip_length:]} already exists!")
+            return
+
         if not self._dir_exists:
             ensure_directory(self.db_dir)
             self._dir_exists = True
 
-        with ZipFile(self.get_record_filename(record_ident), mode='w', compression=ZIP_BZIP2) as zip_f:
+        with ZipFile(rec_filename, mode='w', compression=ZIP_BZIP2) as zip_f:
             for f in step_files:
                 if os.path.isfile(f):
                     self._save_file(zip_f, f)

@@ -1,5 +1,5 @@
-import os
-from common_utils.common_db import CommonDB
+import os.path
+from common_utils.common_db import CommonDB, SEQUENCE_DBS_RELATIVE_DIR
 
 """
 Command classes, called from zcit script.
@@ -21,10 +21,9 @@ Class has to implement:
  - _HELP                 : (attribute) command help text
  - set_arguments(parser) : (static method) sets command's arguments
  - run(step_data/step/-) : runs command with given arguments
- - db_identifier()       : returns None or data_identifier (list of strings)
+ - common_db_identifier(): returns None or data_identifier (tuple of strings)
                            Uniquelly specify how step data is created from project start.
                            Used to specify common DB data.
- - sequence_db()         : returns None or sequence db identfier (string)
 
 Create new step command also has to implement:
  - _PRESENTATION         : (attribute) bool describing is step presentation.
@@ -36,10 +35,6 @@ It is good practice to store that data in file finish.yml.
 
 """
 
-ZCI_COMMON_DB_DIR = os.environ.get('ZCI_COMMON_DB')
-_SEQUENCE_DBS_RELATIVE_DIR = 'sequence_dbs'
-_SEQUENCE_DBS_DIR = os.path.join(ZCI_COMMON_DB_DIR, _SEQUENCE_DBS_RELATIVE_DIR) if ZCI_COMMON_DB_DIR else None
-
 
 class _Command:
     _PROJECT_COMMAND = True
@@ -47,7 +42,7 @@ class _Command:
     _COMMAND = None
     _COMMAND_GROUP = None
     _COMMON_DB_IDENT = None
-    _SEQUENCE_DB_IDENT = None
+    _USE_SEQUENCE_DB = False
 
     def __init__(self, project, args):
         self.project = project
@@ -58,18 +53,23 @@ class _Command:
 
     @staticmethod
     def set_arguments(parser):
-        dbs = _Command.get_sequence_dbs()
-        parser.add_argument('--sequence-db', default='base', help=f'Sequence database to use: {", ".join(dbs)}')
+        pass
+
+    @staticmethod
+    def _sequence_db_set_arguments(parser):
+        dbs = CommonDB.get_zci_sequence_dbs()
+        parser.add_argument('-S', '--sequence-db', default='base', help=f'Sequence database to use: {", ".join(dbs)}')
 
     def run(self):
         raise NotImplementedError(f'Method {self.__class__.__name__}.run() is not implemented!')
 
     # Common DB
-    def db_identifier(self):
+    def common_db_identifier(self):
         return self._COMMON_DB_IDENT
 
-    def sequence_db(self):
-        return self.args.sequence_db or self._SEQUENCE_DB_IDENT
+    def sequence_db_identifier(self, db, *idents):
+        CommonDB.get_check_zci_sequence_db(db)
+        return (SEQUENCE_DBS_RELATIVE_DIR, db) + idents
 
     def get_common_db_object(self):
         return self._common_db_object(self)
@@ -78,25 +78,10 @@ class _Command:
         return self._common_db_object(step)
 
     def _common_db_object(self, obj):
-        if ZCI_COMMON_DB_DIR:
-            idents = obj.db_identifier()
-            print(idents, type(obj))
-            if idents:
-                if isinstance(idents, str):
-                    idents = [idents]
-                db = obj.sequence_db()
-                if db:
-                    dbs = self.get_sequence_dbs()
-                    if db not in dbs:
-                        raise ZCItoolsValueError(f"Database {db} doesn't exist. Possible values: {', '.join(dbs)}!")
-                    idents = [_SEQUENCE_DBS_RELATIVE_DIR, db] + idents
-                return CommonDB(os.path.join(ZCI_COMMON_DB_DIR, *idents), base_dir=ZCI_COMMON_DB_DIR)
-
-    @staticmethod
-    def get_sequence_dbs():
-        if _SEQUENCE_DBS_DIR:
-            return [f for f in os.listdir(_SEQUENCE_DBS_DIR) if os.path.isdir(os.path.join(_SEQUENCE_DBS_DIR, f))]
-        return []
+        idents = obj.common_db_identifier()
+        assert idents is None or (isinstance(idents, tuple) and all(isinstance(i, str) for i in idents)), idents
+        if idents:
+            return CommonDB.get_zci_db(idents)
 
 
 #
@@ -139,8 +124,8 @@ class CreateStepFromStepCommand(CreateStepCommand):
         CreateStepCommand.set_arguments(parser)
         parser.add_argument('step', help='Input sequences step')
 
-    def db_identifier(self):
-        return self._COMMON_DB_IDENT or self._input_step().db_identifier()
+    def common_db_identifier(self):
+        return self._COMMON_DB_IDENT or self._input_step().common_db_identifier()
 
     def _prev_steps(self):
         return [self.args.step]
@@ -177,8 +162,8 @@ class CreateStepsFromStepCommand(CreateStepsCommand):
         CreateStepsCommand.set_arguments(parser)
         parser.add_argument('step', help='Input sequences step')
 
-    def db_identifier(self):
-        return self._COMMON_DB_IDENT or self._input_step().db_identifier()
+    def common_db_identifier(self):
+        return self._COMMON_DB_IDENT or self._input_step().common_db_identifier()
 
     def _prev_steps(self):
         return [self.args.step]

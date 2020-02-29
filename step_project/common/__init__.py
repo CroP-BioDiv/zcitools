@@ -1,4 +1,5 @@
 from .general_commands import *
+from .common_db_commands import *
 from common_utils.misc import find_registered
 
 general_commands = [c for c in locals().values() if getattr(c, '_COMMAND', None)]

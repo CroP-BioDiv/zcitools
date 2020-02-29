@@ -6,7 +6,7 @@ class NCBITaxonomySet(NonProjectCommand):  # Works only with cache
     _HELP = "Download data and creates SQLite database in global cache"
     _COMMAND_GROUP = 'NCBI'
 
-    def db_identifier(self):
+    def common_db_identifier(self):
         return ['NCBI', 'taxonomy']
 
     @staticmethod

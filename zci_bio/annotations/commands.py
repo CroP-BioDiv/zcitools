@@ -88,7 +88,14 @@ class GeSeq(CreateStepFromStepCommand):
     _HELP = "Annotates chloroplast sequences with GeSeq"
     _STEP_BASE_NAME = 'GeSeq'
     _INPUT_STEP_DATA_TYPE = 'sequences'
-    _COMMON_DB_IDENT = 'GeSeq'
+
+    @staticmethod
+    def set_arguments(parser):
+        CreateStepFromStepCommand._sequence_db_set_arguments(parser)
+        CreateStepFromStepCommand.set_arguments(parser)
+
+    def common_db_identifier(self):
+        return self.sequence_db_identifier(self.args.sequence_db, 'GeSeq')
 
     def run(self, step_data):
         from .ge_seq import create_ge_seq_data
@@ -126,13 +133,14 @@ class OGDRAW(CreateStepFromStepCommand):
 
     @staticmethod
     def set_arguments(parser):
+        CreateStepFromStepCommand._sequence_db_set_arguments(parser)
         CreateStepFromStepCommand.set_arguments(parser)
         parser.add_argument('-f', '--image_format', default='ps', help='One of: svg, pdf, ps, png, jpg, tif, gif')
         parser.add_argument('-s', '--sequences', help="Filter only sequences, separate seq_idents by ';'.")
 
-    def db_identifier(self):
+    def common_db_identifier(self):
         step_command = self._input_step().get_command()  # Depends on annotation process
-        return ['OGDraw', step_command, self.args.image_format]
+        return self.sequence_db_identifier('OGDraw', step_command, self.args.image_format)
 
     def run(self, step_data):
         from .ogdraw import create_ogdraw

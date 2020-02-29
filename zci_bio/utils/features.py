@@ -49,11 +49,12 @@ class Feature:
             # Sorte them in a way that max gap is between last and first
             intervals = sorted(intervals)
             gaps = [(b.start - a.end) % seq_length for a, b in zip(intervals[-1:] + intervals[:-1], intervals)]
-            min_index = min(range(len(gaps)), key=gaps.__getitem__)
+            min_index = max(range(len(gaps)), key=gaps.__getitem__)
             if min_index > 0:
                 intervals = intervals[min_index:] + intervals[:min_index]
         #
         self._intervals = intervals
+
         self._wraps = any(p.start == 0 for p in intervals) and any(p.end == seq_length for p in intervals)
         #
         self.real_start = intervals[0].start

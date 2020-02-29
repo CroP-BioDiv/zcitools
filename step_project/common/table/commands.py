@@ -13,6 +13,7 @@ Additional arguments specify how to interpret input data.
 
     @staticmethod
     def set_arguments(parser):
+        CreateStepCommand.set_arguments(parser)
         parser.add_argument('filename', help='Input data')
         parser.add_argument('-f', '--data-format', help='Input data format (if needed). Values: excel, csv, txt')
         parser.add_argument('-c', '--columns', help='Columns. Format name1,type1:name2,type2:...')

@@ -37,14 +37,9 @@ class ChloroplastOrientate(CreateStepsFromStepCommand):
         CreateStepsFromStepCommand.set_arguments(parser)
         parser.add_argument('-a', '--annotation-command', help='Annotation command to use on repaired seqeunces')
 
-    def db_identifier(self):
-        # Same as in input step
-        return self._input_step().db_identifier()
-
-    def sequence_db(self):
+    def common_db_identifier(self):
         from .orientate import CHLOROPLAST_ORIENTED_DB_NAME
-        print('aaaaaa', CHLOROPLAST_ORIENTED_DB_NAME)
-        return CHLOROPLAST_ORIENTED_DB_NAME
+        return self.sequence_db_identifier(CHLOROPLAST_ORIENTED_DB_NAME, 'sequences')
 
     def run(self, step_data):
         from .orientate import orientate_chloroplast

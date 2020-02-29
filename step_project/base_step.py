@@ -71,8 +71,8 @@ class Step:
     def get_command(self):
         return self._step_data['command']
 
-    def db_identifier(self):
-        return self._step_data['db_identifier']
+    def common_db_identifier(self):
+        return self._step_data['common_db_identifier']
 
     def sequence_db(self):
         return self._step_data['sequence_db']

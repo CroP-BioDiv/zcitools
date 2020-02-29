@@ -14,9 +14,9 @@ Reason can be:
 """
 
 
-def fetch_sequences(step_data, table_step, cache):
+def fetch_sequences(step_data, table_step, common_db):
     step = SequencesStep(table_step.project, step_data, remove_data=True)
-    sequence_db = step.sequence_db()
+    sequence_db = common_db.get_sequence_db()
 
     # Fetch from our sequences
     if sequence_db == 'base':
@@ -32,8 +32,8 @@ def fetch_sequences(step_data, table_step, cache):
     else:
         all_sequences = list(table_step.get_column_values_by_type('seq_ident'))
 
-    # Fetch cached sequences
-    to_fetch = step.get_common_db_records(cache, all_sequences, info=True)
+    # Fetch common_db sequences
+    to_fetch = step.get_common_db_records(common_db, all_sequences, info=True)
 
     if sequence_db == 'base' and to_fetch:
         entrez = Entrez()
@@ -48,8 +48,8 @@ def fetch_sequences(step_data, table_step, cache):
             filename = step.step_file(ni + '.gb')
             entrez.efetch(filename, db='nuccore',  id=ni, rettype='gb', retmode='text')
             if os.path.isfile(filename):
-                if cache:
-                    cache.set_record(ni, filename)
+                if common_db:
+                    common_db.set_record(ni, filename)
             else:
                 to_fetch.append(ni)
 
