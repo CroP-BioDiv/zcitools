@@ -74,9 +74,6 @@ class Step:
     def common_db_identifier(self):
         return self._step_data['common_db_identifier']
 
-    def sequence_db(self):
-        return self._step_data['sequence_db']
-
     def is_completed(self):
         return self._step_data['completed']
 
