@@ -20,22 +20,23 @@ class _CommonDBCommand(NonProjectCommand):
         parser.add_argument('path', help='CommonDB path')
         parser.add_argument('-p', '--filter-path', help='Filter path')
         parser.add_argument('-x', '--recursive', action='store_true', help='Search recursively given path')
-        parser.add_argument('-r', '--record', help='Search all occurences of a record in given path')
+        parser.add_argument(
+            '-r', '--record', help='Search all occurences of a record(s) in given path. Format <rec>,<rec>,...')
         dbs = CommonDB.get_zci_sequence_dbs()
         parser.add_argument('-S', '--sequence-db', help=f'Sequence database to use: {", ".join(dbs)}')
 
     def _iterate_records(self):
         # Returns records as tuples (relative_dir, record ident)
-        record = self.args.record
+        records = self.args.record.split(',') if self.args.record else None
         n = len(self._db_dir) + 1
-        if self.args.recursive or record:
+        if self.args.recursive or records:
             filter_path = self.args.filter_path
             for root, subdirs, files in os.walk(self._db_dir):
                 rel_dir = root[n:]
                 if filter_path and filter_path not in rel_dir:
                     continue
                 for f in files:
-                    if record and f != record:
+                    if records and f not in records:
                         continue
                     yield (rel_dir, f)
         else:
