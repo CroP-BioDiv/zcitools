@@ -75,7 +75,7 @@ class CommonDB:
     def set_record(self, record_ident, *step_files, force=False):
         rec_filename = self.get_record_filename(record_ident)
         if not force and os.path.isfile(rec_filename):
-            print(f"  CommonDB: record {rec_filename[self._strip_length:]} already exists!")
+            # print(f"  CommonDB: record {rec_filename[self._strip_length:]} already exists!")
             return
 
         if not self._dir_exists:

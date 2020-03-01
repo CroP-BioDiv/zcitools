@@ -39,12 +39,16 @@ def orientate_chloroplast(command_obj, cmd_args, step_data, annotation_step, com
     common_db_annot = common_db.get_relative_db('..', annotation_step.common_db_identifier()[-1])
 
     for seq_ident, seq in annotation_step._iterate_records():
+        print(f'Processing {seq_ident}')
+        # Fix sequence features
+        seq.features = [f for f in seq.features if f.location]
+        #
         an_file = annotation_step.get_sequence_filename(seq_ident)
 
         partition = find_regions(seq_ident, seq)
         if not partition:
             # ToDo: what to do? Check is orientation good with list of genes. If not raise 
-            print('  WHAT TO DO {seq_ident}?')
+            print(f'  WHAT TO DO {seq_ident}?')
             if not bad:
                 bad = _create_step(AnnotationsStep, 'bad', command_obj, step_data, cmd_args)
             _copy_annotation(bad, an_file)
@@ -70,8 +74,12 @@ def orientate_chloroplast(command_obj, cmd_args, step_data, annotation_step, com
         if ssc_count > 0:
             parts['ssc'] = parts['ssc'].reverse_complement()
         if lsc_count > 0:
+            print(f'  REVERT LSC: WHAT TO DO {seq_ident}?')
+            continue
             assert False, f'REVERT LSC {seq_ident}'
         if ir_count < 0:
+            print(f'  REVERT IRs: WHAT TO DO {seq_ident}?')
+            continue
             assert False, f'REVERT IRs {seq_ident}'
 
         if not to_repair:

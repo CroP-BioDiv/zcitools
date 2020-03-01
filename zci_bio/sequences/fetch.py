@@ -62,7 +62,7 @@ def fetch_sequences(step_data, table_step, common_db):
     # Store step data
     # step._check_data()
     step.save(completed=not to_fetch)
-    if not to_fetch:
+    if to_fetch:
         write_str_in_file(
             step.step_file('INSTRUCTIONS.txt'),
             _instructions_no_data.format(sequence_db=sequence_db, seqs=', '.join(sorted(to_fetch))))
