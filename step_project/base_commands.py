@@ -42,7 +42,6 @@ class _Command:
     _COMMAND = None
     _COMMAND_GROUP = None
     _COMMON_DB_IDENT = None
-    _USE_SEQUENCE_DB = False
 
     def __init__(self, project, args):
         self.project = project

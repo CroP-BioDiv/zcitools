@@ -156,6 +156,35 @@ class OGDRAW(CreateStepFromStepCommand):
         finish_ogdraw(step_obj, self.get_step_db_object(step_obj))
 
 
+class OGDRAW_ExtractJPG(NonProjectCommand):
+    _COMMAND = 'ogdraw_jpg'
+    _HELP = "Extract OGDraw jpg image into CommonDB, from GeSeq annotation result file"
+
+    @staticmethod
+    def set_arguments(parser):
+        parser.add_argument('step', help='Input sequences step')
+        # ToDo: remove
+        parser.add_argument('-S', '--sequence-db', help=f'Sequence database to use. For old projects!')
+
+    def common_db_identifier(self):
+        step = self.project.read_step(self.args.step, check_data_type='annotations', no_check=True)
+        # ToDo: remove
+        # db = step.common_db_identifier()[1]
+        db = self.args.sequence_db
+        if not db:
+            db = step.common_db_identifier()
+            db = db[1] if db else 'base'  # For old data
+        #
+        step_command = step.get_command()  # Depends on annotation process
+        print('DB', db, step_command)
+        return self.sequence_db_identifier(db, 'OGDraw', step_command, 'jpg')
+
+    def run(self):
+        from .ogdraw import extract_jpg_to_common_db
+        step = self.project.read_step(self.args.step, check_data_type='annotations', no_check=True)
+        return extract_jpg_to_common_db(step, self.get_common_db_object())
+
+
 # class RSCU(_PresentationCommand):
 #     _COMMAND = 'rscu'
 #     _STEP_DATA_TYPE = 'annotations'

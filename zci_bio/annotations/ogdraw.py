@@ -121,3 +121,16 @@ def finish_ogdraw(step_obj, common_db):
     if common_db:
         for image_ident in added_images:
             common_db.set_record(image_ident, step_obj.step_file(f'{image_ident}.{image_format}'))
+
+
+# Extract into CommonDB
+def extract_jpg_to_common_db(annotations_step, common_db):
+    # Extract jpg files job-results-<num>/GeSeqJob-<num>-<num>_<seq_ident>_OGDRAW.jpg
+    for filename in annotations_step.step_files(matches='^job-results-[0-9]*.zip'):
+        with ZipFile(annotations_step.step_file(filename), 'r') as zip_f:
+            for z_i in zip_f.infolist():
+                m = _re_zip_jpg.search(z_i.filename)
+                if m:
+                    seq_ident = m.group(1)
+                    print(seq_ident)
+                    common_db.set_record_from_stream(seq_ident, zip_f.read(z_i.filename), seq_ident + '.jpg')

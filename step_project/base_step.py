@@ -26,7 +26,7 @@ class Step:
     _CACHE_PREFIX = '_c_'  # Cache files are prfixed with '_c_'
     _IS_COLLECTION = False
 
-    def __init__(self, project, step_data, remove_data=False, update_mode=False):
+    def __init__(self, project, step_data, remove_data=False, update_mode=False, no_check=False):
         assert project.__class__.__name__ == 'RunCommand', self.__class__.__name__  # For now
         self.project = project
         self._step_data = step_data
@@ -58,7 +58,7 @@ class Step:
         self._init_data(type_desc)
 
         # Check data if exists and step not set in update mode
-        if type_desc and not self._update_mode and self.is_completed():
+        if type_desc and not self._update_mode and self.is_completed() and not no_check:
             self._check_data()
 
     def _init_data(self, type_description):
@@ -72,7 +72,8 @@ class Step:
         return self._step_data['command']
 
     def common_db_identifier(self):
-        return self._step_data['common_db_identifier']
+        return self._step_data.get('common_db_identifier')
+        # return self._step_data['common_db_identifier']
 
     def is_completed(self):
         return self._step_data['completed']

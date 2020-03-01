@@ -72,7 +72,8 @@ class CommonDB:
     def ensure_location(self):
         ensure_directory(self.db_dir)
 
-    def set_record(self, record_ident, *step_files, force=False):
+    def _check_set_record(self, record_ident, force=False):
+        # Returns reccord filename to set recor into, or None if data already exists
         rec_filename = self.get_record_filename(record_ident)
         if not force and os.path.isfile(rec_filename):
             # print(f"  CommonDB: record {rec_filename[self._strip_length:]} already exists!")
@@ -81,15 +82,25 @@ class CommonDB:
         if not self._dir_exists:
             ensure_directory(self.db_dir)
             self._dir_exists = True
+        return rec_filename
 
-        with ZipFile(rec_filename, mode='w', compression=ZIP_BZIP2) as zip_f:
-            for f in step_files:
-                if os.path.isfile(f):
-                    self._save_file(zip_f, f)
-                elif os.path.isdir(f):
-                    self._save_directory(zip_f, d)
-                else:
-                    raise ZCItoolsValueError(f"Common DB: file/directory to store ({f}) doesn't exist!")
+    def set_record(self, record_ident, *step_files, force=False):
+        rec_filename = self._check_set_record(record_ident, force=force)
+        if rec_filename:
+            with ZipFile(rec_filename, mode='w', compression=ZIP_BZIP2) as zip_f:
+                for f in step_files:
+                    if os.path.isfile(f):
+                        self._save_file(zip_f, f)
+                    elif os.path.isdir(f):
+                        self._save_directory(zip_f, d)
+                    else:
+                        raise ZCItoolsValueError(f"Common DB: file/directory to store ({f}) doesn't exist!")
+
+    def set_record_from_stream(self, record_ident, data, arcname, force=False):
+        rec_filename = self._check_set_record(record_ident, force=force)
+        if rec_filename:
+            with ZipFile(rec_filename, mode='w', compression=ZIP_BZIP2) as zip_f:
+                zip_f.writestr(arcname, data)
 
     def has_record(self, record_ident):
         return self._dir_exists and os.path.isfile(self.get_record_filename(record_ident))
