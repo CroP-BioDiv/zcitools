@@ -18,6 +18,7 @@ class _CommonDBCommand(NonProjectCommand):
     @staticmethod
     def set_arguments(parser):
         parser.add_argument('path', help='CommonDB path')
+        parser.add_argument('-p', '--filter-path', help='Filter path')
         parser.add_argument('-x', '--recursive', action='store_true', help='Search recursively given path')
         parser.add_argument('-r', '--record', help='Search all occurences of a record in given path')
         dbs = CommonDB.get_zci_sequence_dbs()
@@ -28,8 +29,11 @@ class _CommonDBCommand(NonProjectCommand):
         record = self.args.record
         n = len(self._db_dir) + 1
         if self.args.recursive or record:
+            filter_path = self.args.filter_path
             for root, subdirs, files in os.walk(self._db_dir):
                 rel_dir = root[n:]
+                if filter_path and filter_path not in rel_dir:
+                    continue
                 for f in files:
                     if record and f != record:
                         continue
@@ -82,13 +86,21 @@ class CommonDBExtract(_CommonDBCommand):
     _COMMAND = 'cdb_extract'
     _HELP = "Extract CommonDB record(s) from given path"
 
-    def _run(self, common_db):
-        print('ToDo: extract')
+    def _run(self):
+        for rel_dir, record in self._iterate_records():
+            zip_filename = self._db_file(rel_dir, record)
+            # Convert directory structure in filename
+            extract_prefix = f"{'_'.join(rel_dir.split(os.sep))}_" if rel_dir else ''
+            with ZipFile(zip_filename, 'r') as zip_f:
+                for z_i in zip_f.infolist():
+                    if not z_i.is_dir():
+                        with open(extract_prefix + z_i.filename, 'wb') as save_f:
+                            save_f.write(zip_f.read(z_i.filename))
 
 
 class CommonDBRemove(_CommonDBCommand):
     _COMMAND = 'cdb_remove'
     _HELP = "Remove CommonDB record(s)"
 
-    def _run(self, common_db):
+    def _run(self):
         print('ToDo: remove')
