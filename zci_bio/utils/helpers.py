@@ -110,7 +110,7 @@ def change_sequence_data(method, input_filename, output_filename, input_format=N
         with open(input_filename, 'r') as in_seqs:
             for rec in SeqIO.parse(in_seqs, input_format):
                 if method == 'revert':
-                    seq = str(rec.seq)[::-1]
+                    seq = str(rec.reverse_complement().seq)
                 elif method == 'translate':
                     assert position
                     seq = str(rec.seq)
@@ -198,6 +198,6 @@ def fetch_our_sequence(seq_ident, in_dir):
             for f in os.listdir(_dir):
                 name, ext = os.path.splitext(f)
                 if name == seq_ident:
-                    print(f"  Our sequences fetch: {f} -> os.path.join(in_dir, f)")
+                    print(f"  Our sequences fetch: {f} -> {os.path.join(in_dir, f)}")
                     shutil.copyfile(os.path.join(_dir, f), os.path.join(in_dir, f))
                     return ext
