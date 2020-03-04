@@ -1,6 +1,5 @@
-import os.path
 from collections import OrderedDict
-from common_utils.file_utils import write_fasta, run_module_script, set_run_instructions
+from common_utils.file_utils import copy_file, write_fasta, run_module_script, set_run_instructions
 from step_project.common.table.steps import TableStep
 from zci_bio.annotations.steps import AnnotationsStep
 from . import run_inverted_repeats
@@ -35,10 +34,10 @@ def create_irs_data(step_data, input_step, run, table_output=False):
     else:
         step = AnnotationsStep(input_step.project, step_data, remove_data=True)
         # Set sequences
-        self.set_sequences(input_step.all_sequences())
+        step.set_sequences(input_step.all_sequences())
         for seq_ident in input_step.all_sequences():
             in_gb = input_step.get_sequence_filename(seq_ident)
-            copy_file(in_gb, step.step_file(os.path.basename(in_gb)))
+            copy_file(in_gb, step.step_file(seq_ident + '.gb'))
 
     files_to_zip = []
 
@@ -59,16 +58,16 @@ def create_irs_data(step_data, input_step, run, table_output=False):
     return step
 
 
-def _read_irs_files():
-    for f in os.listdir('.'):
-        if f.endswith('.irs'):
-            with open(f, 'r') as r:
-                yield (f[:-4],) + tuple(tuple(map(int, line.strip().split())) for line in r.readlines())
-
-
 def finish_irs_data(step_obj):
+    def _read_irs_files():
+        for f in step_obj.step_files():
+            if f.endswith('.irs'):
+                with open(step_obj.step_file(f), 'r') as r:
+                    yield (f[:-4],) + tuple(tuple(map(int, line.strip().split())) for line in r.readlines())
+
     if step_obj.step_data_type == 'table':
         rows = [[seq_ident, *ira, *irb] for seq_ident, ira, irb in _read_irs_files()]
+        print(rows)
         step_obj.set_table_data(rows, [('seq_ident', 'seq_ident'),
                                        ('ira_start', 'int'), ('ira_end', 'int'),
                                        ('irb_start', 'int'), ('irb_end', 'int')])
@@ -81,8 +80,8 @@ def finish_irs_data(step_obj):
         for seq_ident, ira, irb in _read_irs_files():
             seq_rec = step_obj.get_sequence_record(seq_ident)
             qs = OrderedDict([('rpt_type', 'inverted')])
-            seq_rec.features.append(SeqFeature(FeatureLocation(*ira), type='repeat_region'), qualifiers=qs)
-            seq_rec.features.append(SeqFeature(FeatureLocation(*irb), type='repeat_region'), qualifiers=qs)
+            seq_rec.features.append(SeqFeature(FeatureLocation(*ira), type='repeat_region', qualifiers=qs))
+            seq_rec.features.append(SeqFeature(FeatureLocation(*irb), type='repeat_region', qualifiers=qs))
             #
             SeqIO.write([seq_rec], step_obj.step_file(f'{seq_ident}.gb'), 'genbank')
 
