@@ -24,7 +24,7 @@ class _CommonDBCommand(NonProjectCommand):
         parser.add_argument(
             '-r', '--record', help='Search all occurences of a record(s) in given path. Format <rec>,<rec>,...')
         parser.add_argument(
-            '--records-filename', help='Search all occurences of a records read from given file.')
+            '-R', '--records-filename', help='Search all occurences of a records read from given file.')
         dbs = CommonDB.get_zci_sequence_dbs()
         parser.add_argument('-S', '--sequence-db', help=f'Sequence database to use: {", ".join(dbs)}')
 
@@ -36,7 +36,7 @@ class _CommonDBCommand(NonProjectCommand):
         if self.args.record:
             records.update(self.args.record.split(','))
         if self.args.records_filename:
-            records.update(read_file_as_list(self.records_filename))
+            records.update(read_file_as_list(self.args.records_filename))
 
         #
         if self.args.only_directory:
