@@ -61,6 +61,8 @@ class Step:
         if type_desc and not self._update_mode and self.is_completed() and not no_check:
             self._check_data()
 
+    step_data_type = property(lambda self: self._STEP_TYPE)
+
     def _init_data(self, type_description):
         raise NotImplementedError(f'Method {self.__class__.__name__}._init_data() is not implemented!')
 
@@ -72,8 +74,9 @@ class Step:
         return self._step_data['command']
 
     def common_db_identifier(self):
-        return self._step_data.get('common_db_identifier')
-        # return self._step_data['common_db_identifier']
+        c = self._step_data.get('common_db_identifier')
+        if c:
+            return tuple(c)
 
     def is_completed(self):
         return self._step_data['completed']

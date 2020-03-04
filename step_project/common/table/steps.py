@@ -98,9 +98,10 @@ Table data is stored in table.csv with header, separator ;, quote character ".
     def _get_table_filename(self):
         return self.step_file(self._TABLE_FILENAME)
 
-    def save(self):
+    def save(self, completed=True):
         # Store description.yml
-        self.save_description(dict(columns=[list(c) for c in self._columns]), completed=bool(self._columns))
+        self.save_description(dict(columns=[list(c) for c in self._columns or []]),
+                              completed=completed and bool(self._columns))
 
         # Write csv
         if self._rows:
