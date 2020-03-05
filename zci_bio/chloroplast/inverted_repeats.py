@@ -5,6 +5,7 @@ from zci_bio.annotations.steps import AnnotationsStep
 from common_utils.terminal_layout import StringColumns
 from ..utils.import_methods import import_bio_seq_io
 from . import run_inverted_repeats
+from .run_inverted_repeats import run_one
 
 _Repeat = namedtuple('_Repeat', 'first_start, second_start, length, inverted')
 
@@ -87,25 +88,23 @@ class _MUMmerResult:
                    (r.second_start, r.second_start + r.length - 1) for r in repeats]
 
     def get_irs(self):
-        if not self._repeats:
+        repeats = [r for r in self._repeats if r.inverted]
+        if not repeats:
             print(f'Error: no IRs for {self._name}!')
             return
 
-        if len(self._repeats) == 1:
-            irs = self._repeats[0]
+        if len(repeats) == 1:
+            irs = repeats[0]
         else:
             # Concatenate repeats into one
             # ToDo: check lot of things!!! Gap, change, length of change, ...
-            first = self._repeats[0]
-            last = self._repeats[-1]
+            first = repeats[0]
+            last = repeats[-1]
             irs = _Repeat(
                 first.first_start, first.second_start,
                 last.first_start - first.first_start + last.length,
-                inverted=first.inverted)
+                inverted=True)
 
-        if not irs.inverted:
-            print(f'Error: IRs are not inverted for {self._name}!')
-            return
         if irs.length < 20000:
             print(f'Error: IR for {self._name} is of short length {irs.length}!')
             return
@@ -135,20 +134,23 @@ class _MUMmerResult:
         print(StringColumns([self._format_row(self._a), self._format_row(self._b, minus=-1)]))
 
 
+def _set_irs_to_seq_rec(seq_rec, irs):
+    from Bio.SeqFeature import SeqFeature, FeatureLocation  # If SeqIO exists than these should be installed also
+    ira, irb = irs
+    qs = OrderedDict([('rpt_type', 'inverted')])
+    seq_rec.features.append(SeqFeature(FeatureLocation(*ira), type='repeat_region', qualifiers=qs))
+    seq_rec.features.append(SeqFeature(FeatureLocation(*irb), type='repeat_region', qualifiers=qs))
+
+
 def finish_irs_data(step_obj):
     SeqIO = import_bio_seq_io()
-    from Bio.SeqFeature import SeqFeature, FeatureLocation  # If SeqIO exists than these should be installed also
 
     for seq_ident, seq_rec in step_obj._iterate_records():
         # Read MUMmer output
         m_res = _MUMmerResult(step_obj.step_file('run_dir', f'{seq_ident}.out'), seq_ident, len(seq_rec))
         irs = m_res.get_irs()
         if irs:
-            ira, irb = irs
-            qs = OrderedDict([('rpt_type', 'inverted')])
-            seq_rec.features.append(SeqFeature(FeatureLocation(*ira), type='repeat_region', qualifiers=qs))
-            seq_rec.features.append(SeqFeature(FeatureLocation(*irb), type='repeat_region', qualifiers=qs))
-            #
+            _set_irs_to_seq_rec(seq_rec, irs)
             SeqIO.write([seq_rec], step_obj.step_file(f'{seq_ident}.gb'), 'genbank')
 
     step_obj.save()
@@ -158,3 +160,19 @@ def show_irs_data(step_obj):
     for seq_ident, seq_rec in step_obj._iterate_records():
         m_res = _MUMmerResult(step_obj.step_file('run_dir', f'{seq_ident}.out'), seq_ident, len(seq_rec))
         m_res.show_data()
+
+
+#
+def calculate_and_add_irs_to_seq_rec(step, seq_ident, seq_rec):
+    SeqIO = import_bio_seq_io()
+    # Store input fasta file
+    ensure_directory(step.step_file('run_dir'))
+    input_filename = step.step_file('run_dir', f'{seq_ident}.fa')
+    SeqIO.write([seq_rec], input_filename, 'fasta')
+    # Run MUMmer
+    run_one(input_filename)
+    m_res = _MUMmerResult(step.step_file('run_dir', f'{seq_ident}.out'), seq_ident, len(seq_rec))
+    irs = m_res.get_irs()
+    if irs:
+        _set_irs_to_seq_rec(seq_rec, irs)
+        return True

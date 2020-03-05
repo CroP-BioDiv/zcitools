@@ -1,5 +1,29 @@
-from step_project.base_commands import ProjectCommand, NonProjectCommand, CreateStepFromStepCommand
+from step_project.base_commands import ProjectCommand, NonProjectCommand, CreateStepCommand, CreateStepFromStepCommand
 from common_utils.exceptions import ZCItoolsValueError
+
+
+class AnnotationsMerge(CreateStepCommand):
+    _COMMAND = 'annotation_merge'
+    _HELP = "Merge more annotations steps into one"
+    _COMMAND_GROUP = 'Bio'
+
+    @staticmethod
+    def set_arguments(parser):
+        CreateStepCommand.set_arguments(parser)
+        parser.add_argument('steps', nargs='+', help='Input steps')
+
+    def run(self, step_data):
+        from .steps import AnnotationsStep
+        from common_utils.file_utils import copy_file
+
+        step = AnnotationsStep(self.project, step_data, remove_data=True)
+        for s in self.args.steps:
+            a_step = self.project.read_step(s, check_data_type='annotations')
+            for seq_ident in a_step.all_sequences():
+                step._sequences.add(seq_ident)
+                copy_file(a_step.get_sequence_filename(seq_ident), step.step_file(seq_ident + '.gb'))
+        step.save()
+        return step
 
 
 class AnnotationDiff(ProjectCommand):

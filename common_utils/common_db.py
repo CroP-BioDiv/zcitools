@@ -1,6 +1,6 @@
 import os
 from zipfile import ZipFile, ZIP_BZIP2
-from .file_utils import ensure_directory
+from .file_utils import ensure_directory, silent_remove
 from .exceptions import ZCItoolsValueError
 
 """
@@ -128,3 +128,6 @@ class CommonDB:
             if not self.get_record(record_ident, save_location, info=info):
                 not_found.append(record_ident)
         return not_found
+
+    def remove_record(self, record_ident):
+        silent_remove(self.get_record_filename(record_ident))

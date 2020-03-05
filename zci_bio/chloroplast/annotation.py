@@ -1,5 +1,5 @@
 from common_utils.terminal_layout import StringColumns
-from .utils import find_regions
+from .utils import find_chloroplast_partition
 from ..utils.features import Feature
 
 
@@ -9,7 +9,7 @@ def chloroplast_annotation(annotations, num_genes=1, feature_type='gene', featur
     with_first_col = False
     for seq_ident in sorted(sequences):
         seq = annotations.get_sequence_record(seq_ident)
-        partition = find_regions(seq_ident, seq)
+        partition = find_chloroplast_partition(seq_ident, seq)
         if not partition:
             continue
 

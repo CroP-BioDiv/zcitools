@@ -41,7 +41,7 @@ def fetch_sequences(step_data, table_step, common_db):
         fetch_nis = to_fetch
         to_fetch = []
         for ni in fetch_nis:
-            assert ni.startswith('NC_'), 'For now only NCBI donwload is supported!!!'  # ToDo:
+            assert ni.startswith('NC_'), f'For now only NCBI donwload is supported ({ni})!!!'  # ToDo:
             #
             print(f"  fetching '{ni}' in GenBank format.")
             # Fetch genbank format

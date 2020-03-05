@@ -3,8 +3,9 @@ from types import SimpleNamespace
 from common_utils.file_utils import copy_file, write_str_in_file, write_fasta
 from ..sequences.steps import SequencesStep
 from ..annotations.steps import AnnotationsStep
-from .utils import find_regions
 from ..utils.features import Feature
+from .utils import find_chloroplast_partition
+from .inverted_repeats import calculate_and_add_irs_to_seq_rec
 
 # Orientates chloroplast sequence in standard way.
 # Uses Fast-Plast method. Check
@@ -32,39 +33,54 @@ def _create_step(step_cls, description, command_obj, step_data, cmd_args):
     return step_cls(project, step_data, remove_data=True)
 
 
+def find_chloroplast_partition_force_calc(step, seq_ident, seq_rec):
+    # Check are IRs present
+    partition = find_chloroplast_partition(seq_ident, seq_rec)
+    if not partition:
+        # Try to find IRs with MUMmer
+        # Note: calculation data is set in annotations step
+        if calculate_and_add_irs_to_seq_rec(step, seq_ident, seq_rec):
+            partition = find_chloroplast_partition(seq_ident, seq_rec)
+    return partition
+
+
 def orientate_chloroplast(command_obj, cmd_args, step_data, annotation_step, common_db):
+    # common_db object's directory is set to chloroplast_oriented/sequences
+    # common_db_annot's directory is set to annotation's directory (e.g. chloroplast_oriented/GeSeq)
+    common_db_annot = common_db.get_relative_db('..', annotation_step.common_db_identifier()[-1])
     bad = to_repair = None
     good_files = []
-    # ToDo: is this good? What if common_db_identifier() is a list?
-    common_db_annot = common_db.get_relative_db('..', annotation_step.common_db_identifier()[-1])
 
     for seq_ident, seq in annotation_step._iterate_records():
-        print(f'Processing {seq_ident}')
-        # Fix sequence features
-        seq.features = [f for f in seq.features if f.location]
-        #
         an_file = annotation_step.get_sequence_filename(seq_ident)
 
-        partition = find_regions(seq_ident, seq)
+        partition = find_chloroplast_partition_force_calc(annotation_step, seq_ident, seq)
         if not partition:
-            # ToDo: what to do? Check is orientation good with list of genes. If not raise 
-            print(f'  WHAT TO DO {seq_ident}?')
+            print(f'ERROR: no IRs for sequence {seq_ident}!')
             if not bad:
                 bad = _create_step(AnnotationsStep, 'bad', command_obj, step_data, cmd_args)
             _copy_annotation(bad, an_file)
             continue
 
+        # Fix sequence features
+        seq.features = [f for f in seq.features if f.location]
+
         # Count gene orintation
         l_seq = len(seq)
-        in_parts = partition.put_features_in_parts(
-            Feature(l_seq, feature=f) for f in seq.features if f.type == 'gene' and f.location)
+        in_parts = partition.put_features_in_parts(Feature(l_seq, feature=f) for f in seq.features if f.type == 'gene')
 
         lsc_count = sum(f.feature.strand if any(x in f.name for x in ('rpl', 'rps')) else 0
                         for f in in_parts.get('lsc', []))
         ssc_count = sum(f.feature.strand for f in in_parts.get('ssc', []))
         ir_count = sum(f.feature.strand if 'rrn' in f.name else 0 for f in in_parts.get('ira', []))
 
-        if (lsc_count <= 0) and (ssc_count <= 0) and (ir_count >= 0):  # No change
+        # ToDo: ako je pozicija IR
+        lsc = partition.get_part_by_name('lsc')
+        irb = partition.get_part_by_name('irb')
+        irs_good_positioned = min(l_seq - lsc.real_start, lsc.real_start) < 30 and \
+            min(l_seq - irb.real_end, irb.real_end) < 30
+
+        if (lsc_count <= 0) and (ssc_count <= 0) and (ir_count >= 0) and irs_good_positioned:  # No change
             good_files.append(an_file)
             common_db.set_record(seq_ident, an_file)
             common_db_annot.set_record(seq_ident, an_file)
@@ -74,9 +90,7 @@ def orientate_chloroplast(command_obj, cmd_args, step_data, annotation_step, com
         if ssc_count > 0:
             parts['ssc'] = parts['ssc'].reverse_complement()
         if lsc_count > 0:
-            print(f'  REVERT LSC: WHAT TO DO {seq_ident}?')
-            continue
-            assert False, f'REVERT LSC {seq_ident}'
+            parts['lsc'] = parts['lsc'].reverse_complement()
         if ir_count < 0:
             print(f'  REVERT IRs: WHAT TO DO {seq_ident}?')
             continue
@@ -95,7 +109,9 @@ def orientate_chloroplast(command_obj, cmd_args, step_data, annotation_step, com
         fa_filename = to_repair.step_file(base_f)
         write_fasta(fa_filename, [(seq_ident, str(new_seq.seq))])
         to_repair.add_sequence_file(base_f)
+        # ToDo: force stavljanja u common_db. Brisati u common_db_annot
         common_db.set_record(seq_ident, fa_filename)
+        # common_db_annot.remove_record(seq_ident)
 
     #
     mess = []

@@ -37,8 +37,8 @@ def _find_exe(default_exe, env_var):
     return exe
 
 
-def _run_single(mummer_exe, input_filename, output_filename, result_filename, n):
-    cmd = f"{mummer_exe} -n {n} {_CALC_DIR(input_filename)} > {_CALC_DIR(output_filename)}"
+def _run_single(mummer_exe, input_filename, output_filename, n=150):
+    cmd = f"{mummer_exe} -n {n} {input_filename} > {output_filename}"
     print(f"Command: {cmd}")
     os.system(cmd)
 
@@ -57,14 +57,20 @@ def run(locale=True, threads=None, min_length=15000):
         for f in fa_files:
             f_base = f[:-3]
             outputs.append(f'{f_base}.out')
-            outputs.append(f'{f_base}.irs')
-            executor.submit(_run_single, mummer_exe, f, outputs[-2], outputs[-1], min_length // 100)
+            executor.submit(_run_single, mummer_exe, _CALC_DIR(f), _CALC_DIR(outputs[-1]))
 
     # Zip files
     if not locale:
         with ZipFile('output.zip', 'w') as output:
             for f in outputs:
                 output.write(_CALC_DIR(f))
+
+
+def run_one(input_filename):
+    mummer_exe = _find_exe(_DEFAULT_EXE_NAME, _ENV_VAR)
+    output_filename = input_filename.replace('.fa', '.out')
+    _run_single(mummer_exe, input_filename, output_filename)
+    return output_filename
 
 
 if __name__ == '__main__':
