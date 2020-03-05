@@ -20,7 +20,7 @@ Steps:
  - run zcit command: zcit.py finish {step_name}
 
 Notes:
- - Mummers repeat match executable (repeat-match) should be on the PATH or
+ - MUMmers repeat match executable (repeat-match) should be on the PATH or
    environment variable MUMMER_REPEAT_MATCH_EXE should point to it.
  - It is good to use command screen for running the script.
    screen -dm "python3 {script_name}"
@@ -60,24 +60,79 @@ def create_irs_data(step_data, input_step, run):
 
 
 # Finish part
-def _read_output(output_filename):
-    repeats = []  # List of _Repeat objects
-    with open(output_filename, 'r') as output:
-        read = False
-        for line in output:
-            fields = line.strip().split()
-            if read:
-                if fields[1][-1] == 'r':
-                    s2 = int(fields[1][:-1])
-                    inverted = True
+class _MUMmerResult:
+    def __init__(self, result_filename, name, length):
+        self._name = name
+        self._length = length
+        repeats = []  # List of _Repeat objects
+        with open(result_filename, 'r') as output:
+            read = False
+            for line in output:
+                fields = line.strip().split()
+                if read:
+                    if fields[1][-1] == 'r':
+                        s2 = int(fields[1][:-1])
+                        inverted = True
+                    else:
+                        s2 = int(fields[1])
+                        inverted = False
+                    repeats.append(_Repeat(int(fields[0]), s2, int(fields[2]), inverted=inverted))
                 else:
-                    s2 = int(fields[1])
-                    inverted = False
-                repeats.append(_Repeat(int(fields[0]), s2, int(fields[2]), inverted=inverted))
-            else:
-                if fields[0] == 'Start1':
-                    read = True
-    return sorted(repeats, key=lambda r: r.first_start)
+                    if fields[0] == 'Start1':
+                        read = True
+        #
+        self._repeats = repeats = sorted(repeats, key=lambda r: r.first_start)
+        self._a = [(r.first_start, r.first_start + r.length - 1) for r in repeats]
+        self._b = [(r.second_start, r.second_start - r.length + 1) if r.inverted else
+                   (r.second_start, r.second_start + r.length - 1) for r in repeats]
+
+    def get_irs(self):
+        if not self._repeats:
+            print(f'Error: no IRs for {self._name}!')
+            return
+
+        if len(self._repeats) == 1:
+            irs = self._repeats[0]
+        else:
+            # Concatenate repeats into one
+            # ToDo: check lot of things!!! Gap, change, length of change, ...
+            first = self._repeats[0]
+            last = self._repeats[-1]
+            irs = _Repeat(
+                first.first_start, first.second_start,
+                last.first_start - first.first_start + last.length,
+                inverted=first.inverted)
+
+        if not irs.inverted:
+            print(f'Error: IRs are not inverted for {self._name}!')
+            return
+        if irs.length < 20000:
+            print(f'Error: IR for {self._name} is of short length {irs.length}!')
+            return
+        ira = (irs.first_start, irs.first_start + irs.length - 1)
+        irb = (irs.second_start - irs.length + 1, irs.second_start)
+        if ira[0] < self._length // 2:
+            print('ERROR: IRA is located to the left.', self._name, self._length, ira, irb)
+        if irb[1] < self._length - 30:
+            print('ERROR: IRB is located to the left.', self._name, self._length, ira, irb)
+        return ira, irb
+
+    @staticmethod
+    def _format_row(data, minus=1):
+        x = [f"{f}-{t}" for f, t in data]
+        y = [str(minus * (a[0] - b[1])) for a, b in zip(data[1:], data[:-1])]
+        return list(itertools.chain.from_iterable(zip(x, y))) + x[-1:]
+
+    def show_data(self):
+        irs = self.get_irs()
+        if irs:
+            ira, irb = irs
+            irs = f'IRS: {ira[0]}-{ira[1]} : {irb[0]}-{irb[1]}'
+        else:
+            irs = 'No IRS!'
+
+        print(f"{self._name} ({self._length})  {irs}")
+        print(StringColumns([self._format_row(self._a), self._format_row(self._b, minus=-1)]))
 
 
 def finish_irs_data(step_obj):
@@ -85,55 +140,21 @@ def finish_irs_data(step_obj):
     from Bio.SeqFeature import SeqFeature, FeatureLocation  # If SeqIO exists than these should be installed also
 
     for seq_ident, seq_rec in step_obj._iterate_records():
-        irs = None
-        # Read mummer output
-        repeats = _read_output(step_obj.step_file('run_dir', f'{seq_ident}.out'))
-        if repeats:
-            if len(repeats) == 1:
-                irs = repeats[0]
-            else:
-                # Concatenate repeats into one
-                # ToDo: check lot of things!!! Gap, change, length of change, ...
-                first = repeats[0]
-                last = repeats[-1]
-                irs = _Repeat(
-                    first.first_start, first.second_start,
-                    last.first_start - first.first_start + last.length,
-                    inverted=first.inverted)
-
-        if not irs:
-            print(f'Error: no IRs for {seq_ident}!')
-            continue
-        if not irs.inverted:
-            print(f'Error: IRs are not inverted for {seq_ident}!')
-            continue
-        if irs.length < 20000:
-            print(f'Error: IR for {seq_ident} is of short length {irs.length}!')
-            continue
-
-        ira = (irs.first_start, irs.first_start + irs.length - 1)
-        irb = (irs.second_start - irs.length + 1, irs.second_start)
-        qs = OrderedDict([('rpt_type', 'inverted')])
-        seq_rec.features.append(SeqFeature(FeatureLocation(*ira), type='repeat_region', qualifiers=qs))
-        seq_rec.features.append(SeqFeature(FeatureLocation(*irb), type='repeat_region', qualifiers=qs))
-        #
-        SeqIO.write([seq_rec], step_obj.step_file(f'{seq_ident}.gb'), 'genbank')
+        # Read MUMmer output
+        m_res = _MUMmerResult(step_obj.step_file('run_dir', f'{seq_ident}.out'), seq_ident, len(seq_rec))
+        irs = m_res.get_irs()
+        if irs:
+            ira, irb = irs
+            qs = OrderedDict([('rpt_type', 'inverted')])
+            seq_rec.features.append(SeqFeature(FeatureLocation(*ira), type='repeat_region', qualifiers=qs))
+            seq_rec.features.append(SeqFeature(FeatureLocation(*irb), type='repeat_region', qualifiers=qs))
+            #
+            SeqIO.write([seq_rec], step_obj.step_file(f'{seq_ident}.gb'), 'genbank')
 
     step_obj.save()
 
 
-def _format_row(data):
-    x = [f"{f}-{t}" for f, t in data]
-    y = [str(a[0] - b[1]) for a, b in zip(data[1:], data[:-1])]
-    return list(itertools.chain.from_iterable(zip(x, y))) + x[-1:]
-
-
 def show_irs_data(step_obj):
     for seq_ident, seq_rec in step_obj._iterate_records():
-        repeats = _read_output(step_obj.step_file('run_dir', f'{seq_ident}.out'))
-        a = [(r.first_start, r.first_start + r.length - 1) for r in repeats]
-        b = [(r.second_start, r.second_start - r.length + 1) if r.inverted else
-             (r.second_start, r.second_start + r.length - 1) for r in repeats]
-
-        print(seq_ident, len(seq_rec))
-        print(StringColumns([_format_row(a), _format_row(b)]))
+        m_res = _MUMmerResult(step_obj.step_file('run_dir', f'{seq_ident}.out'), seq_ident, len(seq_rec))
+        m_res.show_data()

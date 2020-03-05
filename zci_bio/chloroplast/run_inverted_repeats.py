@@ -19,7 +19,7 @@ _CALC_DIR = lambda f: os.path.join('run_dir', f)
 # Calculation strategy: jobs are run in parallel.
 
 _install_instructions = """
-Mummer is not installed!
+MUMmer is not installed!
 Check web page https://mummer4.github.io/install/install.html for installation instructions.
 
 There are two ways for this script to locate executable to run:
@@ -33,7 +33,7 @@ def _find_exe(default_exe, env_var):
     exe = os.getenv(env_var, default_exe)
     if not shutil.which(exe):
         print(_install_instructions.format(exe=default_exe, env_var=env_var))
-        raise ValueError(f'No Mummer installed! Tried {exe}')
+        raise ValueError(f'No MUMmer installed! Tried {exe}')
     return exe
 
 
@@ -59,7 +59,6 @@ def run(locale=True, threads=None, min_length=15000):
             outputs.append(f'{f_base}.out')
             outputs.append(f'{f_base}.irs')
             executor.submit(_run_single, mummer_exe, f, outputs[-2], outputs[-1], min_length // 100)
-            # _run_single(mummer_exe, f, outputs[-2], outputs[-1], min_length)
 
     # Zip files
     if not locale:
