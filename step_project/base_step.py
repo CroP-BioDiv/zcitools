@@ -119,8 +119,8 @@ class Step:
     def absolute_path(self):
         return os.path.abspath(self.directory)
 
-    def step_file(self, f):
-        return os.path.join(*self._step_name_list, f)
+    def step_file(self, *f):
+        return os.path.join(*self._step_name_list, *f)
 
     def strip_step_dir(self, f):
         assert f.startswith(self.directory), (f, self.directory)

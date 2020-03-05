@@ -46,8 +46,8 @@ class ChloroplastOrientate(CreateStepsFromStepCommand):
         return orientate_chloroplast(self, self.args, step_data, self._input_step(), self.get_common_db_object())
 
 
-class ChloroplastFindIRs(CreateStepFromStepCommand):
-    _COMMAND = 'chloroplast_find_irs'
+class ChloroplastIRsFind(CreateStepFromStepCommand):
+    _COMMAND = 'chloroplast_irs_find'
     _HELP = "Find chloroplast IRs"
     _COMMAND_GROUP = 'Chloroplast'
     _STEP_BASE_NAME = 'ChloroIRs'
@@ -56,15 +56,27 @@ class ChloroplastFindIRs(CreateStepFromStepCommand):
     @classmethod
     def set_arguments(cls, parser):
         CreateStepFromStepCommand.set_arguments(parser)
-        parser.add_argument(
-            '-t', '--table-output', action='store_true', help='Set result to be table even if input step are annotations.')
         parser.add_argument('-r', '--run', action='store_true', help='Post data on mVISTA web page')
 
     def run(self, step_data):
         from .inverted_repeats import create_irs_data
         a = self.args
-        return create_irs_data(step_data, self._input_step(), a.run, table_output=a.table_output)
+        return create_irs_data(step_data, self._input_step(), a.run)
 
     def finish(self, step_obj):
         from .inverted_repeats import finish_irs_data
         finish_irs_data(step_obj)
+
+
+class ChloroplastIRsShow(ProjectCommand):
+    _COMMAND = 'chloroplast_irs_show'
+    _HELP = "Show found chloroplast IRs"
+    _COMMAND_GROUP = 'Chloroplast'
+
+    @classmethod
+    def set_arguments(cls, parser):
+        parser.add_argument('step', help='Step name')
+
+    def run(self):
+        from .inverted_repeats import show_irs_data
+        return show_irs_data(self.project.read_step(self.args.step, check_data_type='annotations'))
