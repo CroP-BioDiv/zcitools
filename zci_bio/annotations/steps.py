@@ -112,25 +112,20 @@ Annotations are stored:
 
         if cmd == 'by_type':
             all_types = set()
-            data = dict()  # seq_ident -> dict(length=int, features=int, <type>=num)
+            data = dict()  # seq_ident -> dict(length=int, features=int, <type>=str)
             for seq_ident, seq_record in self._iterate_records(filter_seqs=filter_seqs):
-                d = defaultdict(int)
-                genes = set()
+                type_2_list = defaultdict(list)
                 for f in seq_record.features:
                     if f.type != 'source':
-                        d[f.type] += 1
-                        if f.type == 'gene':
-                            genes.add(feature_qualifiers_to_desc(f))
-                if genes:
-                    d['gene_unique'] = len(genes)
-                all_types.update(d.keys())
-                d['length'] = len(seq_record.seq)
-                d['features'] = len(seq_record.features)
-                data[seq_ident] = d
+                        type_2_list[f.type].append(feature_qualifiers_to_desc(f))
+                all_types.update(type_2_list.keys())
+                data[seq_ident] = dict(length=len(seq_record.seq), features=len(seq_record.features))
+                data[seq_ident].update((t, f"{len(fs)}/{len(set(fs))}" if t != 'repeat_region' else str(len(fs)))
+                                       for t, fs in type_2_list.items())
 
             all_types = sorted(all_types)
             print_table(['seq_ident', 'Length', 'Features'] + all_types,
-                        sorted([seq_ident, d['length'], d['features']] + [d.get(t, 0) for t in all_types]
+                        sorted([seq_ident, d['length'], d['features']] + [d.get(t, '') for t in all_types]
                                for seq_ident, d in sorted(data.items())))
 
         # Genes
