@@ -3,11 +3,15 @@ from ..utils.helpers import read_alignment
 
 class IndexInAlignment:
     # Maps original index into alined
+    # Note: indices are zero indexed!
     def __init__(self, seq):
-        self.indices = [i + 1 for i, c in enumerate(seq.seq) if c != '-']
+        self.indices = [i for i, c in enumerate(seq.seq) if c != '-']
 
     def __getitem__(self, i):
         return self.indices[i]
+
+    def __len__(self):
+        return len(self.indices)
 
 
 class AlignmentMapIndices:
@@ -16,10 +20,9 @@ class AlignmentMapIndices:
         self.alignment = alignment or read_alignment(filename)
         self.seq_indices = dict((seq.name, IndexInAlignment(seq)) for seq in self.alignment)
 
-    def create_raxml_partitions(self, orig_parts, filename):
+    def create_raxml_partitions(self, orig_parts, partitions_filename):
         # orig_parts is iterable of tuples (seq_ident, partitions)
-        # Naci sto je sve anotirano, sortirati po redu
-        orig_parts = dict((s, k) for s, k in orig_parts)  # seq_ident -> list of tuples (index, description)
+        orig_parts = dict(orig_parts)  # seq_ident -> list of tuples (index, description)
         if not orig_parts:
             return
 
@@ -30,22 +33,22 @@ class AlignmentMapIndices:
             [s for s in orig_parts.keys() if s not in self.seq_indices]
 
         #
-        with open(filename, 'w') as output:
+        with open(partitions_filename, 'w') as output:
             last_start = 1
 
-            for i in range(num_genes - 1):                   # For each gene
+            for i in range(num_genes):                       # For each gene
                 for seq_ident, parts in orig_parts.items():  # Check between all sequences
                     aligned = self.seq_indices[seq_ident]    # Is there start/end pair aligned on neighbouring positions
-                    end = parts[i][0]
-                    p = aligned[end - 1]
-                    n = aligned[end]
+                    end, gene = parts[i]
+                    if end >= len(aligned):
+                        output.write(f'DNA, {gene} = {last_start}-{len(aligned)}\n')
+                        assert i == (num_genes - 1), (i, num_genes)
+                        break
+                    p = aligned[end - 1]  # In current part
+                    n = aligned[end]      # In next part
                     if n == p + 1:
-                        output.write(f'DNA, {parts[i][1]} = {last_start}-{p}\n')
-                        last_start = n
+                        output.write(f'DNA, {gene} = {last_start}-{p}\n')
+                        last_start = n + 1  # Indices are zero indexed!
                         break
                 else:
                     raise ValueError(parts[i][1])
-
-            # Add last one
-            gene = next(iter(orig_parts.values()))[-1][1]
-            output.write(f'DNA, {gene} = {last_start}-{len(self.alignment[0])}\n')

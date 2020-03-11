@@ -11,12 +11,19 @@ class AlignmentStep(Step):
     """
 Stores an alignment between 2 or more sequences.
 Data is stored:
- - desription.yml    : list of sequence identifiers to align and type of these sequences.
- - sequences.fa      : sequences to align
- - alignments.phy|fa : alignment
- - <seq_ident>.parts : sequence partitions. If alignment is on only one feature that these files are not stored.
-                       File has lines of format: <end index> <description>.
-                       Note: this should be real partition. Covers whole sequence
+ - desription.yml     : list of sequence identifiers to align and type of these sequences.
+ - sequences.fa       : sequences to align
+ - alignments.phy|fa  : alignment
+ # For phylogenetic analysis, storing information of sequence parts/features
+ - <seq_ident>._parts : sequence partitions
+        If alignment is on only one feature that these files are not stored.
+        File contains lines of format: <end index> <description>.
+        Indices are zero indexed and means that indices with 'last_end <= indices < end' are in part
+        Description doesn't have to be unique inside a file.
+        This should be real partition. Covers whole sequence
+        Note: extension ._parts is used since MrBayes has output file with extension .parts
+ - <seq_ident>.gb : annotated sequence
+        Same sequnece with filtered features
 """
     # ToDo: other alignment formats?
     _STEP_TYPE = 'alignment'
@@ -57,9 +64,9 @@ Data is stored:
         self.save_description(dict(sequences=sorted(self._sequences), sequence_type=self._seq_type),
                               create=create, completed=completed)
 
-    def store_partitions(self, seq_ident, partitions):
+    def store_partition(self, seq_ident, partition):
         assert seq_ident in self._sequences, seq_ident
-        write_lines_in_file(self.step_file(f'{seq_ident}.parts'), [f'{n} {desc}' for n, desc in partitions])
+        write_lines_in_file(self.step_file(f'{seq_ident}._parts'), [f'{n} {desc}' for n, desc in partition])
 
     # Retrieve data methods
     def all_sequences(self):
@@ -72,7 +79,9 @@ Data is stored:
         return self._seq_type == 'gene'
 
     def is_composite(self):  # Contains more genes
-        return self._seq_type == 'genes'
+        # Check are all parts files presented
+        return all(os.path.isfile(self.step_file(f'{seq_ident}._parts')) for seq_ident in self._sequences)
+        # return self._seq_type != 'gene'
 
     def get_alignment_obj(self):
         for f, t in (('alignment.phy', 'phylip'), ('alignment.fa', 'fasta')):
@@ -99,7 +108,7 @@ Data is stored:
             AlignIO.convert(p_f, 'phylip', f, 'nexus', alphabet=Alphabet.generic_dna)
             return f
 
-    #
+    # Partitions (used for phylogeny analysis)
     def iterate_partitions(self):
         for seq_ident in self._sequences:
             p = self.get_partitions(seq_ident)
@@ -108,7 +117,7 @@ Data is stored:
 
     def get_partitions(self, seq_ident):
         # Returns None or list of integers
-        f = self.step_file(f'{seq_ident}.parts')
+        f = self.step_file(f'{seq_ident}._parts')
         if os.path.isfile(f):
             ret = []
             with open(f, 'r') as r:
@@ -120,6 +129,13 @@ Data is stored:
     def get_alignment_map_indices(self):
         from .alignment_map_indices import AlignmentMapIndices
         return AlignmentMapIndices(filename=self.step_file('alignment.phy'))
+
+    def create_raxml_partitions(self, partitions_filename):
+        ami = self.get_alignment_map_indices()
+        if self._seq_type == 'whole':
+            pass
+        else:
+            ami.create_raxml_partitions(self.iterate_partitions(), partitions_filename)
 
     # Show data
     def show_data(self, params=None):

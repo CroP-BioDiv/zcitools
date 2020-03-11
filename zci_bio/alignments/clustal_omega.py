@@ -24,8 +24,9 @@ Notes:
 """
 
 
-def create_clustal_data(step_data, annotations_step, alignments, run):
-    return create_alignment_data(step_data, annotations_step, alignments, run, run_clustal_omega, _instructions)
+def create_clustal_data(step_data, annotations_step, alignments, whole_partition, run):
+    return create_alignment_data(
+        step_data, annotations_step, alignments, whole_partition, run, run_clustal_omega, _instructions)
 
 
 def finish_clustal_data(step_obj):

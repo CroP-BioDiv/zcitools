@@ -1,4 +1,5 @@
 from .steps import AlignmentStep, AlignmentsStep
+from ..utils.import_methods import import_bio_seq_io
 from common_utils.file_utils import write_fasta, write_yaml, run_module_script, set_run_instructions
 
 
@@ -9,16 +10,17 @@ def _add_sequences(al_step, seq_type, sequences, sequence_data):
     al_step.seq_sequence_type(seq_type)
     al_step.save(completed=False)
     # Annotations
-    for seq_ident, seq, partitions in sequence_data:
-        if partitions:
-            al_step.store_partitions(seq_ident, partitions)
+    for seq_ident, seq, partition in sequence_data:
+        if partition:
+            al_step.store_partition(seq_ident, partition)
     #
     return dict(filename=seq_file, short=al_step.is_short(), max_seq_length=max(len(s) for _, s, _ in sequence_data))
 
 
-def _lengths_2_partitions(data):  # data is list of strings (ident, string)
+def _lengths_2_features(data):
+    # data is list of strings (ident, string)
     ret = []
-    end = 1
+    end = 0
     for ident, d in data:
         end += len(d)
         ret.append((end, ident))
@@ -55,11 +57,11 @@ def _feature_sequences(
             al_step, 'genes', sequences,
             [(seq_ident,
               ''.join(parts[(seq_ident, gene)] for gene in same_features),
-              _lengths_2_partitions(((gene, parts[(seq_ident, gene)]) for gene in same_features)))
+              _lengths_2_features(((gene, parts[(seq_ident, gene)]) for gene in same_features)))
              for seq_ident in sequences]))
 
 
-def create_alignment_data(step_data, annotations_step, alignments, run, run_module, _instructions):
+def create_alignment_data(step_data, annotations_step, alignments, whole_partition, run, run_module, _instructions):
     alignments = set(alignments)
     assert all(a in ('w', 'gs', 'gc', 'cs', 'cc') for a in alignments)
 
@@ -84,6 +86,16 @@ def create_alignment_data(step_data, annotations_step, alignments, run, run_modu
         seq_files.append(_add_sequences(
             al_step, 'whole', sequences,
             [(seq_ident, annotations_step.get_sequence(seq_ident), None) for seq_ident in sequences]))
+
+        # Store filtered features
+        if whole_partition:
+            SeqIO = import_bio_seq_io()
+            for seq_ident in sequences:
+                seq_rec = annotations_step.get_sequence_record(seq_ident)
+                # Copy SeqRecord and filter features
+                sr_copy = seq_rec[:]
+                sr_copy.features = [f for f in sr_copy.features if f.location and f.type == whole_partition]
+                SeqIO.write([sr_copy], al_step.step_file(f'{seq_ident}.gb'), 'genbank')
 
     assert created_steps
     base_step = steps or created_steps[0]

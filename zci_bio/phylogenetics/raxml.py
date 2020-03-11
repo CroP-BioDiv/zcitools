@@ -5,7 +5,6 @@ from zci_bio.phylogenetics.steps import RAxMLStep, RAxMLSteps
 from common_utils.file_utils import copy_file, unzip_file, list_zip_files, write_yaml, read_yaml, \
     run_module_script, set_run_instructions
 from common_utils.exceptions import ZCItoolsValueError
-from ..alignments.alignment_map_indices import AlignmentMapIndices
 from ..utils.helpers import read_alignment
 
 
@@ -39,9 +38,7 @@ def _copy_alignment_file(align_step, in_step, files_to_proc, set_partitions):
     #
     if set_partitions and align_step.is_composite():
         partitions = in_step.step_file('partitions.ind')
-        ami = AlignmentMapIndices(alignment=alignment)
-        ami = align_step.get_alignment_map_indices()
-        ami.create_raxml_partitions(align_step.iterate_partitions(), partitions)
+        align_step.create_raxml_partitions(partitions)
     #
     if max(len(seq_ident) for seq_ident in align_step.all_sequences()) == 10:
         # If max length of ident is 10, than RAxML is confused about real ident length

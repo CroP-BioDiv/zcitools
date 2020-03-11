@@ -19,6 +19,9 @@ class ClustalO(CreateStepFromStepCommand):
         CreateStepFromStepCommand.set_arguments(parser)
         parser.add_argument(
             'alignments', nargs='+', help=f"To align: {', '.join(f'{c} ({d})' for c, d in ClustalO._ALIGNMENTS)}")
+        parser.add_argument(
+            '-w', '--whole-partition', choices=['gene', 'CDS'],
+            help='For whole alignment which set partition type to use. Values: gene, CDS.')
         parser.add_argument('-r', '--run', action='store_true', help='Run Clustal Omega locale')
 
     def run(self, step_data):
@@ -27,7 +30,8 @@ class ClustalO(CreateStepFromStepCommand):
         not_sup_params = [a for a in align_params if a not in self._SUPPORTED_ALIGNS]
         if not_sup_params:
             raise ZCItoolsValueError(f'No valid alignments set ({", ".join(sorted(not_sup_params))}).')
-        return create_clustal_data(step_data, self._input_step(), align_params, self.args.run)
+        return create_clustal_data(
+            step_data, self._input_step(), align_params, self.args.whole_partition, self.args.run)
 
     def finish(self, step_obj):
         from .clustal_omega import finish_clustal_data
@@ -45,7 +49,7 @@ class MAFFT(ClustalO):
         not_sup_params = [a for a in align_params if a not in self._SUPPORTED_ALIGNS]
         if not_sup_params:
             raise ZCItoolsValueError(f'No valid alignments set ({", ".join(sorted(not_sup_params))}).')
-        return create_mafft_data(step_data, self._input_step(), align_params, self.args.run)
+        return create_mafft_data(step_data, self._input_step(), align_params, self.args.whole_partition, self.args.run)
 
     def finish(self, step_obj):
         from .mafft import finish_mafft_data

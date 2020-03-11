@@ -24,5 +24,6 @@ Notes:
 """
 
 
-def create_mafft_data(step_data, annotations_step, alignments, run):
-    return create_alignment_data(step_data, annotations_step, alignments, run, run_mafft, _instructions)
+def create_mafft_data(step_data, annotations_step, alignments, whole_partition, run):
+    return create_alignment_data(
+        step_data, annotations_step, alignments, whole_partition, run, run_mafft, _instructions)
