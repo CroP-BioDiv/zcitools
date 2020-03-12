@@ -35,10 +35,13 @@ class MrBayes(CreateStepFromStepCommand):
     def set_arguments(parser):
         parser.add_argument('step', help='Input sequences step')
         parser.add_argument('-r', '--run', action='store_true', help='Run MrBayes locale')
+        parser.add_argument('--ngen', default=10000000, type=int, help='ngen parameter')
+        parser.add_argument('--burnin', default=2500, type=int, help='burnin parameter')
 
     def run(self, step_data):
         from .mr_bayes import create_mr_bayes_data
-        return create_mr_bayes_data(step_data, self._input_step(), self.args.run)
+        a = self.args
+        return create_mr_bayes_data(step_data, self._input_step(), a.ngen, a.burnin, a.run)
 
     def finish(self, step_obj):
         from .mr_bayes import finish_mr_bayes_data

@@ -79,9 +79,11 @@ Data is stored:
         return self._seq_type == 'gene'
 
     def is_composite(self):  # Contains more genes
-        # Check are all parts files presented
-        return all(os.path.isfile(self.step_file(f'{seq_ident}._parts')) for seq_ident in self._sequences)
-        # return self._seq_type != 'gene'
+        # Check are all parts/feature files presented
+        if self._seq_type == 'genes':
+            return all(os.path.isfile(self.step_file(f'{seq_ident}._parts')) for seq_ident in self._sequences)
+        if self._seq_type == 'whole':
+            return all(os.path.isfile(self.step_file(f'{seq_ident}.gb')) for seq_ident in self._sequences)
 
     def get_alignment_obj(self):
         for f, t in (('alignment.phy', 'phylip'), ('alignment.fa', 'fasta')):
@@ -133,9 +135,13 @@ Data is stored:
     def create_raxml_partitions(self, partitions_filename):
         ami = self.get_alignment_map_indices()
         if self._seq_type == 'whole':
-            pass
+            SeqIO = import_bio_seq_io()
+            ami.create_raxml_partitions_from_features(
+                ((seq_ident, SeqIO.read(self.step_file(f'{seq_ident}.gb'), 'genbank'))
+                 for seq_ident in self._sequences),
+                partitions_filename)
         else:
-            ami.create_raxml_partitions(self.iterate_partitions(), partitions_filename)
+            ami.create_raxml_partitions_from_parts(self.iterate_partitions(), partitions_filename)
 
     # Show data
     def show_data(self, params=None):
