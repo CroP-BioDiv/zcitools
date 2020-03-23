@@ -78,11 +78,11 @@ Each sequence can be stored in one or more files in different formats.
     def _iterate_records(self):
         # Iterate through all sequences, returns Bio.SeqRecord objects.
         for seq_ident, files in sorted(self._sequences.items()):
-            seq_record = self._read_record(seq_ident, files=files)
+            seq_record = self.get_sequence_record(seq_ident, files=files)
             if seq_record is not None:
                 yield seq_ident, seq_record
 
-    def _read_record(self, seq_ident, files=None):
+    def get_sequence_record(self, seq_ident, files=None):
         if files is None:
             files = self._sequences[seq_ident]
         for ext, st in self._TYPE_LOAD_PRIORITY:
@@ -99,11 +99,11 @@ Each sequence can be stored in one or more files in different formats.
     #     return f
 
     def concatenate_seqs_fa(self, filename, seq_idents):
-        write_fasta(filename, ((seq_ident, self._read_record(seq_ident).seq) for seq_ident in seq_idents))
+        write_fasta(filename, ((seq_ident, self.get_sequence_record(seq_ident).seq) for seq_ident in seq_idents))
 
     def get_sequence(self, seq_ident):
         # Returns sequence as a string
-        seq_record = self._read_record(seq_ident)
+        seq_record = self.get_sequence_record(seq_ident)
         return str(seq_record.seq)
 
     def get_sequence_file(self, seq_ident, file_type):
@@ -115,7 +115,7 @@ Each sequence can be stored in one or more files in different formats.
                 return self.step_file(f)
 
         # If not, than make convertion
-        seq_record = self._read_record(seq_ident)
+        seq_record = self.get_sequence_record(seq_ident)
         seq_f = self.step_file(seq_ident + ext)
         with open(seq_f, 'w') as output_handle:
             count = import_bio_seq_io().write(seq_record, output_handle, file_type)

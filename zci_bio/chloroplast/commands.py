@@ -1,6 +1,27 @@
 from step_project.base_commands import ProjectCommand, CreateStepFromStepCommand, CreateStepsFromStepCommand
 
 
+class ChloroplastAnalyse(CreateStepFromStepCommand):
+    _COMMAND = 'chloroplast_analyse'
+    _HELP = "Analyse (and normalize) chloroplast genomes"
+    _COMMAND_GROUP = 'Chloroplast'
+    _STEP_BASE_NAME = 'ChloroAnalyse'
+    _INPUT_STEP_DATA_TYPE = 'table'
+
+    # @classmethod
+    # def set_arguments(cls, parser):
+    #     CreateStepFromStepCommand.set_arguments(parser)
+    #     parser.add_argument('-r', '--run', action='store_true', help='Post data on mVISTA web page')
+
+    def run(self, step_data):
+        from .analyse import analyse_genomes
+        return analyse_genomes_start(step_data, self._input_step())
+
+    def finish(self, step_obj):
+        from .analyse_genomes import analyse_genomes_proceed
+        analyse_genomes_proceed(step_obj)
+
+
 class ChloroplastAnnotation(ProjectCommand):
     _COMMAND = 'chloroplast_annotation'
     _HELP = "Displays simplified chloroplast annotation"
@@ -48,27 +69,27 @@ class ChloroplastOrientate(CreateStepsFromStepCommand):
 
 class ChloroplastIRsFind(CreateStepFromStepCommand):
     _COMMAND = 'chloroplast_irs_find'
-    _HELP = "Find chloroplast IRs"
+    _HELP = "Find chloroplast IRs and other repeats"
     _COMMAND_GROUP = 'Chloroplast'
     _STEP_BASE_NAME = 'ChloroIRs'
     _INPUT_STEP_DATA_TYPE = ('sequences', 'annotations')
+    # Note: mummer is fast enough so it is not needed to run it on server.
+    #       Implementation is done in a way that process can be split in parts (init, run, finish)
 
     @classmethod
     def set_arguments(cls, parser):
         CreateStepFromStepCommand.set_arguments(parser)
-        parser.add_argument('-r', '--run', action='store_true', help='Post data on mVISTA web page')
+        parser.add_argument(
+            '-m', '--force-mummer-parse', action='store_true',
+            help='Force parsing of Mummer output even if calculation is not needed!')
 
     def run(self, step_data):
         from .inverted_repeats import create_irs_data
-        a = self.args
-        return create_irs_data(step_data, self._input_step(), a.run)
-
-    def finish(self, step_obj):
-        from .inverted_repeats import finish_irs_data
-        finish_irs_data(step_obj)
+        return create_irs_data(step_data, self._input_step(), self.args)
 
 
 class ChloroplastIRsShow(ProjectCommand):
+    # For testing purpose
     _COMMAND = 'chloroplast_irs_show'
     _HELP = "Show found chloroplast IRs"
     _COMMAND_GROUP = 'Chloroplast'

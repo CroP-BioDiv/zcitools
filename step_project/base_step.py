@@ -44,7 +44,7 @@ class Step:
             remove_directory(self.directory, create=True)
             d = None
         else:
-            d = self.get_desription()
+            d = self.get_description()
             if not d:
                 ensure_directory(self.directory)
         if d:
@@ -52,6 +52,8 @@ class Step:
                 raise ZCItoolsValueError(
                     f"Step class of tyep '{self._STEP_TYPE}' created with data of type '{d['data_type']}'!")
             type_desc = d['data']
+            # Update project data
+            self._step_data.update((k, v) for k, v in d['project'].items() if k not in self._step_data)
         else:
             type_desc = None
         #
@@ -96,11 +98,11 @@ class Step:
         write_yaml(dict(data_type=self._STEP_TYPE, data=type_description, project=pd),
                    self.step_file('description.yml'))
 
-    def get_desription(self):
+    def get_description(self):
         return read_yaml(self.step_file('description.yml'))
 
     def get_type_desciption(self):
-        d = self.get_desription()
+        d = self.get_description()
         if d:
             return d['data']
 
@@ -146,6 +148,9 @@ class Step:
             pattern = re.compile(matches)
             files = [f for f in files if pattern.search(f)]
         return files
+
+    def step_dir_files(self, *dirs):
+        return os.listdir(self.step_file(*dirs))
 
     def step_subdirectories(self):
         return [f for f in os.listdir(self.directory) if os.path.isdir(os.path.join(self.directory, f))]

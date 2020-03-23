@@ -2,6 +2,7 @@
 
 import os
 import shutil
+import yaml
 from concurrent.futures import ThreadPoolExecutor
 import multiprocessing
 from zipfile import ZipFile
@@ -37,7 +38,8 @@ def _find_exe(default_exe, env_var):
     return exe
 
 
-def _run_single(mummer_exe, input_filename, output_filename, n=150):
+def _run_single(mummer_exe, input_filename, output_filename, n=100):
+    # n=100 is set because of shortest short reads we think someone worked with :-)
     cmd = f"{mummer_exe} -n {n} {input_filename} > {output_filename}"
     print(f"Command: {cmd}")
     os.system(cmd)
@@ -46,8 +48,14 @@ def _run_single(mummer_exe, input_filename, output_filename, n=150):
 def run(locale=True, threads=None, min_length=15000):
     # Note: run from step's directory!!!
     fa_files = [f for f in os.listdir('run_dir') if f.endswith('.fa')]
+    # with open('finish.yml', 'r') as r:
+    #     # Attrs: files_to_proc, cycle_added
+    #     params = yaml.load(r, Loader=yaml.CLoader)
+    #     fa_files = params.files_to_proc
+
     if not fa_files:
         print('No input files!')
+        return
 
     mummer_exe = _find_exe(_DEFAULT_EXE_NAME, _ENV_VAR)
     threads = threads or multiprocessing.cpu_count()
