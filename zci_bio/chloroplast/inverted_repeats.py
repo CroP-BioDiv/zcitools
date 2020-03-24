@@ -30,6 +30,21 @@ class _RawData(namedtuple('_RawData', 'start_1, end_1, start_2, end_2, match_len
         match -= min(0, b.start_1 - self.end_1, b.start_2 - self.end_2)
         return _RawData(self.start_1, b.end_1, self.start_2, b.end_2, match, False)
 
+    # Cycle merging
+    def is_after_end(self, b, max_gap, length):
+        assert self.inverted == b.inverted, (self, b)
+        # Example of Mummer format in this case:
+        # inverted:
+        #   83739  152567r  25076  (self)
+        #   1      83738r   114    (b)
+        # not inverted:
+        #   10000  127491   25076  (self)
+        #   1       35076   114    (b)
+        if length - self.end_2 + b.start_1 <= max_gap:  # Check second repeat
+            if self.inverted:                           # Check second repeat
+                return length - self.end_2 + b.start_1 <= max_gap
+            return abs(self.end_1 - b.start_2) <= max_gap
+
 
 # Repeat type, one of values: inverted (for IRa and IRb), direct (short direct), direct (other irs)
 # Check http://www.insdc.org/controlled-vocabulary-rpttype-qualifier for possible values
@@ -157,15 +172,29 @@ class _MUMmerResult:
         # Note: Mummer was run with n=100, which means if two small gaps are on distance <100,
         #       than gap can be of length ~100
         max_gap = 110
-        self.next_i = 0
+        next_i = 0
+        concatenated = []  # Tuples (concatenated _RawData, list of used indices)
+        while next_i < len(inverted_r):
+            _irs = inverted_r[next_i]
+            from_i = next_i
+            next_i += 1
+            while next_i < len(inverted_r):
+                if not _irs.is_after(inverted_r[next_i], max_gap):
+                    break
+                _irs = _irs.add_after(inverted_r[next_i])
+                next_i += 1
+            concatenated.append((_irs, list(range(from_i, next_i))))
 
-        #
-        irs, processed = self._concatenate_from_i(max_gap, inverted_r)
-        while self.next_i < len(inverted_r):
-            next_irs, n_proc = self._concatenate_from_i(max_gap, inverted_r)
-            if next_irs.match_length > irs.match_length:
-                irs = next_irs
-                processed = n_proc
+        # Check end-start concatenation
+        if len(concatenated) > 1:
+            l_irs, l_ids = concatenated[-1]
+            f_irs, f_ids = concatenated[0]
+            if l_irs.is_after_end(f_irs, max_gap, self._length):
+                concatenated[0] = (l_irs.add_after(f_irs), l_ids + f_ids)
+                concatenated.pop()
+
+        # Find longest match
+        irs, used_ids = max(concatenated, key=lambda x: x[0].match_length)
 
         # Check data
         if irs.match_length < 20000:
@@ -181,37 +210,29 @@ class _MUMmerResult:
         #
         self._annotation.append(irs.in_annotation('inverted'))
         self._irs = irs
-        return [r for r in inverted_r if r not in processed]
-
-    def _concatenate_from_i(self, max_gap, inverted_r):
-        _irs = inverted_r[self.next_i]
-        _proc = [_irs]
-        self.next_i += 1
-        while self.next_i < len(inverted_r):
-            next_r = inverted_r[self.next_i]
-            if not _irs.is_after(next_r, max_gap):
-                break
-            _irs = _irs.add_after(next_r)
-            _proc.append(next_r)
-            self.next_i += 1
-        return _irs, _proc
+        return [x for i, x in enumerate(inverted_r) if i not in used_ids]
 
     #
+
     def set_annotation(self, seq_ident, seq_rec, gb_file):
         if self._annotation:
             SeqIO = import_bio_seq_io()
-            from Bio.SeqFeature import SeqFeature, FeatureLocation  # If SeqIO exists than these should be installed!
+            # If SeqIO exists than these should be installed!
+            from Bio.SeqFeature import SeqFeature, FeatureLocation, CompoundLocation
             from Bio.Alphabet import DNAAlphabet
+            _seg_length = lambda s, e: (e - s) if e > s else (s + self._length - e)
+            _get_loc = lambda s, e: FeatureLocation(s, e) if e > s else \
+                CompoundLocation([FeatureLocation(s, self._length), FeatureLocation(0, e)])
             for a in self._annotation:
-                length = max(a.end_1 - a.start_1, a.end_2 - a.start_2)
-                m = 100 if a.matched == length else round(100 * a.matched / length, 2)
+                length = max(_seg_length(a.start_1, a.end_1), _seg_length(a.start_1, a.end_1))
+                m = 100 if a.matched == length else round(100 * length / a.matched, 2)
                 note_1 = f'repeat_hit position {a.start_2} - {a.end_2}, match {m}.%'
                 note_2 = f'repeat_hit position {a.start_1} - {a.end_1}, match {m}.%'
                 seq_rec.features.append(
-                    SeqFeature(FeatureLocation(a.start_1, a.end_1), type='repeat_region',
+                    SeqFeature(_get_loc(a.start_1, a.end_1), type='repeat_region',
                                qualifiers=OrderedDict([('rpt_type', 'inverted'), ('note', note_1)])))
                 seq_rec.features.append(
-                    SeqFeature(FeatureLocation(a.start_2, a.end_2), type='repeat_region',
+                    SeqFeature(_get_loc(a.start_2, a.end_2), type='repeat_region',
                                qualifiers=OrderedDict([('rpt_type', 'inverted'), ('note', note_2)])))
             # Fix other data
             seq_rec.id = seq_ident
