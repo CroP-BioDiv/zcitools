@@ -47,11 +47,10 @@ def _run_single(mummer_exe, input_filename, output_filename, n=100):
 
 def run(locale=True, threads=None, min_length=15000):
     # Note: run from step's directory!!!
-    fa_files = [f for f in os.listdir('run_dir') if f.endswith('.fa')]
-    # with open('finish.yml', 'r') as r:
-    #     # Attrs: files_to_proc, cycle_added
-    #     params = yaml.load(r, Loader=yaml.CLoader)
-    #     fa_files = params.files_to_proc
+    with open('finish.yml', 'r') as r:
+        # Attrs: files_to_proc, cycle_added
+        params = yaml.load(r, Loader=yaml.CLoader)
+        fa_files = params['fa_files']
 
     if not fa_files:
         print('No input files!')

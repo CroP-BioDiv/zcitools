@@ -1,7 +1,7 @@
 import itertools
 import os.path
 from collections import OrderedDict, namedtuple
-from common_utils.file_utils import ensure_directory, copy_file, run_module_script, set_run_instructions
+from common_utils.file_utils import ensure_directory, copy_file, run_module_script, set_run_instructions, write_yaml
 from zci_bio.annotations.steps import AnnotationsStep
 from common_utils.terminal_layout import StringColumns
 from ..utils.helpers import read_sequence
@@ -14,8 +14,15 @@ class _RawData(namedtuple('_RawData', 'start_1, end_1, start_2, end_2, match_len
     def in_annotation(self, rpt_type):
         return _Annotation(rpt_type, self.start_1, self.end_1, self.start_2, self.end_2, self.match_length)
 
+    def is_in(self, b):
+        return self.start_1 <= b.start_1 <= self.end_1 and \
+            self.start_1 <= b.end_1 <= self.end_1 and \
+            self.start_2 <= b.start_2 <= self.end_2 and \
+            self.start_2 <= b.end_2 <= self.end_2
+
     def is_after(self, b, max_gap):
         assert self.inverted == b.inverted, (self, b)
+        print(abs(b.start_1 - self.end_1) <= max_gap, abs(b.end_2 - self.start_2) <= max_gap, self[:4], b[:4])
         if abs(b.start_1 - self.end_1) <= max_gap:  # Check first repeat
             if self.inverted:                       # Check second repeat
                 return abs(b.end_2 - self.start_2) <= max_gap
@@ -46,7 +53,7 @@ class _RawData(namedtuple('_RawData', 'start_1, end_1, start_2, end_2, match_len
             return abs(self.end_1 - b.start_2) <= max_gap
 
 
-# Repeat type, one of values: inverted (for IRa and IRb), direct (short direct), direct (other irs)
+# Repeat type, one of values: inverted (for IRa and IRb), direct (short direct), other (for other irs)
 # Check http://www.insdc.org/controlled-vocabulary-rpttype-qualifier for possible values
 _Annotation = namedtuple('_Annotation', 'rpt_type, start_1, end_1, start_2, end_2, matched')
 
@@ -76,7 +83,7 @@ def create_irs_data(step_data, input_step, params):  # , run):
     files_to_zip = []
     calc_seq_idents = []
 
-    step = AnnotationsStep(input_step.project, step_data, remove_data=False)
+    step = input_step.project.new_step(AnnotationsStep, step_data)
     # Set sequences
     step.set_sequences(input_step.all_sequences())
     ensure_directory(step.step_file('run_dir'))
@@ -89,25 +96,29 @@ def create_irs_data(step_data, input_step, params):  # , run):
             files_to_zip.append(step.step_file('run_dir', f'{seq_ident}.fa'))
             SeqIO.write([seq_rec], files_to_zip[-1], 'fasta')
             calc_seq_idents.append(seq_ident)
+        elif not os.path.isfile(step.step_file(f'{seq_ident}.gb')):
+            calc_seq_idents.append(seq_ident)
 
-    # # Store finish.yml
-    # finish_f = step.step_file('finish.yml')
-    # write_yaml(dict(files_to_proc=files_to_proc), finish_f)
-
-    # Stores description.yml
     if files_to_zip:
+        # Store finish.yml
+        finish_f = step.step_file('finish.yml')
+        write_yaml(dict(fa_files=files_to_zip), finish_f)
+
         run = True  # ToDo: ...
         step.save(completed=False)
         if run:
             run_module_script(run_inverted_repeats, step)
             finish_irs_data(step, calc_seq_idents=calc_seq_idents)
         else:
-            # files_to_zip.append(finish_f)
+            files_to_zip.append(finish_f)
             set_run_instructions(run_inverted_repeats, step, files_to_zip, _instructions)
-    else:
-        if params.force_mummer_parse:
-            finish_irs_data(step)
-            step.save()
+    #
+    elif calc_seq_idents:
+        finish_irs_data(step, calc_seq_idents=calc_seq_idents)
+        step.save()
+    elif params.force_mummer_parse:
+        finish_irs_data(step)
+        step.save()
 
     #
     return step
@@ -125,7 +136,6 @@ def finish_irs_data(step_obj, calc_seq_idents=None):
             m_res = _MUMmerResult(step_obj.step_file('run_dir', f'{seq_ident}.out'), seq_ident, len(seq_rec))
             m_res.set_annotation(seq_ident, seq_rec, step_obj.step_file(f'{seq_ident}.gb'))
 
-    print('FINISH completed')
     step_obj.save(completed=True)
 
 
@@ -171,7 +181,7 @@ class _MUMmerResult:
 
         # Note: Mummer was run with n=100, which means if two small gaps are on distance <100,
         #       than gap can be of length ~100
-        max_gap = 110
+        max_gap = 120
         next_i = 0
         concatenated = []  # Tuples (concatenated _RawData, list of used indices)
         while next_i < len(inverted_r):
@@ -179,6 +189,9 @@ class _MUMmerResult:
             from_i = next_i
             next_i += 1
             while next_i < len(inverted_r):
+                if _irs.is_in(inverted_r[next_i]):  # Next one can be substring of current
+                    next_i += 1
+                    continue
                 if not _irs.is_after(inverted_r[next_i], max_gap):
                     break
                 _irs = _irs.add_after(inverted_r[next_i])
@@ -198,14 +211,13 @@ class _MUMmerResult:
 
         # Check data
         if irs.match_length < 20000:
-            print(f'Error: IR for {self._name} is of short length {irs.match_length}!')
-            return inverted_r
+            print(f'WARNING: IR for {self._name} is of short length {irs.match_length}!')
         ira = (irs.start_1, irs.end_1)
         irb = (irs.start_2, irs.end_2)
         if ira[0] < self._length // 2:
-            print('ERROR: IRA is located to the left.', self._name, self._length, ira, irb)
+            print('WARNING: IRA is located to the left.', self._name, self._length, ira, irb)
         if irb[1] < self._length - 30:
-            print('ERROR: IRB is located to the left.', self._name, self._length, ira, irb)
+            print('WARNING: IRB is located to the left.', self._name, self._length, ira, irb)
 
         #
         self._annotation.append(irs.in_annotation('inverted'))
@@ -213,7 +225,6 @@ class _MUMmerResult:
         return [x for i, x in enumerate(inverted_r) if i not in used_ids]
 
     #
-
     def set_annotation(self, seq_ident, seq_rec, gb_file):
         if self._annotation:
             SeqIO = import_bio_seq_io()
@@ -228,12 +239,13 @@ class _MUMmerResult:
                 m = 100 if a.matched == length else round(100 * length / a.matched, 2)
                 note_1 = f'repeat_hit position {a.start_2} - {a.end_2}, match {m}.%'
                 note_2 = f'repeat_hit position {a.start_1} - {a.end_1}, match {m}.%'
+                rpt = ('rpt_type', a.rpt_type)
                 seq_rec.features.append(
                     SeqFeature(_get_loc(a.start_1, a.end_1), type='repeat_region',
-                               qualifiers=OrderedDict([('rpt_type', 'inverted'), ('note', note_1)])))
+                               qualifiers=OrderedDict([rpt, ('note', note_1)])))
                 seq_rec.features.append(
                     SeqFeature(_get_loc(a.start_2, a.end_2), type='repeat_region',
-                               qualifiers=OrderedDict([('rpt_type', 'inverted'), ('note', note_2)])))
+                               qualifiers=OrderedDict([rpt, ('note', note_2)])))
             # Fix other data
             seq_rec.id = seq_ident
             seq_rec.seq.alphabet = DNAAlphabet()
