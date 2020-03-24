@@ -22,7 +22,6 @@ class _RawData(namedtuple('_RawData', 'start_1, end_1, start_2, end_2, match_len
 
     def is_after(self, b, max_gap):
         assert self.inverted == b.inverted, (self, b)
-        print(abs(b.start_1 - self.end_1) <= max_gap, abs(b.end_2 - self.start_2) <= max_gap, self[:4], b[:4])
         if abs(b.start_1 - self.end_1) <= max_gap:  # Check first repeat
             if self.inverted:                       # Check second repeat
                 return abs(b.end_2 - self.start_2) <= max_gap
@@ -76,7 +75,7 @@ Notes:
 """
 
 
-def create_irs_data(step_data, input_step, params):  # , run):
+def create_irs_data(step_data, input_step, params, common_db):  # , run):
     # Creates Annotations step from input sequences/annotations
     # Steps subdirectory 'run_dir' contains input and output calculation files
     SeqIO = import_bio_seq_io()
@@ -108,16 +107,16 @@ def create_irs_data(step_data, input_step, params):  # , run):
         step.save(completed=False)
         if run:
             run_module_script(run_inverted_repeats, step)
-            finish_irs_data(step, calc_seq_idents=calc_seq_idents)
+            finish_irs_data(step, common_db, calc_seq_idents=calc_seq_idents)
         else:
             files_to_zip.append(finish_f)
             set_run_instructions(run_inverted_repeats, step, files_to_zip, _instructions)
     #
     elif calc_seq_idents:
-        finish_irs_data(step, calc_seq_idents=calc_seq_idents)
+        finish_irs_data(step, common_db, calc_seq_idents=calc_seq_idents)
         step.save()
     elif params.force_mummer_parse:
-        finish_irs_data(step)
+        finish_irs_data(step, common_db)
         step.save()
 
     #
@@ -125,7 +124,7 @@ def create_irs_data(step_data, input_step, params):  # , run):
 
 
 # Finish part
-def finish_irs_data(step_obj, calc_seq_idents=None):
+def finish_irs_data(step_obj, common_db, calc_seq_idents=None):
     if calc_seq_idents is None:
         calc_seq_idents = [f[:-4] for f in step_obj.step_dir_files('run_dir') if f.endswith('.out')]
     if calc_seq_idents:
@@ -134,7 +133,9 @@ def finish_irs_data(step_obj, calc_seq_idents=None):
             seq_rec = read_sequence(step_obj.step_file('run_dir', f'{seq_ident}.fa'))
             # Read MUMmer output file
             m_res = _MUMmerResult(step_obj.step_file('run_dir', f'{seq_ident}.out'), seq_ident, len(seq_rec))
-            m_res.set_annotation(seq_ident, seq_rec, step_obj.step_file(f'{seq_ident}.gb'))
+            gb_file = step_obj.step_file(f'{seq_ident}.gb')
+            m_res.set_annotation(seq_ident, seq_rec, gb_file)
+            common_db.set_record(seq_ident, gb_file)
 
     step_obj.save(completed=True)
 

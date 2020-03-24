@@ -83,9 +83,13 @@ class ChloroplastIRsFind(CreateStepFromStepCommand):
             '-m', '--force-mummer-parse', action='store_true',
             help='Force parsing of Mummer output even if calculation is not needed!')
 
+    def common_db_identifier(self):
+        db = self._input_step().common_db_identifier()[1]
+        return self.sequence_db_identifier(db, 'IRs_mummer')
+
     def run(self, step_data):
         from .inverted_repeats import create_irs_data
-        return create_irs_data(step_data, self._input_step(), self.args)
+        return create_irs_data(step_data, self._input_step(), self.args, self.get_common_db_object())
 
 
 class ChloroplastIRsShow(ProjectCommand):
