@@ -102,25 +102,31 @@ class CommonDB:
             with ZipFile(rec_filename, mode='w', compression=ZIP_BZIP2) as zip_f:
                 zip_f.writestr(arcname, data)
 
+    # Get record data
     def has_record(self, record_ident):
         return self._dir_exists and os.path.isfile(self.get_record_filename(record_ident))
 
-    def get_record(self, record_ident, save_location, info=False):
-        # Extract record data into given location.
+    def _get_zip_data(self, record_ident):
+        # Returns tuple (filename, data) of a record.
         zip_filename = self.get_record_filename(record_ident)
         if os.path.isfile(zip_filename):
             with ZipFile(zip_filename, 'r') as zip_f:
                 for z_i in zip_f.infolist():
                     if not z_i.is_dir():
-                        save_filename = os.path.join(save_location, z_i.filename)
-                        ensure_directory(os.path.dirname(save_filename))
-                        if info:
-                            print(f"  CommonDB fetch: {zip_filename[self._strip_length:]}[{z_i.filename}] " +
-                                  f"-> {save_filename}")
-                        with open(save_filename, 'wb') as save_f:
-                            save_f.write(zip_f.read(z_i.filename))
-            return True
-        return False
+                        yield z_i.filename, zip_f.read(z_i.filename)
+
+    def get_record(self, record_ident, save_location, info=False):
+        # Extract record data into given location.
+        ret = False
+        for filename, data in self._get_zip_data(record_ident):
+            save_filename = os.path.join(save_location, filename)
+            ensure_directory(os.path.dirname(save_filename))
+            if info:
+                print(f"  CommonDB fetch: {zip_filename[self._strip_length:]}[{filename}] -> {save_filename}")
+            with open(save_filename, 'wb') as save_f:
+                save_f.write(data)
+            ret = True
+        return ret
 
     def get_records(self, record_idents, save_location, info=False):
         not_found = []
@@ -129,5 +135,10 @@ class CommonDB:
                 not_found.append(record_ident)
         return not_found
 
+    def get_record_data(self, record_ident):
+        for _, data in self._get_zip_data(record_ident):
+            return data
+
+    #
     def remove_record(self, record_ident):
         silent_remove(self.get_record_filename(record_ident))

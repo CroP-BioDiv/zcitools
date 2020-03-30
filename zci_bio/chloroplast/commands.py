@@ -1,25 +1,25 @@
 from step_project.base_commands import ProjectCommand, CreateStepFromStepCommand, CreateStepsFromStepCommand
 
 
-class ChloroplastAnalyse(CreateStepFromStepCommand):
+class ChloroplastAnalyse(ProjectCommand):
     _COMMAND = 'chloroplast_analyse'
     _HELP = "Analyse (and normalize) chloroplast genomes"
     _COMMAND_GROUP = 'Chloroplast'
-    _STEP_BASE_NAME = 'ChloroAnalyse'
-    _INPUT_STEP_DATA_TYPE = 'table'
 
-    # @classmethod
-    # def set_arguments(cls, parser):
-    #     CreateStepFromStepCommand.set_arguments(parser)
-    #     parser.add_argument('-r', '--run', action='store_true', help='Post data on mVISTA web page')
+    @staticmethod
+    def set_arguments(parser):
+        ProjectCommand.set_arguments(parser)
+        parser.add_argument('step', help='Input sequences step')
+        parser.add_argument('-o', '--output-file', default='chloroplast_analyse.xlsx', help='Output Excel file')
 
-    def run(self, step_data):
-        from .analyse import analyse_genomes
-        return analyse_genomes_start(step_data, self._input_step())
+    def common_db_identifier(self):
+        return self.sequence_db_identifier('base')
 
-    def finish(self, step_obj):
-        from .analyse_genomes import analyse_genomes_proceed
-        analyse_genomes_proceed(step_obj)
+    def run(self):
+        from .analyse import analyse_genomes_start
+        a = self.args
+        input_step = self.project.read_step(a.step, check_data_type='table')
+        return analyse_genomes_start(input_step, a.output_file, self.get_common_db_object())
 
 
 class ChloroplastAnnotation(ProjectCommand):

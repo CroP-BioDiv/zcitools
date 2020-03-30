@@ -150,7 +150,10 @@ class Step:
         return files
 
     def step_dir_files(self, *dirs):
-        return os.listdir(self.step_file(*dirs))
+        d = self.step_file(*dirs)
+        if os.path.isdir(d):
+            return os.listdir(d)
+        return []
 
     def step_subdirectories(self):
         return [f for f in os.listdir(self.directory) if os.path.isdir(os.path.join(self.directory, f))]

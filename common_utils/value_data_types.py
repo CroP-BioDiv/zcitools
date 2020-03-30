@@ -99,3 +99,7 @@ def table_data_2_pandas(column_data_types, rows):
 
 def table_data_2_excel(filename, column_data_types, rows):
     table_data_2_pandas(column_data_types, rows).to_excel(filename, index=False)
+
+
+def rows_2_excel(filename, columns, rows, index=False):
+    import_pandas().DataFrame(rows, columns=columns).to_excel(filename, index=index)

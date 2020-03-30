@@ -238,8 +238,8 @@ class _MUMmerResult:
             for a in self._annotation:
                 length = max(_seg_length(a.start_1, a.end_1), _seg_length(a.start_1, a.end_1))
                 m = 100 if a.matched == length else round(100 * length / a.matched, 2)
-                note_1 = f'repeat_hit position {a.start_2} - {a.end_2}, match {m}.%'
-                note_2 = f'repeat_hit position {a.start_1} - {a.end_1}, match {m}.%'
+                note_1 = f'repeat_hit position {a.start_2} - {a.end_2}, match {m}.%, length {a.matched}'
+                note_2 = f'repeat_hit position {a.start_1} - {a.end_1}, match {m}.%, length {a.matched}'
                 rpt = ('rpt_type', a.rpt_type)
                 seq_rec.features.append(
                     SeqFeature(_get_loc(a.start_1, a.end_1), type='repeat_region',
