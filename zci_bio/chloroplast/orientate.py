@@ -10,10 +10,11 @@ from .steps import ChloroplastOrientateStep
 from .utils import find_chloroplast_partition
 from . import run_orientate
 
+# -------------------------------------------------------------------------
+# Check chloroplast seqeunce parts orientation
+# -------------------------------------------------------------------------
 _part_names = ('lsc', 'ira', 'ssc')
 _plus_minus = ('plus', 'minus')
-# _all_names = list(itertools.chain.from_iterable(((p, x) for x in _plus_minus) for p in _part_names))
-
 _instructions = """
 """
 
@@ -176,7 +177,9 @@ def orientate_chloroplast_finish(step_obj):
     rows_2_excel(type_desciption['output_file'], columns, rows)
 
 
-"""
+# -------------------------------------------------------------------------
+# Orientate chloroplast sequences
+# -------------------------------------------------------------------------
 # Orientates chloroplast sequence in standard way.
 # Uses Fast-Plast method. Check
 #  - source file orientate_plastome_v.2.0.pl
@@ -184,7 +187,7 @@ def orientate_chloroplast_finish(step_obj):
 #  - explanation https://github.com/mrmckain/Fast-Plast/issues/22
 # Consitent with Wikipedia image:
 #  - https://en.wikipedia.org/wiki/Chloroplast_DNA#/media/File:Plastomap_of_Arabidopsis_thaliana.svg
-
+"""
 CHLOROPLAST_ORIENTED_DB_NAME = 'chloroplast_oriented'
 
 
@@ -247,10 +250,10 @@ def orientate_chloroplast(command_obj, cmd_args, step_data, annotation_step, com
         # ToDo: ako je pozicija IR
         lsc = partition.get_part_by_name('lsc')
         irb = partition.get_part_by_name('irb')
-        irs_good_positioned = min(l_seq - lsc.real_start, lsc.real_start) < 30 and \
-            min(l_seq - irb.real_end, irb.real_end) < 30
+        # irs_good_positioned = min(l_seq - lsc.real_start, lsc.real_start) < 30 and \
+        #     min(l_seq - irb.real_end, irb.real_end) < 30
 
-        if (lsc_count <= 0) and (ssc_count <= 0) and (ir_count >= 0) and irs_good_positioned:  # No change
+        if (lsc_count <= 0) and (ssc_count <= 0) and (ir_count >= 0):  # and irs_good_positioned:  # No change
             good_files.append(an_file)
             common_db.set_record(seq_ident, an_file)
             common_db_annot.set_record(seq_ident, an_file)
@@ -264,7 +267,6 @@ def orientate_chloroplast(command_obj, cmd_args, step_data, annotation_step, com
         if ir_count < 0:
             print(f'  REVERT IRs: WHAT TO DO {seq_ident}?')
             continue
-            assert False, f'REVERT IRs {seq_ident}'
 
         if not to_repair:
             to_repair = _create_step(SequencesStep, 'to_repair', command_obj, step_data, cmd_args)

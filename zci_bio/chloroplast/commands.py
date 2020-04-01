@@ -48,12 +48,12 @@ class ChloroplastIRsFind(CreateStepFromStepCommand):
         return create_irs_data(step_data, self._input_step(), self.args, self.get_common_db_object())
 
 
-# Step 02: orientate chloroplast by one reference
-class ChloroplastOrientate(CreateStepFromStepCommand):
-    _COMMAND = 'chloroplast_orientate'
-    _HELP = "Orientate chloroplast sequences by reference genome"
+# Step 02: check orientation of chloroplast by one reference
+class ChloroplastCheckOrientation(CreateStepFromStepCommand):
+    _COMMAND = 'chloroplast_check_orientation'
+    _HELP = "Check orientation of chloroplast sequences by reference genome"
     _COMMAND_GROUP = 'Chloroplast'
-    _STEP_BASE_NAME = 'ChloroOrient'
+    _STEP_BASE_NAME = 'ChloroCheckOrient'
     _INPUT_STEP_DATA_TYPE = 'annotations'
 
     @classmethod
@@ -75,6 +75,31 @@ class ChloroplastOrientate(CreateStepFromStepCommand):
     def finish(self, step_obj):
         from .orientate import orientate_chloroplast_finish
         orientate_chloroplast_finish(step_obj)  # , self.get_step_db_object(step_obj))
+
+
+# # Step 03: orientate chloroplast sequences by Fast-Plast method
+# class ChloroplastCheckOrientation(CreateStepFromStepCommand):
+#     _COMMAND = 'chloroplast_orientate'
+#     _HELP = "Orientate chloroplast sequences by Fast-Plat method"
+#     _COMMAND_GROUP = 'Chloroplast'
+#     _STEP_BASE_NAME = 'ChloroCheckOrient'
+#     _INPUT_STEP_DATA_TYPE = 'annotations'
+
+#     @classmethod
+#     def set_arguments(cls, parser):
+#         CreateStepFromStepCommand.set_arguments(parser)
+
+#     # def common_db_identifier(self):
+#     #     from .orientate import CHLOROPLAST_ORIENTED_DB_NAME
+#     #     return self.sequence_db_identifier(CHLOROPLAST_ORIENTED_DB_NAME, 'sequences')
+
+#     def run(self, step_data):
+#         from .orientate import orientate_chloroplast_start
+#         return orientate_chloroplast_start(step_data, self._input_step(), self.args)
+
+#     def finish(self, step_obj):
+#         from .orientate import orientate_chloroplast_finish
+#         orientate_chloroplast_finish(step_obj)  # , self.get_step_db_object(step_obj))
 
 
 # Info commands
