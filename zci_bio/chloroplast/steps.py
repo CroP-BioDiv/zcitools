@@ -1,11 +1,11 @@
 from step_project.base_step import Step
 
 
-class ChloroplastAnalyseStep(Step):
+class ChloroplastOrientateStep(Step):
     """
-Stores info about chloroplast genomes.
+Stores info about chloroplast orientation
 """
-    _STEP_TYPE = 'chloroplast_analyse'
+    _STEP_TYPE = 'chloroplast_orientate'
 
     # Init object
     def _init_data(self, type_description):
@@ -17,12 +17,12 @@ Stores info about chloroplast genomes.
     # Set data
 
     # Save/load data
-    def save(self, create=True, completed=True):
+    def save(self, data, create=True, completed=True):
         # Store description.yml
-        self.save_description(dict(), create=create, completed=completed)
+        self.save_description(data, create=create, completed=completed)
 
     # Retrieve data methods
 
     # Show data
     def show_data(self, params=None):
-        print('Chloroplast check project', self.directory)
+        print('Chloroplast orientate', self.directory)

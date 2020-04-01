@@ -234,3 +234,10 @@ class RunCommand:
     def new_step(self, cls, step_data, remove_data=False, update_mode=False, no_check=False):
         return cls(self, step_data, remove_data=remove_data, update_mode=update_mode,
                    no_check=no_check or self._args.no_step_data_check)
+
+    def new_step_by_type(self, data_type, step_data, remove_data=False, update_mode=False, no_check=False):
+        cls = self.steps_map.get(data_type)
+        if not cls:
+            raise ZCItoolsValueError(f"No step class for data type {data_type}!")
+        return cls(self, step_data, remove_data=remove_data, update_mode=update_mode,
+                   no_check=no_check or self._args.no_step_data_check)

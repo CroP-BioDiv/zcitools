@@ -1,12 +1,182 @@
 import os.path
-from types import SimpleNamespace
-from common_utils.file_utils import copy_file, write_str_in_file, write_fasta
-from ..sequences.steps import SequencesStep
-from ..annotations.steps import AnnotationsStep
+import itertools
+from common_utils.file_utils import ensure_directory, write_yaml, write_fasta, \
+    run_module_script, set_run_instructions
+from common_utils.exceptions import ZCItoolsValueError
+from common_utils.value_data_types import rows_2_excel
 from ..utils.features import Feature
+from ..utils.import_methods import import_bio_align_io
+from .steps import ChloroplastOrientateStep
 from .utils import find_chloroplast_partition
-from .inverted_repeats import calculate_and_add_irs_to_seq_rec
+from . import run_orientate
 
+_part_names = ('lsc', 'ira', 'ssc')
+_plus_minus = ('plus', 'minus')
+# _all_names = list(itertools.chain.from_iterable(((p, x) for x in _plus_minus) for p in _part_names))
+
+_instructions = """
+"""
+
+
+def orientate_chloroplast_start(step_data, annotation_step, params):
+    # Find referent genome
+    # For each sequence, different than referent, directory is created named <seq_ident>.
+    # It contains files:
+    #  - {lsc|ira|ss}_{plus|minus}.fa       : input alignment files, contain 2 sequences.
+    #  - align_{lsc|ira|ss}_{plus|minus}.fa : result alignment files.
+    seq_idents = annotation_step.all_sequences()  # set
+    rg = params.referent_genome
+    if rg in seq_idents:
+        ref_ident = rg
+    else:
+        refs = [seq_ident for seq_ident in seq_idents if seq_ident.startswith(rg)]
+        if not refs:
+            raise ZCItoolsValueError(f'No referent genome which name starts with {rg}!')
+        elif len(refs) > 1:
+            raise ZCItoolsValueError(f'More genomes which name starts with {rg}!')
+        ref_ident = refs[0]
+    #
+    length = params.length_to_check
+    step = annotation_step.project.new_step(ChloroplastOrientateStep, step_data, remove_data=False)
+    sequence_data = step.get_type_desciption().get('sequence_data', dict())
+    #
+    seq_rec = annotation_step.get_sequence_record(ref_ident)
+    partition = find_chloroplast_partition(ref_ident, seq_rec)
+    ref_parts = [str(partition.get_part_by_name(n).extract(seq_rec).seq)[:length] for n in _part_names]
+    files_to_zip = []
+    align_files = []
+
+    #
+    for seq_ident in sorted(seq_idents):
+        seq_rec = None
+        if seq_ident not in sequence_data:
+            seq_rec = annotation_step.get_sequence_record(seq_ident)
+            partition = find_chloroplast_partition(seq_ident, seq_rec)
+
+            # Count gene orientation
+            l_seq = len(seq_rec)
+            in_parts = partition.put_features_in_parts(
+                Feature(l_seq, feature=f) for f in seq_rec.features if f.type == 'gene')
+
+            lsc_count = sum(f.feature.strand if any(x in f.name for x in ('rpl', 'rps')) else 0
+                            for f in in_parts.get('lsc', []))
+            ssc_count = sum(f.feature.strand for f in in_parts.get('ssc', []))
+            ira_count = sum(f.feature.strand if 'rrn' in f.name else 0 for f in in_parts.get('ira', []))
+
+            sequence_data[seq_ident] = dict(
+                length=len(seq_rec),
+                lsc=(lsc_count <= 0), lsc_count=lsc_count, lsc_length=len(partition.get_part_by_name('lsc')),
+                ssc=(ssc_count <= 0), ssc_count=ssc_count, ssc_length=len(partition.get_part_by_name('ssc')),
+                ira=(ira_count >= 0), ira_count=ira_count, ira_length=len(partition.get_part_by_name('ira')))
+
+        if all((step.is_file(seq_ident, f'align_{n}_plus.fa') and step.is_file(seq_ident, f'align_{n}_minus.fa'))
+               for n in _part_names):
+            continue
+        #
+        if seq_rec is None:
+            seq_rec = annotation_step.get_sequence_record(seq_ident)
+            partition = find_chloroplast_partition(seq_ident, seq_rec)
+        for n, ref_p in zip(_part_names, ref_parts):
+            # Find missing output files
+            _num = len(align_files)
+            for x in _plus_minus:
+                if not step.is_file(seq_ident, f'align_{n}_{x}.fa'):
+                    files_to_zip.append(step.step_file(seq_ident, f'{n}_{x}.fa'))
+                    align_files.append((seq_ident, n, x))
+            if _num == len(align_files):
+                continue
+
+            # Store input files
+            f_p = step.step_file(seq_ident, f'{n}_plus.fa')
+            f_m = step.step_file(seq_ident, f'{n}_minus.fa')
+            if os.path.isfile(f_p) and os.path.isfile(f_m):
+                continue
+
+            ensure_directory(step.step_file(seq_ident))
+            part_s = partition.get_part_by_name(n).extract(seq_rec)
+            if not os.path.isfile(f_p):
+                write_fasta(f_p, [(ref_ident, ref_p), (seq_ident, str(part_s.seq)[:length])])
+            if not os.path.isfile(f_m):
+                write_fasta(f_m, [(ref_ident, ref_p), (seq_ident, str(part_s.reverse_complement().seq)[:length])])
+
+    #
+    data = dict(sequence_data=sequence_data, check_length=length, output_file=params.output_file)
+    if align_files:
+        # Store finish.yml
+        finish_f = step.step_file('finish.yml')
+        write_yaml(dict(align_files=align_files), finish_f)
+
+        run = True  # ToDo: ...
+        step.save(data, completed=False)
+        if run:
+            run_module_script(run_orientate, step)
+            orientate_chloroplast_finish(step)  # , common_db, calc_seq_idents=calc_seq_idents)
+        else:
+            files_to_zip.append(finish_f)
+            set_run_instructions(run_orientate, step, files_to_zip, _instructions)
+    #
+    elif params.force_parse:
+        step.save(data)
+        orientate_chloroplast_finish(step)  # , common_db, calc_seq_idents=calc_seq_idents)
+    #
+    else:
+        step.save(data, completed=False)
+
+    return step
+
+
+def _start_length(seq_str):
+    for i, s in enumerate(seq_str):
+        if s != '-':
+            return i
+    return len(seq_str)
+
+
+def _start_diff(align):
+    seq0_str = str(align[0].seq)
+    if seq0_str[0] == '-':
+        return -_start_length(seq0_str)
+    return _start_length(str(align[1].seq))
+
+
+def orientate_chloroplast_finish(step_obj):
+    # ToDo: sto bi sve htjeli znati? Duljinu sekvence, duljine djelova?
+    type_desciption = step_obj.get_type_desciption()
+    sequence_data = type_desciption['sequence_data']
+    rows = []
+    AlignIO = import_bio_align_io()
+    for seq_ident in sorted(step_obj.step_subdirectories()):
+        seq_data = sequence_data[seq_ident]
+        row = [seq_ident, seq_data['length']]
+        rows.append(row)
+        all_ok = True
+        for n in _part_names:
+            f_p = step_obj.step_file(seq_ident, f'align_{n}_plus.fa')
+            f_m = step_obj.step_file(seq_ident, f'align_{n}_minus.fa')
+            a_p = AlignIO.read(f_p, 'fasta')
+            a_m = AlignIO.read(f_m, 'fasta')
+            l_p = a_p.get_alignment_length()
+            l_m = a_m.get_alignment_length()
+            is_plus = (l_p < l_m)
+            row.append(seq_data[n + '_length'])
+            row.append(f"{'Plus' if seq_data[n] else 'Minus'} / {seq_data[n + '_count']}")
+            row.append(
+                f"{'Plus' if is_plus else 'Minus'} {l_p} / {l_m} ({_start_diff(a_p if is_plus else a_m)})")
+            if seq_data[n] != is_plus:
+                all_ok = False
+        row.append('OK' if all_ok else 'No')
+
+    # Create table
+    columns = ['Seq', 'Length']  # + list(_part_names)
+    for n in _part_names:
+        columns.append(f"{n} length")
+        columns.append(f"NP {n}")
+        columns.append(f"Ref {n}")
+    columns.append('OK')
+    rows_2_excel(type_desciption['output_file'], columns, rows)
+
+
+"""
 # Orientates chloroplast sequence in standard way.
 # Uses Fast-Plast method. Check
 #  - source file orientate_plastome_v.2.0.pl
@@ -150,3 +320,4 @@ def orientate_chloroplast(command_obj, cmd_args, step_data, annotation_step, com
         annotation_step.project._run_command(annotation_command, args)
 
     return ret_steps
+"""

@@ -23,7 +23,7 @@ description.yml contains data:
 
 class Step:
     _STEP_TYPE = None
-    _CACHE_PREFIX = '_c_'  # Cache files are prfixed with '_c_'
+    _CACHE_PREFIX = '_c_'  # Cache files are prefixed with '_c_'
     _IS_COLLECTION = False
 
     def __init__(self, project, step_data, remove_data=False, update_mode=False, no_check=False):
@@ -75,6 +75,9 @@ class Step:
     def get_command(self):
         return self._step_data['command']
 
+    def get_command_args(self):
+        return self._step_data['command_args']
+
     def common_db_identifier(self):
         c = self._step_data.get('common_db_identifier')
         if c:
@@ -123,6 +126,9 @@ class Step:
 
     def step_file(self, *f):
         return os.path.join(*self._step_name_list, *f)
+
+    def is_file(self, *f):
+        return os.path.isfile(self.step_file(*f))
 
     def strip_step_dir(self, f):
         assert f.startswith(self.directory), (f, self.directory)

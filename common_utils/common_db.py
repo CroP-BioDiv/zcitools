@@ -113,19 +113,19 @@ class CommonDB:
             with ZipFile(zip_filename, 'r') as zip_f:
                 for z_i in zip_f.infolist():
                     if not z_i.is_dir():
-                        yield z_i.filename, zip_f.read(z_i.filename)
+                        yield zip_filename, z_i.filename, zip_f.read(z_i.filename)
 
     def get_record(self, record_ident, save_location, info=False):
         # Extract record data into given location.
-        ret = False
-        for filename, data in self._get_zip_data(record_ident):
+        ret = None
+        for zip_filename, filename, data in self._get_zip_data(record_ident):
             save_filename = os.path.join(save_location, filename)
-            ensure_directory(os.path.dirname(save_filename))
+            ensure_directory(os.path.dirname(save_filename))  # Note: filename can have path!
             if info:
                 print(f"  CommonDB fetch: {zip_filename[self._strip_length:]}[{filename}] -> {save_filename}")
             with open(save_filename, 'wb') as save_f:
                 save_f.write(data)
-            ret = True
+            ret = save_filename
         return ret
 
     def get_records(self, record_idents, save_location, info=False):
@@ -136,7 +136,7 @@ class CommonDB:
         return not_found
 
     def get_record_data(self, record_ident):
-        for _, data in self._get_zip_data(record_ident):
+        for _, _, data in self._get_zip_data(record_ident):
             return data
 
     #

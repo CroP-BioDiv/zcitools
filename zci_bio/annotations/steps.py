@@ -4,6 +4,7 @@ from step_project.base_step import Step
 from common_utils.misc import sets_equal
 from common_utils.show import print_table
 from common_utils.cache import cache_args
+from common_utils.file_utils import silent_remove_file
 from ..utils.import_methods import import_bio_seq_io
 from ..utils.helpers import feature_qualifiers_to_desc, feature_location_desc, concatenate_sequences
 
@@ -31,6 +32,13 @@ Annotations are stored:
     # Set data
     def set_sequences(self, seqs):
         self._sequences.update(seqs)
+
+    def add_sequence_file(self, f):
+        # Filename is relative inside step directory
+        seq_ident, ext = os.path.splitext(f)
+        if ext != '.gb':
+            raise ZCItoolsValueError(f"Extension '{ext}' is not known sequence format! {f}")
+        self._sequences.add(seq_ident)
 
     # Save/load data
     def save(self, create=True, completed=True):

@@ -1,6 +1,5 @@
 import io
 import re
-from .steps import ChloroplastAnalyseStep
 from ..utils.import_methods import import_bio_seq_io
 from .utils import find_chloroplast_irs
 from common_utils.value_data_types import rows_2_excel

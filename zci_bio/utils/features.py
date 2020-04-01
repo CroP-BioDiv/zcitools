@@ -72,13 +72,14 @@ class Feature:
         return any(any(p1.intersects(p2) for p2 in b._intervals) for p1 in self._intervals)
 
     def extract(self, seq_record):
-        # Returns Seq object
+        # Returns SeqRecord object
         assert len(seq_record) == self.seq_length, (len(seq_record), self.seq_length)
         if self.feature:
             return self.feature.extract(seq_record)
         seq = seq_record.seq
         dna = ''.join(str(seq)[p.start:p.end] for p in self._intervals)
-        return type(seq)(dna, seq.alphabet)  # Omitting import Bio.Seq
+        seq = type(seq)(dna, seq.alphabet)  # Omitting import of Bio.Seq
+        return type(seq_record)(seq)        # Omitting import of Bio.SeqRecord
 
 
 class Partition:
