@@ -160,7 +160,7 @@ class RunCommand:
         if command_cls._COMMAND_TYPE in ('new_step', 'new_steps'):
             parser.add_argument('-N', '--step-num', type=int, help='Step num prefix')
             parser.add_argument('-D', '--step-description', help='Step description')
-            parser.add_argument('--no-step-data-check', action='store_true', help=f'Do not check step data on loading.')
+            parser.add_argument('--no-data-check', action='store_true', help=f'Do not check step data on loading.')
         command_cls.set_arguments(parser)
         return parser
 
@@ -233,11 +233,11 @@ class RunCommand:
 
     def new_step(self, cls, step_data, remove_data=False, update_mode=False, no_check=False):
         return cls(self, step_data, remove_data=remove_data, update_mode=update_mode,
-                   no_check=no_check or self._args.no_step_data_check)
+                   no_check=no_check or self._args.no_data_check)
 
     def new_step_by_type(self, data_type, step_data, remove_data=False, update_mode=False, no_check=False):
         cls = self.steps_map.get(data_type)
         if not cls:
             raise ZCItoolsValueError(f"No step class for data type {data_type}!")
         return cls(self, step_data, remove_data=remove_data, update_mode=update_mode,
-                   no_check=no_check or self._args.no_step_data_check)
+                   no_check=no_check or self._args.no_data_check)

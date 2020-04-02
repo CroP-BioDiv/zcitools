@@ -132,7 +132,7 @@ class CreateStepFromStepCommand(CreateStepCommand):
     def _input_step(self):
         assert self._INPUT_STEP_DATA_TYPE
         a = self.args
-        return self.project.read_step(a.step, check_data_type=self._INPUT_STEP_DATA_TYPE, no_check=a.no_step_data_check)
+        return self.project.read_step(a.step, check_data_type=self._INPUT_STEP_DATA_TYPE, no_check=a.no_data_check)
 
 
 # Create more steps commands
@@ -171,4 +171,4 @@ class CreateStepsFromStepCommand(CreateStepsCommand):
     def _input_step(self):
         assert self._INPUT_STEP_DATA_TYPE
         a = self.args
-        return self.project.read_step(a.step, check_data_type=self._INPUT_STEP_DATA_TYPE, no_check=a.no_step_data_check)
+        return self.project.read_step(a.step, check_data_type=self._INPUT_STEP_DATA_TYPE, no_check=a.no_data_check)

@@ -62,11 +62,12 @@ class ChloroplastCheckOrientation(CreateStepFromStepCommand):
         parser.add_argument('-r', '--referent-genome', default='TAN_', help='Referent genome. Whole or start')
         parser.add_argument('-l', '--length-to-check', type=int, default=1000, help='Length on sequence start to check')
         parser.add_argument('-p', '--force-parse', action='store_true', help='Force parsing of alignment files')
-        parser.add_argument('-o', '--output-file', default='chloroplast_orientate.xlsx', help='Output Excel file')
+        parser.add_argument('-o', '--output-file-prefix', default='chloroplast_orientate', help='Output Excel file')
+        parser.add_argument('-c', '--complement', action='store_true', help='Calculate for complement also')
 
-    # def common_db_identifier(self):
-    #     from .orientate import CHLOROPLAST_ORIENTED_DB_NAME
-    #     return self.sequence_db_identifier(CHLOROPLAST_ORIENTED_DB_NAME, 'sequences')
+    def step_base_name(self):
+        a = self.args
+        return f"{self._STEP_BASE_NAME}_{a.length_to_check}{'_c' if a.complement else ''}"
 
     def run(self, step_data):
         from .orientate import orientate_chloroplast_start

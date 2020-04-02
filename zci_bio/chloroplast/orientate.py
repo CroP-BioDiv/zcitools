@@ -39,7 +39,8 @@ def orientate_chloroplast_start(step_data, annotation_step, params):
     #
     length = params.length_to_check
     step = annotation_step.project.new_step(ChloroplastOrientateStep, step_data, remove_data=False)
-    sequence_data = step.get_type_desciption().get('sequence_data', dict())
+    _td = step.get_type_desciption()
+    sequence_data = _td.get('sequence_data', dict()) if _td else dict()
     #
     seq_rec = annotation_step.get_sequence_record(ref_ident)
     partition = find_chloroplast_partition(ref_ident, seq_rec)
@@ -48,6 +49,7 @@ def orientate_chloroplast_start(step_data, annotation_step, params):
     align_files = []
 
     #
+    all_versions = ('plus', 'minus', 'plus_c', 'minus_c') if params.complement else ('plus', 'minus')
     for seq_ident in sorted(seq_idents):
         seq_rec = None
         if seq_ident not in sequence_data:
@@ -70,8 +72,7 @@ def orientate_chloroplast_start(step_data, annotation_step, params):
                 ssc=(ssc_count <= 0), ssc_count=ssc_count, ssc_length=len(partition.get_part_by_name('ssc')),
                 ira=(ira_count >= 0), ira_count=ira_count, ira_length=len(partition.get_part_by_name('ira')))
 
-        if all((step.is_file(seq_ident, f'align_{n}_plus.fa') and step.is_file(seq_ident, f'align_{n}_minus.fa'))
-               for n in _part_names):
+        if all(all(step.is_file(seq_ident, f'align_{n}_{v}.fa') for v in all_versions) for n in _part_names):
             continue
         #
         if seq_rec is None:
@@ -80,7 +81,7 @@ def orientate_chloroplast_start(step_data, annotation_step, params):
         for n, ref_p in zip(_part_names, ref_parts):
             # Find missing output files
             _num = len(align_files)
-            for x in _plus_minus:
+            for x in all_versions:
                 if not step.is_file(seq_ident, f'align_{n}_{x}.fa'):
                     files_to_zip.append(step.step_file(seq_ident, f'{n}_{x}.fa'))
                     align_files.append((seq_ident, n, x))
@@ -88,20 +89,29 @@ def orientate_chloroplast_start(step_data, annotation_step, params):
                 continue
 
             # Store input files
-            f_p = step.step_file(seq_ident, f'{n}_plus.fa')
-            f_m = step.step_file(seq_ident, f'{n}_minus.fa')
-            if os.path.isfile(f_p) and os.path.isfile(f_m):
+            if all(step.is_file(seq_ident, f'align_{n}_{v}.fa') for v in all_versions):
                 continue
-
             ensure_directory(step.step_file(seq_ident))
             part_s = partition.get_part_by_name(n).extract(seq_rec)
+
+            f_p = step.step_file(seq_ident, f'{n}_plus.fa')
+            f_p_c = step.step_file(seq_ident, f'{n}_plus_c.fa')
             if not os.path.isfile(f_p):
                 write_fasta(f_p, [(ref_ident, ref_p), (seq_ident, str(part_s.seq)[:length])])
+            if not os.path.isfile(f_p_c):
+                write_fasta(f_p_c, [(ref_ident, ref_p),
+                                    (seq_ident, str(part_s.reverse_complement().seq)[:(-length-1):-1])])
+
+            f_m = step.step_file(seq_ident, f'{n}_minus.fa')
+            f_m_c = step.step_file(seq_ident, f'{n}_minus_c.fa')
             if not os.path.isfile(f_m):
                 write_fasta(f_m, [(ref_ident, ref_p), (seq_ident, str(part_s.reverse_complement().seq)[:length])])
+            if not os.path.isfile(f_m_c):
+                write_fasta(f_m_c, [(ref_ident, ref_p), (seq_ident, str(part_s.seq)[:(-length-1):-1])])
 
     #
-    data = dict(sequence_data=sequence_data, check_length=length, output_file=params.output_file)
+    output_file = f"{params.output_file_prefix}_{length}{'_c' if params.complement else ''}.xlsx"
+    data = dict(sequence_data=sequence_data, check_length=length, output_file=output_file, complement=params.complement)
     if align_files:
         # Store finish.yml
         finish_f = step.step_file('finish.yml')
@@ -140,31 +150,46 @@ def _start_diff(align):
     return _start_length(str(align[1].seq))
 
 
+def _add_in_row(row, plus_f, minus_f):
+    AlignIO = import_bio_align_io()
+    a_p = AlignIO.read(plus_f, 'fasta')
+    a_m = AlignIO.read(minus_f, 'fasta')
+    l_p = a_p.get_alignment_length()
+    l_m = a_m.get_alignment_length()
+    is_plus = (l_p < l_m)
+    row.append(f"{'Plus' if is_plus else 'Minus'} {l_p} / {l_m} ({_start_diff(a_p if is_plus else a_m)})")
+    return is_plus
+
+
 def orientate_chloroplast_finish(step_obj):
     # ToDo: sto bi sve htjeli znati? Duljinu sekvence, duljine djelova?
     type_desciption = step_obj.get_type_desciption()
     sequence_data = type_desciption['sequence_data']
+    complement = type_desciption['complement']
+    #
     rows = []
-    AlignIO = import_bio_align_io()
     for seq_ident in sorted(step_obj.step_subdirectories()):
         seq_data = sequence_data[seq_ident]
         row = [seq_ident, seq_data['length']]
         rows.append(row)
         all_ok = True
         for n in _part_names:
-            f_p = step_obj.step_file(seq_ident, f'align_{n}_plus.fa')
-            f_m = step_obj.step_file(seq_ident, f'align_{n}_minus.fa')
-            a_p = AlignIO.read(f_p, 'fasta')
-            a_m = AlignIO.read(f_m, 'fasta')
-            l_p = a_p.get_alignment_length()
-            l_m = a_m.get_alignment_length()
-            is_plus = (l_p < l_m)
             row.append(seq_data[n + '_length'])
             row.append(f"{'Plus' if seq_data[n] else 'Minus'} / {seq_data[n + '_count']}")
-            row.append(
-                f"{'Plus' if is_plus else 'Minus'} {l_p} / {l_m} ({_start_diff(a_p if is_plus else a_m)})")
+            #
+            is_plus = _add_in_row(
+                row,
+                step_obj.step_file(seq_ident, f'align_{n}_plus.fa'),
+                step_obj.step_file(seq_ident, f'align_{n}_minus.fa'))
+            if complement:
+                _add_in_row(
+                    row,
+                    step_obj.step_file(seq_ident, f'align_{n}_plus_c.fa'),
+                    step_obj.step_file(seq_ident, f'align_{n}_minus_c.fa'))
+            #
             if seq_data[n] != is_plus:
                 all_ok = False
+        #
         row.append('OK' if all_ok else 'No')
 
     # Create table
@@ -173,6 +198,9 @@ def orientate_chloroplast_finish(step_obj):
         columns.append(f"{n} length")
         columns.append(f"NP {n}")
         columns.append(f"Ref {n}")
+        if complement:
+            columns.append(f"Complement {n}")
+
     columns.append('OK')
     rows_2_excel(type_desciption['output_file'], columns, rows)
 
