@@ -7,7 +7,7 @@ from common_utils.value_data_types import rows_2_excel
 from ..utils.features import Feature
 from ..utils.import_methods import import_bio_align_io
 from .steps import ChloroplastOrientateStep
-from .utils import find_chloroplast_partition
+from .utils import find_chloroplast_partition, find_referent_genome
 from . import run_orientate
 
 # -------------------------------------------------------------------------
@@ -26,21 +26,11 @@ def orientate_chloroplast_start(step_data, annotation_step, params):
     #  - {lsc|ira|ss}_{plus|minus}.fa       : input alignment files, contain 2 sequences.
     #  - align_{lsc|ira|ss}_{plus|minus}.fa : result alignment files.
     seq_idents = annotation_step.all_sequences()  # set
-    rg = params.referent_genome
-    if rg in seq_idents:
-        ref_ident = rg
-    else:
-        refs = [seq_ident for seq_ident in seq_idents if seq_ident.startswith(rg)]
-        if not refs:
-            raise ZCItoolsValueError(f'No referent genome which name starts with {rg}!')
-        elif len(refs) > 1:
-            raise ZCItoolsValueError(f'More genomes which name starts with {rg}!')
-        ref_ident = refs[0]
+    ref_ident = find_referent_genome(seq_idents, params.referent_genome)
     #
     length = params.length_to_check
     step = annotation_step.project.new_step(ChloroplastOrientateStep, step_data, remove_data=False)
-    _td = step.get_type_desciption()
-    sequence_data = _td.get('sequence_data', dict()) if _td else dict()
+    sequence_data = step.get_type_description_elem('sequence_data', default=dict())
     #
     seq_rec = annotation_step.get_sequence_record(ref_ident)
     partition = find_chloroplast_partition(ref_ident, seq_rec)
@@ -163,7 +153,7 @@ def _add_in_row(row, plus_f, minus_f):
 
 def orientate_chloroplast_finish(step_obj):
     # ToDo: sto bi sve htjeli znati? Duljinu sekvence, duljine djelova?
-    type_desciption = step_obj.get_type_desciption()
+    type_desciption = step_obj.get_type_description()
     sequence_data = type_desciption['sequence_data']
     complement = type_desciption['complement']
     #

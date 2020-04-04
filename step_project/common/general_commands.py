@@ -30,7 +30,7 @@ class Unfinish(ProjectCommand):
         if not step.is_completed():
             print(f"Info: step {self.args.step} is not completed!")
         else:
-            step.save_description(step.get_type_desciption() or dict(), completed=False)
+            step.save_description(step.get_type_description() or dict(), completed=False)
 
 
 class Finish(ProjectCommand):

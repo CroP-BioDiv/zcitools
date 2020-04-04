@@ -104,10 +104,16 @@ class Step:
     def get_description(self):
         return read_yaml(self.step_file('description.yml'))
 
-    def get_type_desciption(self):
+    def get_type_description(self):
         d = self.get_description()
         if d:
             return d['data']
+
+    def get_type_description_elem(self, attr, default=None):
+        d = self.get_description()
+        if d:
+            return d['data'].get(attr, default)
+        return default
 
     # Substep methods
     def get_substep_step_data(self, step_name):
@@ -232,3 +238,24 @@ Note: list of substeps is not stored in description.yml.
         print_ls_like_list(self._STEP_TYPE, self.substep_names(), sort=True, min_rows_to_split=20)
         if not self.is_completed():
             print('Step is not completed!')
+
+
+class SimpleStep(Step):
+    # Stores data without additional methods
+
+    # Init object
+    def _init_data(self, type_description):
+        pass
+
+    def _check_data(self):
+        pass
+
+    # Save/load data
+    def save(self, data, create=True, completed=True):
+        if data is None:
+            data = self.get_type_description()
+        self.save_description(data, create=create, completed=completed)
+
+    # Show data
+    def show_data(self, params=None):
+        print(self.__class__.__name__, self.directory)

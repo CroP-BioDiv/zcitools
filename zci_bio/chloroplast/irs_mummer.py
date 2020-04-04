@@ -6,8 +6,8 @@ from zci_bio.annotations.steps import AnnotationsStep
 from common_utils.terminal_layout import StringColumns
 from ..utils.helpers import read_sequence
 from ..utils.import_methods import import_bio_seq_io
-from . import run_inverted_repeats
-from .run_inverted_repeats import run_one
+from . import run_irs_mummer
+from .run_irs_mummer import run_one
 
 
 class _RawData(namedtuple('_RawData', 'start_1, end_1, start_2, end_2, match_length, inverted')):
@@ -106,18 +106,16 @@ def create_irs_data(step_data, input_step, params, common_db):  # , run):
         run = True  # ToDo: ...
         step.save(completed=False)
         if run:
-            run_module_script(run_inverted_repeats, step)
+            run_module_script(run_irs_mummer, step)
             finish_irs_data(step, common_db, calc_seq_idents=calc_seq_idents)
         else:
             files_to_zip.append(finish_f)
-            set_run_instructions(run_inverted_repeats, step, files_to_zip, _instructions)
+            set_run_instructions(run_irs_mummer, step, files_to_zip, _instructions)
     #
     elif calc_seq_idents:
         finish_irs_data(step, common_db, calc_seq_idents=calc_seq_idents)
-        step.save()
     elif params.force_mummer_parse:
         finish_irs_data(step, common_db)
-        step.save()
 
     #
     return step

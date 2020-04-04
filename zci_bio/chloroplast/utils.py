@@ -17,6 +17,10 @@ def find_chloroplast_irs(seq):
             return (irb, ira) if (check_l < irb.location.start < ira.location.start) else (ira, irb)
 
 
+def irb_start(irb):
+    return int(irb.location.parts[0].start)
+
+
 def find_chloroplast_partition(seq_ident, seq):
     # Returns None or Partition object with parts named: lsc, ira, ssc, irb.
     irs = find_chloroplast_irs(seq)
@@ -32,3 +36,14 @@ def find_chloroplast_partition(seq_ident, seq):
         n_parts[1 - ssc_ind].name = 'lsc'
         n_parts[ssc_ind].name = 'ssc'
         return partition
+
+
+def find_referent_genome(seq_idents, referent_seq_ident):
+    if referent_seq_ident in seq_idents:
+        return referent_seq_ident
+    refs = [seq_ident for seq_ident in seq_idents if seq_ident.startswith(referent_seq_ident)]
+    if not refs:
+        raise ZCItoolsValueError(f'No referent genome which name starts with {referent_seq_ident}!')
+    elif len(refs) > 1:
+        raise ZCItoolsValueError(f'More genomes which name starts with {referent_seq_ident}!')
+    return refs[0]

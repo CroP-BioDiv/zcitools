@@ -23,11 +23,11 @@ class ChloroplastAnalyse(ProjectCommand):
         return analyse_genomes_start(input_step, a.output_file, self.get_common_db_object())
 
 
-class ChloroplastIRsFind(CreateStepFromStepCommand):
-    _COMMAND = 'chloroplast_irs_find'
-    _HELP = "Find chloroplast IRs and other repeats"
+class ChloroplastIRsFindMummer(CreateStepFromStepCommand):
+    _COMMAND = 'chloroplast_irs_find_mummer'
+    _HELP = "Find chloroplast IRs and other repeats by Mummer"
     _COMMAND_GROUP = 'Chloroplast'
-    _STEP_BASE_NAME = 'ChloroIRs'
+    _STEP_BASE_NAME = 'ChloroIRsMummer'
     _INPUT_STEP_DATA_TYPE = ('sequences', 'annotations')
     # Note: mummer is fast enough so it is not needed to run it on server.
     #       Implementation is done in a way that process can be split in parts (init, run, finish)
@@ -44,8 +44,40 @@ class ChloroplastIRsFind(CreateStepFromStepCommand):
         return self.sequence_db_identifier(db, 'IRs_mummer')
 
     def run(self, step_data):
-        from .inverted_repeats import create_irs_data
+        from .irs_mummer import create_irs_data
         return create_irs_data(step_data, self._input_step(), self.args, self.get_common_db_object())
+
+    def finish(self, step_obj):
+        from .irs_mummer import finish_irs_data
+        finish_irs_data(step_obj, self.get_common_db_object())
+
+
+class ChloroplastIRsFindBlast(CreateStepFromStepCommand):
+    _COMMAND = 'chloroplast_irs_find_blast'
+    _HELP = "Find chloroplast IRs and other repeats by Blast"
+    _COMMAND_GROUP = 'Chloroplast'
+    _STEP_BASE_NAME = 'ChloroIRsBlast'
+    _INPUT_STEP_DATA_TYPE = 'annotations'
+
+    @classmethod
+    def set_arguments(cls, parser):
+        CreateStepFromStepCommand.set_arguments(parser)
+        parser.add_argument('-r', '--referent-genome', default='TAN_', help='Referent genome. Whole or start')
+        parser.add_argument('-l', '--blast-length', type=int, default=100, help='Length ')
+        parser.add_argument(
+            '-p', '--force-blast-parse', action='store_true',
+            help='Force parsing of Blast output even if calculation is not needed!')
+
+    def step_base_name(self):
+        return f"{self._STEP_BASE_NAME}_{self.args.blast_length}"
+
+    def run(self, step_data):
+        from .irs_blast import create_irs_data
+        return create_irs_data(step_data, self._input_step(), self.args)
+
+    def finish(self, step_obj):
+        from .irs_blast import finish_irs_data
+        finish_irs_data(step_obj)
 
 
 # Step 02: check orientation of chloroplast by one reference
@@ -115,7 +147,7 @@ class ChloroplastIRsShow(ProjectCommand):
         parser.add_argument('step', help='Step name')
 
     def run(self):
-        from .inverted_repeats import show_irs_data
+        from .irs_mummer import show_irs_data
         return show_irs_data(self.project.read_step(self.args.step, check_data_type='annotations'))
 
 
