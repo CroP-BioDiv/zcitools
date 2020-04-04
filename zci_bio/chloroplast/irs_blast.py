@@ -51,6 +51,8 @@ def create_irs_data(step_data, annotation_step, params):
                 irs = find_chloroplast_irs(seq_rec)
                 if irs:
                     ssc_location[seq_ident] = [len(seq_rec), int(irs[0].location.end), irb_start(irs[1])]
+                else:
+                    ssc_location[seq_ident] = [len(seq_rec), -1, -1]
 
     # Store query data
     query_file = step.step_file('run_dir', 'query.fa')
@@ -102,17 +104,21 @@ def finish_irs_data(step_object):
         print('No SSC initial data!!!')
         return
 
+    blast_length = step_object.get_type_description_elem('blast_length')
+    check_ssc_len = 10000  # min(blast_length, 10000)
     rows = []
     for seq_ident, (seq_length, orig_start, orig_end) in sorted(ssc_location.items()):
         with open(step_object.step_file('run_dir', f'{seq_ident}.xml'), 'r') as result:
             # print(seq_ident, len(list(NCBIXML.parse(result))))
             ira_res, irb_res = list(NCBIXML.parse(result))
             ms = sorted([_middle(ira_res), _middle(irb_res)])
+
             rows.append([seq_ident, seq_length, orig_start, orig_end] + ms)
+            rows[-1].append('NO' if ms[1] - ms[0] < check_ssc_len else '+')
 
     # Create table
-    output_file = f'chloroplast_blast_{step_object.get_type_description_elem("blast_length")}.xlsx'
-    columns = ['Seq', 'Length', 'Orig start', 'Orig end', 'Calc start', 'Calc end']
+    output_file = f'chloroplast_blast_{blast_length}.xlsx'
+    columns = ['Seq', 'Length', 'Orig start', 'Orig end', 'Calc start', 'Calc end', 'OK']
     rows_2_excel(output_file, columns, rows)
 
     # #
