@@ -9,7 +9,7 @@ def chloroplast_annotation(annotations, num_genes=1, feature_type='gene', featur
     with_first_col = False
     for seq_ident in sorted(sequences):
         seq = annotations.get_sequence_record(seq_ident)
-        partition = find_chloroplast_partition(seq_ident, seq)
+        partition = find_chloroplast_partition(seq)
         if not partition:
             continue
 

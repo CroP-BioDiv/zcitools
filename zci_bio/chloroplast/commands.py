@@ -52,24 +52,49 @@ class ChloroplastIRsFindMummer(CreateStepFromStepCommand):
         finish_irs_data(step_obj, self.get_common_db_object())
 
 
+# Version 1: Blast referent SSC ends
+# class ChloroplastIRsFindBlast(CreateStepFromStepCommand):
+#     _COMMAND = 'chloroplast_irs_find_blast'
+#     _HELP = "Find chloroplast IRs and other repeats by Blast"
+#     _COMMAND_GROUP = 'Chloroplast'
+#     _STEP_BASE_NAME = 'ChloroIRsBlast'
+#     _INPUT_STEP_DATA_TYPE = 'annotations'
+
+#     @classmethod
+#     def set_arguments(cls, parser):
+#         CreateStepFromStepCommand.set_arguments(parser)
+#         parser.add_argument('-r', '--referent-genome', default='TAN_', help='Referent genome. Whole or start')
+#         parser.add_argument('-l', '--blast-length', type=int, default=100, help='Length ')
+#         parser.add_argument(
+#             '-p', '--force-blast-parse', action='store_true',
+#             help='Force parsing of Blast output even if calculation is not needed!')
+
+#     def step_base_name(self):
+#         return f"{self._STEP_BASE_NAME}_{self.args.blast_length}"
+
+#     def run(self, step_data):
+#         from .irs_blast import create_irs_data
+#         return create_irs_data(step_data, self._input_step(), self.args)
+
+#     def finish(self, step_obj):
+#         from .irs_blast import finish_irs_data
+#         finish_irs_data(step_obj)
+
+# Version 2: Blast referent IRa
 class ChloroplastIRsFindBlast(CreateStepFromStepCommand):
     _COMMAND = 'chloroplast_irs_find_blast'
     _HELP = "Find chloroplast IRs and other repeats by Blast"
     _COMMAND_GROUP = 'Chloroplast'
-    _STEP_BASE_NAME = 'ChloroIRsBlast'
+    _STEP_BASE_NAME = 'ChloroIRsBlastSSC'
     _INPUT_STEP_DATA_TYPE = 'annotations'
 
     @classmethod
     def set_arguments(cls, parser):
         CreateStepFromStepCommand.set_arguments(parser)
         parser.add_argument('-r', '--referent-genome', default='TAN_', help='Referent genome. Whole or start')
-        parser.add_argument('-l', '--blast-length', type=int, default=100, help='Length ')
         parser.add_argument(
             '-p', '--force-blast-parse', action='store_true',
             help='Force parsing of Blast output even if calculation is not needed!')
-
-    def step_base_name(self):
-        return f"{self._STEP_BASE_NAME}_{self.args.blast_length}"
 
     def run(self, step_data):
         from .irs_blast import create_irs_data

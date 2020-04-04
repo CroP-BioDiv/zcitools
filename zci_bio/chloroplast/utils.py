@@ -14,14 +14,14 @@ def find_chloroplast_irs(seq):
         if len(max_regs) == 2:
             check_l = len(seq) // 4
             ira, irb = max_regs
-            return (irb, ira) if (check_l < irb.location.start < ira.location.start) else (ira, irb)
+            return (irb, ira) if (check_l < irb.location.parts[0].start < ira.location.parts[0].start) else (ira, irb)
 
 
 def irb_start(irb):
     return int(irb.location.parts[0].start)
 
 
-def find_chloroplast_partition(seq_ident, seq):
+def find_chloroplast_partition(seq):
     # Returns None or Partition object with parts named: lsc, ira, ssc, irb.
     irs = find_chloroplast_irs(seq)
     if irs:

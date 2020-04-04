@@ -25,6 +25,99 @@ Notes:
 """
 
 
+# Version 2: Blast referent IRa
+def create_irs_data(step_data, annotation_step, params):
+    SeqIO = import_bio_seq_io()
+
+    seq_idents = annotation_step.all_sequences()  # set
+    ref_ident = find_referent_genome(seq_idents, params.referent_genome)
+
+    step = annotation_step.project.new_step(ChloroplastSSCBlast, step_data)
+    ref_seq_rec = annotation_step.get_sequence_record(ref_ident)
+    ssc_location = step.get_type_description_elem('ssc_location', default=dict())
+    ensure_directory(step.step_file('run_dir'))
+
+    # Store query data
+    query_file = step.step_file('run_dir', 'query.fa')
+    if not os.path.isfile(query_file):
+        irs = find_chloroplast_irs(ref_seq_rec)
+        if not irs:
+            raise ZCItoolsValueError(f"Referent genome ({ref_ident}) doesn't have IRS!")
+        write_fasta(query_file, [('ira', str(irs[0].extract(ref_seq_rec).seq))])
+
+    files_to_zip = [query_file]
+    calc_seq_idents = []
+
+    # All sequences, to create database from
+    for seq_ident in sorted(seq_idents):
+        if not os.path.isfile(step.step_file('run_dir', f'{seq_ident}.xml')):
+            fa_file = step.step_file('run_dir', f'{seq_ident}.fa')
+            files_to_zip.append(fa_file)
+            calc_seq_idents.append(seq_ident)
+            if not os.path.isfile(fa_file):
+                seq_rec = annotation_step.get_sequence_record(seq_ident)
+                SeqIO.write([seq_rec], fa_file, 'fasta')
+                # Store SSC position
+                irs = find_chloroplast_irs(seq_rec)
+                ssc_location[seq_ident] = [len(seq_rec), int(irs[0].location.end), irb_start(irs[1])] \
+                    if irs else [len(seq_rec), -1, -1]
+
+    if calc_seq_idents:
+        # Store finish.yml
+        finish_f = step.step_file('finish.yml')
+        write_yaml(dict(calc_seq_idents=calc_seq_idents), finish_f)
+
+        run = True  # ToDo: ...
+        step.save(dict(ssc_location=ssc_location), completed=False)
+        if run:
+            run_module_script(run_irs_blast, step)
+            finish_irs_data(step)
+        else:
+            files_to_zip.append(finish_f)
+            set_run_instructions(run_irs_blast, step, files_to_zip, _instructions)
+    #
+    elif params.force_blast_parse:
+        finish_irs_data(step)
+
+    return step
+
+
+def _ir_ends(hsp):
+    return hsp.sbjct_start, hsp.sbjct_end
+
+
+def finish_irs_data(step_object):
+    from Bio.Blast import NCBIXML  # ToDo: in import methods
+    ssc_location = step_object.get_type_description_elem('ssc_location')
+    if not ssc_location:
+        print('No SSC initial data!!!')
+        return
+
+    rows = []
+    for seq_ident, (seq_length, orig_start, orig_end) in sorted(ssc_location.items()):
+        with open(step_object.step_file('run_dir', f'{seq_ident}.xml'), 'r') as result:
+            res = next(NCBIXML.parse(result))
+            if not res.alignments or len(res.alignments[0].hsps) < 2:
+                ends = [-1, -1]
+                diff = -1
+            else:
+                irs = sorted(res.alignments[0].hsps, key=lambda h: h.score, reverse=True)[:2]
+                ira, irb = sorted(irs, key=lambda h: h.sbjct_start)
+                ends = [max(_ir_ends(ira)), min(_ir_ends(irb))]
+                if orig_start != -1:
+                    diff = max(abs(orig_start - ends[0]), abs(orig_end - ends[1]))
+                else:
+                    diff = -1
+            rows.append([seq_ident, seq_length, orig_start, orig_end] + ends + [diff])
+
+    # Create table
+    output_file = f'chloroplast_blast_ssc.xlsx'
+    columns = ['Seq', 'Length', 'Orig start', 'Orig end', 'Calc start', 'Calc end', 'Diff']
+    rows_2_excel(output_file, columns, rows)
+
+
+"""
+# Version 1: Blast referent SSC ends
 def create_irs_data(step_data, annotation_step, params):
     SeqIO = import_bio_seq_io()
 
@@ -49,10 +142,8 @@ def create_irs_data(step_data, annotation_step, params):
                 SeqIO.write([seq_rec], fa_file, 'fasta')
                 # Store SSC position
                 irs = find_chloroplast_irs(seq_rec)
-                if irs:
-                    ssc_location[seq_ident] = [len(seq_rec), int(irs[0].location.end), irb_start(irs[1])]
-                else:
-                    ssc_location[seq_ident] = [len(seq_rec), -1, -1]
+                ssc_location[seq_ident] = [len(seq_rec), int(irs[0].location.end), irb_start(irs[1])] \
+                    if irs else [len(seq_rec), -1, -1]
 
     # Store query data
     query_file = step.step_file('run_dir', 'query.fa')
@@ -121,5 +212,5 @@ def finish_irs_data(step_object):
     columns = ['Seq', 'Length', 'Orig start', 'Orig end', 'Calc start', 'Calc end', 'OK']
     rows_2_excel(output_file, columns, rows)
 
-    # #
     # step_object.save(None, completed=True)
+"""

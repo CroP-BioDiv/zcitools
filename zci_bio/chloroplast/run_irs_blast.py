@@ -13,8 +13,11 @@ _CALC_DIR = lambda f: os.path.join('run_dir', f)
 
 # blastn parameters
 _QUERY_FA = _CALC_DIR('query.fa')
-_GAP_PENALTY = '-gapopen 1 -gapextend 1 -penalty -2' 
-_BLAST_PARAMS = f'-query {_QUERY_FA} {_GAP_PENALTY} -num_alignments 1 -max_hsps 1 -outfmt 5 -num_threads 1'
+# # Version 1: Blast referent SSC ends
+# _GAP_PENALTY = '-gapopen 1 -gapextend 1 -penalty -2'
+# Version 2: Blast referent IRa
+_GAP_PENALTY = '-perc_identity 40'
+_BLAST_PARAMS = f'-query {_QUERY_FA} {_GAP_PENALTY} -num_alignments 2 -max_hsps 2 -outfmt 5 -num_threads 1'
 
 _install_instructions = """
 BLAST+ is not installed!

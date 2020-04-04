@@ -33,7 +33,7 @@ def orientate_chloroplast_start(step_data, annotation_step, params):
     sequence_data = step.get_type_description_elem('sequence_data', default=dict())
     #
     seq_rec = annotation_step.get_sequence_record(ref_ident)
-    partition = find_chloroplast_partition(ref_ident, seq_rec)
+    partition = find_chloroplast_partition(seq_rec)
     ref_parts = [str(partition.get_part_by_name(n).extract(seq_rec).seq)[:length] for n in _part_names]
     files_to_zip = []
     align_files = []
@@ -44,7 +44,7 @@ def orientate_chloroplast_start(step_data, annotation_step, params):
         seq_rec = None
         if seq_ident not in sequence_data:
             seq_rec = annotation_step.get_sequence_record(seq_ident)
-            partition = find_chloroplast_partition(seq_ident, seq_rec)
+            partition = find_chloroplast_partition(seq_rec)
 
             # Count gene orientation
             l_seq = len(seq_rec)
@@ -67,7 +67,7 @@ def orientate_chloroplast_start(step_data, annotation_step, params):
         #
         if seq_rec is None:
             seq_rec = annotation_step.get_sequence_record(seq_ident)
-            partition = find_chloroplast_partition(seq_ident, seq_rec)
+            partition = find_chloroplast_partition(seq_rec)
         for n, ref_p in zip(_part_names, ref_parts):
             # Find missing output files
             _num = len(align_files)
@@ -226,12 +226,12 @@ def _create_step(step_cls, description, command_obj, step_data, cmd_args):
 
 def find_chloroplast_partition_force_calc(step, seq_ident, seq_rec):
     # Check are IRs present
-    partition = find_chloroplast_partition(seq_ident, seq_rec)
+    partition = find_chloroplast_partition(seq_rec)
     if not partition:
         # Try to find IRs with MUMmer
         # Note: calculation data is set in annotations step
         if calculate_and_add_irs_to_seq_rec(step, seq_ident, seq_rec):
-            partition = find_chloroplast_partition(seq_ident, seq_rec)
+            partition = find_chloroplast_partition(seq_rec)
     return partition
 
 
