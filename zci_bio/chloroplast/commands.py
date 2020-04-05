@@ -55,7 +55,7 @@ class ChloroplastIRsFindMummer(CreateStepFromStepCommand):
 # Version 1: Blast referent SSC ends
 # class ChloroplastIRsFindBlast(CreateStepFromStepCommand):
 #     _COMMAND = 'chloroplast_irs_find_blast'
-#     _HELP = "Find chloroplast IRs and other repeats by Blast"
+#     _HELP = "Find chloroplast IRs by Blast"
 #     _COMMAND_GROUP = 'Chloroplast'
 #     _STEP_BASE_NAME = 'ChloroIRsBlast'
 #     _INPUT_STEP_DATA_TYPE = 'annotations'
@@ -80,28 +80,51 @@ class ChloroplastIRsFindMummer(CreateStepFromStepCommand):
 #         from .irs_blast import finish_irs_data
 #         finish_irs_data(step_obj)
 
-# Version 2: Blast referent IRa
-class ChloroplastIRsFindBlast(CreateStepFromStepCommand):
-    _COMMAND = 'chloroplast_irs_find_blast'
+# # Version 2: Blast referent IRa
+# class ChloroplastIRsFindBlast(CreateStepFromStepCommand):
+#     _COMMAND = 'chloroplast_irs_find_blast'
+#     _HELP = "Find chloroplast IRs by Blast"
+#     _COMMAND_GROUP = 'Chloroplast'
+#     _STEP_BASE_NAME = 'ChloroIRsBlastSSC'
+#     _INPUT_STEP_DATA_TYPE = 'annotations'
+
+#     @classmethod
+#     def set_arguments(cls, parser):
+#         CreateStepFromStepCommand.set_arguments(parser)
+#         parser.add_argument('-r', '--referent-genome', default='TAN_', help='Referent genome. Whole or start')
+#         parser.add_argument(
+#             '-p', '--force-blast-parse', action='store_true',
+#             help='Force parsing of Blast output even if calculation is not needed!')
+
+#     def run(self, step_data):
+#         from .irs_blast import create_irs_data
+#         return create_irs_data(step_data, self._input_step(), self.args)
+
+#     def finish(self, step_obj):
+#         from .irs_blast import finish_irs_data
+#         finish_irs_data(step_obj)
+
+
+# Version 3: find repeats (Mummer) than extend IRs with an alignment
+class ChloroplastIRsFindMummerMafft(CreateStepFromStepCommand):
+    _COMMAND = 'chloroplast_irs_find_mm'
     _HELP = "Find chloroplast IRs and other repeats by Blast"
     _COMMAND_GROUP = 'Chloroplast'
-    _STEP_BASE_NAME = 'ChloroIRsBlastSSC'
-    _INPUT_STEP_DATA_TYPE = 'annotations'
+    _STEP_BASE_NAME = 'ChloroIRsMummerMafft'
+    _INPUT_STEP_DATA_TYPE = ('sequences', 'annotations')
 
     @classmethod
     def set_arguments(cls, parser):
         CreateStepFromStepCommand.set_arguments(parser)
-        parser.add_argument('-r', '--referent-genome', default='TAN_', help='Referent genome. Whole or start')
-        parser.add_argument(
-            '-p', '--force-blast-parse', action='store_true',
-            help='Force parsing of Blast output even if calculation is not needed!')
+        parser.add_argument('-r', '--run', action='store_true', help='Run mafft')
+        parser.add_argument('-p', '--force-parse', action='store_true', help='Force parsing of output!')
 
     def run(self, step_data):
-        from .irs_blast import create_irs_data
+        from .irs_mummer_mafft import create_irs_data
         return create_irs_data(step_data, self._input_step(), self.args)
 
     def finish(self, step_obj):
-        from .irs_blast import finish_irs_data
+        from .irs_mummer_mafft import finish_irs_data
         finish_irs_data(step_obj)
 
 

@@ -41,9 +41,12 @@ Annotations are stored:
         self._sequences.add(seq_ident)
 
     # Save/load data
-    def save(self, create=True, completed=True):
+    def save(self, create=True, completed=True, additional_data=None):
         # Store description.yml
-        self.save_description(dict(sequences=sorted(self._sequences)), create=create, completed=completed)
+        data = dict(sequences=sorted(self._sequences))
+        if additional_data:
+            data.update(additional_data)
+        self.save_description(data, create=create, completed=completed)
 
     # Retrieve data methods
     def all_sequences(self):
