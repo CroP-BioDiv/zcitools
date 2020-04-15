@@ -67,16 +67,19 @@ class CommonDB:
                 self._save_directory(zip_f, d)
 
     def get_record_filename(self, record_ident):
+        if isinstance(record_ident, (list, tuple)):
+            return os.path.join(self.db_dir, *record_ident)
         return os.path.join(self.db_dir, record_ident)
 
     def ensure_location(self):
         ensure_directory(self.db_dir)
 
-    def _check_set_record(self, record_ident, force=False):
+    def _check_set_record(self, record_ident, force=False, info=False):
         # Returns reccord filename to set recor into, or None if data already exists
         rec_filename = self.get_record_filename(record_ident)
         if not force and os.path.isfile(rec_filename):
-            # print(f"  CommonDB: record {rec_filename[self._strip_length:]} already exists!")
+            if info:
+                print(f"  CommonDB: record {rec_filename[self._strip_length:]} already exists!")
             return
 
         if not self._dir_exists:
@@ -84,8 +87,8 @@ class CommonDB:
             self._dir_exists = True
         return rec_filename
 
-    def set_record(self, record_ident, *step_files, force=False):
-        rec_filename = self._check_set_record(record_ident, force=force)
+    def set_record(self, record_ident, *step_files, force=False, info=False):
+        rec_filename = self._check_set_record(record_ident, force=force, info=info)
         if rec_filename:
             with ZipFile(rec_filename, mode='w', compression=ZIP_BZIP2) as zip_f:
                 for f in step_files:
@@ -96,8 +99,8 @@ class CommonDB:
                     else:
                         raise ZCItoolsValueError(f"Common DB: file/directory to store ({f}) doesn't exist!")
 
-    def set_record_from_stream(self, record_ident, data, arcname, force=False):
-        rec_filename = self._check_set_record(record_ident, force=force)
+    def set_record_from_stream(self, record_ident, data, arcname, force=False, info=False):
+        rec_filename = self._check_set_record(record_ident, force=force, info=info)
         if rec_filename:
             with ZipFile(rec_filename, mode='w', compression=ZIP_BZIP2) as zip_f:
                 zip_f.writestr(arcname, data)
