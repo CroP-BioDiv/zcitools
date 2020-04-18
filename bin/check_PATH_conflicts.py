@@ -13,6 +13,10 @@ for path in os.environ.get('PATH', '').split(os.pathsep):
                 if os.path.isfile(fp) and os.access(fp, os.X_OK):
                     exe_2_path[f].append(path)
 
+
 for exe, paths in sorted(exe_2_path.items()):
     if len(paths) > 1:
+        # Remove /usr/bin, /bin, /usr/local/bin, /usr/sbin, /sbin combination
+        if all(p in ('/usr/bin', '/bin', '/usr/local/bin', '/usr/sbin', '/sbin') for p in paths):
+            continue
         print(f"{exe:<20} : {', '.join(paths)}")
