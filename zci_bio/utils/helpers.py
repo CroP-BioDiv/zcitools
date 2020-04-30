@@ -6,10 +6,11 @@ from common_utils.file_utils import extension_no_dot, basename_no_ext
 # Methods for this and that
 
 # Biopyhton helpers
-bio_io_known_formats = frozenset(['genbank', 'fasta'])
+bio_io_known_formats = frozenset(['genbank', 'fasta', 'fastq'])
 ext_2_bio_io_type = dict(
     gb='genbank', gbff='genbank',
     fa='fasta',  fas='fasta',
+    fastq='fastq',
 )
 _bio_ext_2_type = dict(('.' + e, t) for e, t in ext_2_bio_io_type.items())
 
@@ -94,9 +95,16 @@ def concatenate_sequences(output_filename, input_filenames):
 
 
 def convert_sequence_file(input_filename, output_filename, input_format=None, output_format=None):
-    import_bio_seq_io().convert(
-        input_filename, get_bio_io_type(input_filename, input_format),
-        output_filename, get_bio_io_type(output_filename, output_format))
+    if input_filename.endswith('.gz'):
+        import gzip
+        with gzip.open(input_filename, 'rt') as in_handle:
+            import_bio_seq_io().convert(
+                in_handle, get_bio_io_type(input_filename[:-3], input_format),
+                output_filename, get_bio_io_type(output_filename, output_format))
+    else:
+        import_bio_seq_io().convert(
+            input_filename, get_bio_io_type(input_filename, input_format),
+            output_filename, get_bio_io_type(output_filename, output_format))
 
 
 def change_sequence_data(method, input_filename, output_filename, input_format=None, output_format=None, position=None):
