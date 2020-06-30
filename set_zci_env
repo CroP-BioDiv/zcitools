@@ -18,6 +18,9 @@ export ZCI_OUR_SEQUENCES=$ZCI_MAIN_DIR/data/assemblies
 # Other needed env vars
 export BT2_HOME=$ZCI_MAIN_DIR/programs/alignment/Bowtie2/current/bin
 
+# Picard
+export PICARD=$ZCI_MAIN_DIR/programs/tools/Picard/picard.jar
+
 
 # Autocomplete
 _zcit()
