@@ -50,6 +50,7 @@ Documentation: https://chlorobox.mpimp-golm.mpg.de/gs_documentation.html
 
 def create_ge_seq_data(step_data, sequences_step, common_db):
     step = AnnotationsStep(sequences_step.project, step_data, remove_data=True)
+    sequences_step.propagate_step_name_prefix(step)
     all_sequences = list(sequences_step.all_sequences())
 
     # Fetch common DB sequences
