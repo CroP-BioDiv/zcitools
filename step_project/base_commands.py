@@ -118,6 +118,12 @@ class CreateStepFromStepCommand(CreateStepCommand):
     # Same as above, but assumes one step as input parameter
     _INPUT_STEP_DATA_TYPE = None
 
+    def step_base_name(self):
+        name_prefix = self._input_step().get_step_name_prefix()
+        if name_prefix:
+            return f'{name_prefix}_{super().step_base_name()}'
+        return super().step_base_name()
+
     @staticmethod
     def set_arguments(parser):
         CreateStepCommand.set_arguments(parser)

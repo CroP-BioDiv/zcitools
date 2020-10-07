@@ -17,6 +17,8 @@ Step interface regarding table data structure:
 import csv
 import itertools
 import os.path
+from decimal import Decimal
+from datetime import date
 from step_project.base_step import Step, StepCollection
 from common_utils.exceptions import ZCItoolsValueError
 from common_utils.show import print_table
@@ -111,6 +113,14 @@ Table data is stored in table.csv with header, separator ;, quote character ".
     def has_column(self, column_name):
         return any(c == column_name for c, _ in self._columns)
 
+    def choose_first_column(self, *columns, error=False):
+        for c in columns:
+            if self.has_column(c):
+                return c
+        if error:
+            raise ZCItoolsValueError(
+                f'No column found from: {columns}.\nExisting columns: {[c for c, _ in self._columns]}')
+
     def get_column_with_data_types(self):
         return self._columns
 
@@ -136,15 +146,15 @@ Table data is stored in table.csv with header, separator ;, quote character ".
         idx = self._column_index(column_name)
         return set(row[idx] for row in self.get_rows())
 
-    def _column_index_by_type(self, data_type):
-        for i, (_, dt) in enumerate(self._columns):
-            if dt == data_type:
+    def _column_index_by_type(self, data_type, column_name=None):
+        for i, (c, dt) in enumerate(self._columns):
+            if dt == data_type and (column_name is None or c == column_name):
                 return i
         raise ZCItoolsValueError(f"No column with data_type {data_type}! Columns: {self._columns}")
 
-    def get_column_values_by_type(self, data_type):
+    def get_column_values_by_type(self, data_type, column_name=None):
         # Iterate through column values
-        idx = self._column_index_by_type(data_type)
+        idx = self._column_index_by_type(data_type, column_name=column_name)
         return set(row[idx] for row in self.get_rows())
 
     # Show data
@@ -225,3 +235,70 @@ Groups that do not have data are store as a list in file no_data.txt
 
     def known_groups(self):
         return self.get_groups_with_rows() + self.get_groups_without_rows()
+
+
+#
+class Rows2Table:
+    _type_format = dict(
+        int=lambda x: int(x),
+        decimal=lambda x: Decimal(x),
+        date=lambda x: date.fromisoformat(x[:10]),
+    )
+
+    # Transfer raw data (column names and rows) into formated data for table step
+    def __init__(self, column_description, column_names=None):
+        # column_names are names of input columns
+        # column_description are descriptions of possible columns to transfer with description how to format data
+        # column description is dict with attrs:
+        # * column   : input column name
+        # * output   : if omitted, same as input column name
+        # * outputs  : split column into more columns. Transfer should return tuple!
+        # * optional : default False
+        # * type     : column type, from KNOWN_DATA_TYPES. Default 'str'
+        # * tranfer  : format method
+        # * check    : callable that returns True if record has to be added.
+
+        # Same as in TableStep
+        self._columns = []
+        self._rows = []
+        self._formaters = []  # Tuples (column index, None or format callable, None or check value callable)
+
+        #
+        if column_names:
+            not_in = []
+            for d in column_description:
+                col = d['column']
+                try:
+                    idx = column_names.index(col)
+                except ValueError:
+                    if not d.get('optional'):
+                        not_in.append(col)
+                    continue
+
+                # Column name and type
+                output_col = d.get('output', col)
+                _type = d.get('type', 'str')
+                assert _type in KNOWN_DATA_TYPES, d
+                self._columns.append((output_col, _type))
+
+                # Format method
+                self._formaters.append(
+                    (idx, d.get('transfer', Rows2Table._type_format.get(_type)), d.get('check')))
+
+            if not_in:
+                raise ZCItoolsValueError(f'Mandatory columns not presented in csv file: {not_in}')
+
+    def set_rows(self, rows):
+        for row in rows:
+            out_row = []
+            for idx, tranfer, check in self._formaters:
+                d = row[idx]
+                if check and not check(d):
+                    out_row = None
+                    break
+                out_row.append(tranfer(d) if tranfer else d)
+            if out_row:
+                self._rows.append(out_row)
+
+    def in_table_step(self, table_step):
+        table_step.set_table_data(self._rows, self._columns)

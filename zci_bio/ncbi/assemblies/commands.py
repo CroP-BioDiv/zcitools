@@ -70,3 +70,29 @@ class NCBIAssembliesReport(ProjectCommand):
         assem = self.project.read_step(ps.assemblies, check_data_type=('table_grouped', 'table'))
         sra = self.project.read_step(ps.sra, check_data_type=('table_grouped', 'table'))
         return make_report(assem, sra, ps)
+
+
+# ---------------------------------------------------------
+# Chloroplast
+# ---------------------------------------------------------
+class NCBIChloroplastList(CreateStepCommand):
+    _COMMAND = 'ncbi_chloroplast_list'
+    _COMMAND_GROUP = 'NCBI'
+    _HELP = "Creates table step from NCBI chloroplast genome data"
+    _STEP_BASE_NAME = 'chloroplast_list'
+
+    def step_base_name(self):
+        return f'{self.args.family}_chloroplast_list' if self.args.family else 'chloroplast_list'
+
+    @staticmethod
+    def set_arguments(parser):
+        parser.add_argument('-c', '--csv-filename', help='Filename of downloaded csv data.')
+        parser.add_argument('-f', '--family', help='Family (ToDo)')
+
+    def run(self, step_data):
+        from .fetch_genome_assemblies import fetch_chloroplast_list
+        return fetch_chloroplast_list(self.project, step_data, self.args)
+
+    # def finish(self, step_obj):
+    #     from .fetch_genome_assemblies import finish_fetch_genome_assemblies
+    #     finish_fetch_genome_assemblies(step_obj)

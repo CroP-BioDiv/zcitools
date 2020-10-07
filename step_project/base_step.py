@@ -78,6 +78,19 @@ class Step:
     def get_command_args(self):
         return self._step_data['command_args']
 
+    #
+    def get_step_name_prefix(self):
+        return self._step_data.get('step_name_prefix')
+
+    def set_step_name_prefix(self, n):
+        self._step_data['step_name_prefix'] = n
+
+    def propagate_step_name_prefix(self, to_step):
+        name_prefix = self.get_step_name_prefix()
+        if name_prefix:
+            to_step.set_step_name_prefix(name_prefix)
+
+    #
     def common_db_identifier(self):
         c = self._step_data.get('common_db_identifier')
         if c:

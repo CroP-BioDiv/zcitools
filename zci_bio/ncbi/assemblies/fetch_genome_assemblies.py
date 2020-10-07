@@ -1,8 +1,9 @@
 import os.path
 import tarfile
 import re
+import csv
 from decimal import Decimal
-from step_project.common.table.steps import TableStep
+from step_project.common.table.steps import TableStep, Rows2Table
 from common_utils.file_utils import write_str_in_file
 from common_utils.value_data_types import fromisoformat
 
@@ -151,3 +152,50 @@ _columns = (
     ('scaffold_N75', 'int'),
     ('scaffold_N90', 'int'),
 )
+
+
+# ---------------------------------------------------------
+# Chloroplast
+# ---------------------------------------------------------
+def _ncbi_ident(x):
+    x = x.split('/')[0]         # NC_046760.1/MN087227.1 -> NC_046760.1
+    x = x.split('.')[0]         # NC_046760.1            -> NC_046760
+    if ':' in x:
+        return x.split(':')[1]  # Pltd:NC_007578         -> NC_007578
+    return x
+
+
+def fetch_chloroplast_list(project, step_data, args):
+    # Create table step data
+    step = TableStep(project, step_data, remove_data=True)
+    if args.family:
+        step.set_step_name_prefix(args.family)
+
+    if args.csv_filename and os.path.isfile(args.csv_filename):
+        column_descs = [
+            dict(column='Organism Name', ),
+            dict(column='BioSample', optional=True),
+            dict(column='BioProject'),
+            # ToDo: 1000000 or 1024*1024?
+            dict(column='Size(Mb)', output='size', optional=True, tranfer=lambda x: int(float(x) * 1000000)),
+            dict(column='GC%', optional=True, type='decimal'),
+            dict(column='Type', optional=True, check=lambda x: x == 'chloroplast'),
+            dict(column='Replicons', output='ncbi_ident', type='seq_ident', transfer=_ncbi_ident),
+            dict(column='Replicons', output='other_ncbi_ident', type='seq_ident', transfer=lambda x: x.split('/')[1]),
+            dict(column='CDS', optional=True, type='int'),
+            dict(column='Release Date', optional=True, type='date'),
+        ]
+
+        with open(args.csv_filename, 'r') as incsv:
+            reader = csv.reader(incsv, delimiter=',', quotechar='"')
+            header = next(reader)
+            header[0] = header[0][1:]
+            rows2table = Rows2Table(column_descs, column_names=header)
+            rows2table.set_rows(reader)
+            rows2table.in_table_step(step)
+
+    elif args.family:
+        pass  # ToDo:
+
+    step.save()  # Takes a care about complete status!
+    return step

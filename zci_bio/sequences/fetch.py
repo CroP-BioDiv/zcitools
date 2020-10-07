@@ -1,3 +1,4 @@
+import os.path
 from .steps import SequencesStep
 from ..utils.entrez import Entrez
 from ..utils.helpers import fetch_our_sequence
@@ -14,14 +15,15 @@ Reason can be:
 """
 
 
-def fetch_sequences(step_data, table_step, common_db):
+def fetch_sequences(step_data, table_step, common_db, column_name=None):
     step = SequencesStep(table_step.project, step_data, remove_data=True)
+    table_step.propagate_step_name_prefix(step)
     sequence_db = common_db.get_sequence_db()
 
     # Fetch from our sequences
     if sequence_db == 'base':
         all_sequences = []
-        for ni in table_step.get_column_values_by_type('seq_ident'):
+        for ni in table_step.get_column_values_by_type('seq_ident', column_name=column_name):
             if not step.sequence_exists(ni):
                 # Fetching our seqeunces only for base DB
                 ext = fetch_our_sequence(ni, step.directory)
@@ -30,7 +32,7 @@ def fetch_sequences(step_data, table_step, common_db):
                 else:
                     all_sequences.append(ni)
     else:
-        all_sequences = list(table_step.get_column_values_by_type('seq_ident'))
+        all_sequences = list(table_step.get_column_values_by_type('seq_ident', column_name=column_name))
 
     # Fetch common_db sequences
     to_fetch = step.get_common_db_records(common_db, all_sequences, info=True)

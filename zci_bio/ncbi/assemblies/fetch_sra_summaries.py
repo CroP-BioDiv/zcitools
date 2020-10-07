@@ -33,7 +33,7 @@ def fetch_sra_summaries(step_data, table_step):
     step.set_columns(_sra_columns)
     step.save()  # To store step as it is
     step.known_groups()
-    bp_column = 'bio_project' if table_step.has_column('bio_project') else 'BioProject'
+    bp_column = table_step.choose_first_column('bio_project', 'BioProject', error=True)
     #
     to_proc = table_step.get_column_values(bp_column) - set(step.known_groups())
     if to_proc:

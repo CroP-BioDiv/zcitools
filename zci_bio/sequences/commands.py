@@ -12,13 +12,15 @@ class FetchSequencesStep(CreateStepFromStepCommand):
     def set_arguments(parser):
         CreateStepFromStepCommand._sequence_db_set_arguments(parser)
         CreateStepFromStepCommand.set_arguments(parser)
+        parser.add_argument('-c', '--column-name', help='Table column to use for sequence identifiers')
 
     def common_db_identifier(self):
         return self.sequence_db_identifier(self.args.sequence_db, 'sequences')
 
     def run(self, step_data):
         from .fetch import fetch_sequences
-        return fetch_sequences(step_data, self._input_step(), self.get_common_db_object())
+        return fetch_sequences(
+            step_data, self._input_step(), self.get_common_db_object(), column_name=self.args.column_name)
 
 
 class SequenceReadsStep(NonProjectCommand):
