@@ -78,6 +78,12 @@ class Step:
     def get_command_args(self):
         return self._step_data['command_args']
 
+    def get_prev_steps(self):
+        return self._step_data['prev_steps']
+
+    def get_data_type(self):
+        return self._STEP_TYPE
+
     #
     def get_step_name_prefix(self):
         return self._step_data.get('step_name_prefix')

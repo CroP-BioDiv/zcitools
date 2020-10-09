@@ -243,5 +243,12 @@ class RunCommand:
                    no_check=no_check or self._args.no_data_check)
 
     def find_previous_step_of_type(self, step, prev_step_type):
-        # ToDo:
-        pass
+        prev_steps = step.get_prev_steps()
+        while prev_steps:
+            next_prev = []
+            for n in prev_steps:
+                step = self.read_step(n, no_check=True)
+                if step.get_data_type() == prev_step_type:
+                    return step
+                next_prev.extend(step.get_prev_steps())
+            prev_steps = next_prev

@@ -25,6 +25,12 @@ from common_utils.show import print_table
 from common_utils.file_utils import ensure_directory, append_line_to_file, read_file_as_list
 from common_utils.value_data_types import KNOWN_DATA_TYPES
 
+_type_format = dict(
+    int=lambda x: int(x),
+    decimal=lambda x: Decimal(x),
+    date=lambda x: date.fromisoformat(x[:10]),
+)
+
 
 def _check_columns(columns):
     if not isinstance(columns, (tuple, list)):
@@ -133,6 +139,12 @@ Table data is stored in table.csv with header, separator ;, quote character ".
     def get_rows(self):
         if self._rows is None:
             self._rows = _read_csv(self._get_table_filename())
+            for i, (_, dt) in enumerate(self._columns):
+                ff = _type_format.get(dt)
+                if ff:
+                    for r in self._rows:
+                        if r[i]:
+                            r[i] = ff(r[i])
             _check_rows(self._columns, self._rows)
         return self._rows
 
@@ -156,6 +168,11 @@ Table data is stored in table.csv with header, separator ;, quote character ".
         # Iterate through column values
         idx = self._column_index_by_type(data_type, column_name=column_name)
         return set(row[idx] for row in self.get_rows())
+
+    def mapping_between_columns(self, from_column, to_column):
+        idx_from = self._column_index(from_column)
+        idx_to = self._column_index(to_column)
+        return dict((r[idx_from], r[idx_to]) for r in self.get_rows())
 
     # Show data
     def show_data(self, params=None):
@@ -244,12 +261,6 @@ Groups that do not have data are store as a list in file no_data.txt
 
 #
 class Rows2Table:
-    _type_format = dict(
-        int=lambda x: int(x),
-        decimal=lambda x: Decimal(x),
-        date=lambda x: date.fromisoformat(x[:10]),
-    )
-
     # Transfer raw data (column names and rows) into formated data for table step
     def __init__(self, column_description, column_names=None):
         # column_names are names of input columns
@@ -288,7 +299,7 @@ class Rows2Table:
 
                 # Format method
                 self._formaters.append(
-                    (idx, d.get('transfer', Rows2Table._type_format.get(_type)), d.get('check')))
+                    (idx, d.get('transfer', _type_format.get(_type)), d.get('check')))
 
             if not_in:
                 raise ZCItoolsValueError(f'Mandatory columns not presented in csv file: {not_in}')

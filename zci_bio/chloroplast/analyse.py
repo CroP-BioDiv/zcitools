@@ -35,7 +35,9 @@ def analyse_genomes(step_data, annotations_step):
     # seq_ident -> row (dict)
     data = dict((seq_ident, _seq_desc(seq)) for seq_ident, seq in annotations_step._iterate_records())
 
+    #
     table_step = project.find_previous_step_of_type(annotations_step, 'table')
+    _m = table_step.mapping_between_columns('ncbi_ident', 'tax_id')
 
     #
     columns = [
