@@ -191,13 +191,13 @@ class RunCommand:
         desc = None
         if args.step_description:
             desc = args.step_description
-        elif prev_steps:
-            # Note: for now commands do not have '_'
-            for s in sorted(prev_steps, reverse=True):
-                d = s.split('_')[2:]
-                if d:
-                    desc = '_'.join(d)
-                    break
+        # elif prev_steps:  # ??? desc by previous step?
+        #     # Note: for now commands do not have '_'
+        #     for s in sorted(prev_steps, reverse=True):
+        #         d = s.split('_')[2:]
+        #         if d:
+        #             desc = '_'.join(d)
+        #             break
         #
         sn = f'{num:02}_{command_obj.step_base_name()}'
         if desc:
@@ -241,3 +241,7 @@ class RunCommand:
             raise ZCItoolsValueError(f"No step class for data type {data_type}!")
         return cls(self, step_data, remove_data=remove_data, update_mode=update_mode,
                    no_check=no_check or self._args.no_data_check)
+
+    def find_previous_step_of_type(self, step, prev_step_type):
+        # ToDo:
+        pass

@@ -170,6 +170,11 @@ Table data is stored in table.csv with header, separator ;, quote character ".
             print('\nData:')
             print_table([c for c, _ in self._columns], self.get_rows(), show_limit=7)
 
+    def to_excel(self, filename):
+        from common_utils.import_method import import_pandas
+        df = import_pandas().DataFrame(self.get_rows(), columns=self.get_column_names())
+        df.to_excel(filename, index=False)
+
 
 class TableGroupedStep(TableStep):
     """

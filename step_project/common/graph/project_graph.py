@@ -15,7 +15,7 @@ def create_graph(project):
     edges = []
     for d in sorted(os.listdir('.')):
         if os.path.isdir(d) and os.path.isfile(os.path.join(d, 'description.yml')):
-            step = project.read_step(d)
+            step = project.read_step(d, no_check=True)
             node = step.directory
             label = node if step.is_completed() else '* ' + node
             graph.add_node(node, label=label)

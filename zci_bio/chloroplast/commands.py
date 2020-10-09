@@ -1,6 +1,65 @@
 from step_project.base_commands import ProjectCommand, CreateStepFromStepCommand
 
 
+#
+class ChloroplastAnalyse(CreateStepFromStepCommand):
+    _COMMAND = 'analyse_chloroplast'
+    _HELP = "Analyse chloroplast genomes. Output is a table with result data."
+    _COMMAND_GROUP = 'Chloroplast'
+    _STEP_BASE_NAME = 'AnalyseChloroplast'
+    _INPUT_STEP_DATA_TYPE = 'annotations'
+
+    # @classmethod
+    # def set_arguments(cls, parser):
+    #     CreateStepFromStepCommand.set_arguments(parser)
+    #     parser.add_argument('-t', '--table-step', help="Input table step, with taxon id's")
+
+    def run(self, step_data):
+        from .analyse import analyse_genomes
+        # Table step for taxon ids
+        return analyse_genomes(step_data, self._input_step(no_data_check=True))
+
+
+# Info commands
+class ChloroplastIRsShow(ProjectCommand):
+    # For testing purpose
+    _COMMAND = 'chloroplast_irs_show'
+    _HELP = "Show found chloroplast IRs"
+    _COMMAND_GROUP = 'Chloroplast'
+
+    @classmethod
+    def set_arguments(cls, parser):
+        parser.add_argument('step', help='Step name')
+
+    def run(self):
+        from .irs_mummer import show_irs_data
+        return show_irs_data(self.project.read_step(self.args.step, check_data_type='annotations'))
+
+
+class ChloroplastAnnotation(ProjectCommand):
+    _COMMAND = 'chloroplast_annotation'
+    _HELP = "Displays simplified chloroplast annotation"
+    _COMMAND_GROUP = 'Chloroplast'
+
+    @staticmethod
+    def set_arguments(parser):
+        parser.add_argument('step', help='Input step')
+        parser.add_argument('-n', '--num-genes', default=1, type=int, help='Number of genes to display on region ends')
+        parser.add_argument('-t', '--feature-type', default='gene', help='Feature type: gene or CDS')
+        parser.add_argument('-f', '--features', help='List of features to take. Format feature1;feature2;...')
+        parser.add_argument('-s', '--sequences', help='List of sequences to print. Format seq1;seq2;...')
+
+    def run(self):
+        from .annotation import chloroplast_annotation
+        a = self.args
+        chloroplast_annotation(
+            self.project.read_step(a.step, check_data_type='annotations'),
+            num_genes=a.num_genes,
+            feature_type=a.feature_type,
+            features=a.features.split(';') if a.features else None,
+            sequences=a.sequences.split(';') if a.sequences else None)
+
+
 # Old analysis commands
 # Used for preliminary analysition of chloroplast data
 """
@@ -185,43 +244,3 @@ class ChloroplastCheckOrientation(CreateStepFromStepCommand):
 #         from .orientate import orientate_chloroplast_finish
 #         orientate_chloroplast_finish(step_obj)  # , self.get_step_db_object(step_obj))
 """
-
-
-# Info commands
-class ChloroplastIRsShow(ProjectCommand):
-    # For testing purpose
-    _COMMAND = 'chloroplast_irs_show'
-    _HELP = "Show found chloroplast IRs"
-    _COMMAND_GROUP = 'Chloroplast'
-
-    @classmethod
-    def set_arguments(cls, parser):
-        parser.add_argument('step', help='Step name')
-
-    def run(self):
-        from .irs_mummer import show_irs_data
-        return show_irs_data(self.project.read_step(self.args.step, check_data_type='annotations'))
-
-
-class ChloroplastAnnotation(ProjectCommand):
-    _COMMAND = 'chloroplast_annotation'
-    _HELP = "Displays simplified chloroplast annotation"
-    _COMMAND_GROUP = 'Chloroplast'
-
-    @staticmethod
-    def set_arguments(parser):
-        parser.add_argument('step', help='Input step')
-        parser.add_argument('-n', '--num-genes', default=1, type=int, help='Number of genes to display on region ends')
-        parser.add_argument('-t', '--feature-type', default='gene', help='Feature type: gene or CDS')
-        parser.add_argument('-f', '--features', help='List of features to take. Format feature1;feature2;...')
-        parser.add_argument('-s', '--sequences', help='List of sequences to print. Format seq1;seq2;...')
-
-    def run(self):
-        from .annotation import chloroplast_annotation
-        a = self.args
-        chloroplast_annotation(
-            self.project.read_step(a.step, check_data_type='annotations'),
-            num_genes=a.num_genes,
-            feature_type=a.feature_type,
-            features=a.features.split(';') if a.features else None,
-            sequences=a.sequences.split(';') if a.sequences else None)

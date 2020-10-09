@@ -110,7 +110,7 @@ class CreateStepFromStepCommand(CreateStepCommand):
     _INPUT_STEP_DATA_TYPE = None
 
     def step_base_name(self):
-        name_prefix = self._input_step().get_step_name_prefix()
+        name_prefix = self._input_step(no_data_check=True).get_step_name_prefix()
         if name_prefix:
             return f'{name_prefix}_{super().step_base_name()}'
         return super().step_base_name()
@@ -120,15 +120,16 @@ class CreateStepFromStepCommand(CreateStepCommand):
         parser.add_argument('step', help='Input sequences step')
 
     def common_db_identifier(self):
-        return self._COMMON_DB_IDENT or self._input_step().common_db_identifier()
+        return self._COMMON_DB_IDENT or self._input_step(no_data_check=True).common_db_identifier()
 
     def _prev_steps(self):
         return [self.args.step]
 
-    def _input_step(self):
+    def _input_step(self, no_data_check=False):
         assert self._INPUT_STEP_DATA_TYPE
         a = self.args
-        return self.project.read_step(a.step, check_data_type=self._INPUT_STEP_DATA_TYPE, no_check=a.no_data_check)
+        return self.project.read_step(
+            a.step, check_data_type=self._INPUT_STEP_DATA_TYPE, no_check=(no_data_check or a.no_data_check))
 
 
 # Create more steps commands
@@ -159,12 +160,13 @@ class CreateStepsFromStepCommand(CreateStepsCommand):
         parser.add_argument('step', help='Input sequences step')
 
     def common_db_identifier(self):
-        return self._COMMON_DB_IDENT or self._input_step().common_db_identifier()
+        return self._COMMON_DB_IDENT or self._input_step(no_data_check=True).common_db_identifier()
 
     def _prev_steps(self):
         return [self.args.step]
 
-    def _input_step(self):
+    def _input_step(self, no_data_check=False):
         assert self._INPUT_STEP_DATA_TYPE
         a = self.args
-        return self.project.read_step(a.step, check_data_type=self._INPUT_STEP_DATA_TYPE, no_check=a.no_data_check)
+        return self.project.read_step(
+            a.step, check_data_type=self._INPUT_STEP_DATA_TYPE, no_check=(no_data_check or a.no_data_check))

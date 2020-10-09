@@ -1,10 +1,61 @@
-import io
-import re
-from ..utils.import_methods import import_bio_seq_io
-from .utils import find_chloroplast_irs
-from common_utils.value_data_types import rows_2_excel
+from step_project.common.table.steps import TableStep
+from .utils import find_chloroplast_partition
+# import io
+# import re
+# from ..utils.import_methods import import_bio_seq_io
+# from .utils import find_chloroplast_irs
+# from common_utils.value_data_types import rows_2_excel
 
 
+def _seq_desc(seq):
+    ret = dict(
+        _seq=seq,
+        seq_ident=seq.name,
+        length=len(seq),
+        genes=sum((1 for f in seq.features if f.type == 'gene')),
+        cds=sum((1 for f in seq.features if f.type == 'CDS')),
+    )
+    #
+    parts = find_chloroplast_partition(seq)
+    cs = (('lsc', 'LSC'), ('ssc', 'SSC'), ('ira', 'IR'))
+    if parts:
+        for part, c in cs:
+            ret[c] = len(parts.get_part_by_name(part))
+    else:
+        for _, x in cs:
+            ret[x] = None
+
+    return ret
+
+
+def analyse_genomes(step_data, annotations_step):
+    project = annotations_step.project
+    step = TableStep(project, step_data, remove_data=True)
+
+    # seq_ident -> row (dict)
+    data = dict((seq_ident, _seq_desc(seq)) for seq_ident, seq in annotations_step._iterate_records())
+
+    table_step = project.find_previous_step_of_type(annotations_step, 'table')
+
+    #
+    columns = [
+        # tuples (dict's attribute, column name, column type)
+        ('seq_ident', 'AccesionNumber', 'seq_ident'),
+        ('length', 'Length', 'int'),
+        ('genes', 'Genes', 'int'),
+        ('cds', 'CDS', 'int'),
+        ('LSC', 'LSC', 'int'),
+        ('SSC', 'SSC', 'int'),
+        ('IR', 'IR', 'int'),
+    ]
+    step.set_table_data(
+        [[d[c] for c, _, _ in columns] for seq_ident, d in sorted(data.items())],
+        [(n, t) for _, n, t in columns])
+    step.save()
+    return step
+
+
+"""
 def analyse_genomes_start(table_step, output_file, common_db):
     SeqIO = import_bio_seq_io()
     _length_match = re.compile('.*, length ([0-9]+)')
@@ -59,3 +110,4 @@ def analyse_genomes_start(table_step, output_file, common_db):
     for db in ('GeSeq', 'Mummer'):  # 'NCBI',
         columns.extend(f'{db} {c}' for c in ('start', 'length', 'match', 'quality'))
     rows_2_excel(output_file, columns, rows)
+"""

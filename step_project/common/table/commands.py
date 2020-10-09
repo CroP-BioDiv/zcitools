@@ -25,6 +25,20 @@ Additional arguments specify how to interpret input data.
         return create_table_step(self.project, step_data, self.args)
 
 
+class TableToExcel(ProjectCommand):
+    _COMMAND = 'table_to_excel'
+    _HELP = "Creates excel file with table data."
+
+    @staticmethod
+    def set_arguments(parser):
+        parser.add_argument('step_name', help='Table step')
+        parser.add_argument('filename', help='Output excel filename')
+
+    def run(self):
+        step = self.project.read_step(self.args.step_name)
+        step.to_excel(self.args.filename)
+
+
 class SQLSelect(ProjectCommand):
     _COMMAND = 'select'
     _HELP = "SQL select query on table steps"
