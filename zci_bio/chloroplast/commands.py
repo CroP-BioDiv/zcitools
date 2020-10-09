@@ -1,6 +1,9 @@
 from step_project.base_commands import ProjectCommand, CreateStepFromStepCommand
 
 
+# Old analysis commands
+# Used for preliminary analysition of chloroplast data
+"""
 # Step 01: check chloroplast IRs
 class ChloroplastAnalyse(ProjectCommand):
     _COMMAND = 'chloroplast_analyse'
@@ -181,6 +184,7 @@ class ChloroplastCheckOrientation(CreateStepFromStepCommand):
 #     def finish(self, step_obj):
 #         from .orientate import orientate_chloroplast_finish
 #         orientate_chloroplast_finish(step_obj)  # , self.get_step_db_object(step_obj))
+"""
 
 
 # Info commands

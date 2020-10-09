@@ -18,26 +18,22 @@ Reason can be:
 def fetch_sequences(step_data, table_step, common_db, column_name=None):
     step = SequencesStep(table_step.project, step_data, remove_data=True)
     table_step.propagate_step_name_prefix(step)
-    sequence_db = common_db.get_sequence_db()
 
     # Fetch from our sequences
-    if sequence_db == 'base':
-        all_sequences = []
-        for ni in table_step.get_column_values_by_type('seq_ident', column_name=column_name):
-            if not step.sequence_exists(ni):
-                # Fetching our seqeunces only for base DB
-                ext = fetch_our_sequence(ni, step.directory)
-                if ext:
-                    step.add_sequence_file(ni + ext)
-                else:
-                    all_sequences.append(ni)
-    else:
-        all_sequences = list(table_step.get_column_values_by_type('seq_ident', column_name=column_name))
+    all_sequences = []
+    for ni in table_step.get_column_values_by_type('seq_ident', column_name=column_name):
+        if not step.sequence_exists(ni):
+            # Fetching our sequences only for base DB
+            ext = fetch_our_sequence(ni, step.directory)
+            if ext:
+                step.add_sequence_file(ni + ext)
+            else:
+                all_sequences.append(ni)
 
-    # Fetch common_db sequences
+    # Fetch from cached common_db sequences
     to_fetch = step.get_common_db_records(common_db, all_sequences, info=True)
 
-    if sequence_db == 'base' and to_fetch:
+    if to_fetch:
         entrez = Entrez()
 
         fetch_nis = to_fetch

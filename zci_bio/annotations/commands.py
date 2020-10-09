@@ -112,14 +112,11 @@ class GeSeq(CreateStepFromStepCommand):
     _HELP = "Annotates chloroplast sequences with GeSeq"
     _STEP_BASE_NAME = 'GeSeq'
     _INPUT_STEP_DATA_TYPE = 'sequences'
+    _COMMON_DB_IDENT = ('GeSeq',)
 
     @staticmethod
     def set_arguments(parser):
         CreateStepFromStepCommand.set_arguments(parser)
-
-    def common_db_identifier(self):
-        db = self._input_step().common_db_identifier()[1]
-        return self.sequence_db_identifier(db, 'GeSeq')
 
     def run(self, step_data):
         from .ge_seq import create_ge_seq_data
@@ -135,7 +132,7 @@ class CPGAVAS(CreateStepFromStepCommand):
     _HELP = "Annotates chloroplast sequences with CPGAVAS"
     _STEP_BASE_NAME = 'CPGAVAS'
     _INPUT_STEP_DATA_TYPE = 'sequences'
-    _COMMON_DB_IDENT = 'CPGAVAS'
+    _COMMON_DB_IDENT = ('CPGAVAS',)
 
     def run(self, step_data):
         from .cpgavas import create_cpgavas_data
@@ -163,9 +160,8 @@ class OGDRAW(CreateStepFromStepCommand):
 
     def common_db_identifier(self):
         step = self._input_step()
-        db = step.common_db_identifier()[1]
         step_command = step.get_command()  # Depends on annotation process
-        return self.sequence_db_identifier(db, 'OGDraw', step_command, self.args.image_format)
+        return ('OGDraw', step_command, self.args.image_format)
 
     def run(self, step_data):
         from .ogdraw import create_ogdraw
@@ -192,16 +188,8 @@ class OGDRAW_ExtractJPG(NonProjectCommand):
 
     def common_db_identifier(self):
         step = self.project.read_step(self.args.step, check_data_type='annotations', no_check=True)
-        # ToDo: remove
-        # db = step.common_db_identifier()[1]
-        db = self.args.sequence_db
-        if not db:
-            db = step.common_db_identifier()
-            db = db[1] if db else 'base'  # For old data
-        #
         step_command = step.get_command()  # Depends on annotation process
-        print('DB', db, step_command)
-        return self.sequence_db_identifier(db, 'OGDraw', step_command, 'jpg')
+        return ('OGDraw', step_command, 'jpg')
 
     def run(self):
         from .ogdraw import extract_jpg_to_common_db

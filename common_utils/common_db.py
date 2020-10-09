@@ -11,8 +11,6 @@ Record is implemented as zip file. It can contain any kind of data: any number o
 """
 
 _ZCI_COMMON_DB_DIR = os.environ.get('ZCI_COMMON_DB')
-SEQUENCE_DBS_RELATIVE_DIR = 'sequence_dbs'
-_SEQUENCE_DBS_DIR = os.path.join(_ZCI_COMMON_DB_DIR, SEQUENCE_DBS_RELATIVE_DIR) if _ZCI_COMMON_DB_DIR else None
 
 
 class CommonDB:
@@ -30,22 +28,6 @@ class CommonDB:
     @staticmethod
     def get_zci_db(idents):
         return CommonDB(os.path.join(_ZCI_COMMON_DB_DIR, *idents), base_dir=_ZCI_COMMON_DB_DIR)
-
-    @staticmethod
-    def get_zci_sequence_dbs():
-        if _SEQUENCE_DBS_DIR:
-            return [f for f in os.listdir(_SEQUENCE_DBS_DIR) if os.path.isdir(os.path.join(_SEQUENCE_DBS_DIR, f))]
-        return []
-
-    @staticmethod
-    def get_check_zci_sequence_db(db):
-        dbs = CommonDB.get_zci_sequence_dbs()
-        if db not in dbs:
-            raise ZCItoolsValueError(f"Database {db} doesn't exist. Possible values: {', '.join(dbs)}!")
-
-    def get_sequence_db(self):
-        if len(self._idents) >= 2 and self._idents[0] == SEQUENCE_DBS_RELATIVE_DIR:
-            return self._idents[1]
 
     #
     def get_relative_db(self, *path):

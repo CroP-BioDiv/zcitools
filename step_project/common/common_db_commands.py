@@ -1,7 +1,7 @@
 import os
 from zipfile import ZipFile
 from ..base_commands import NonProjectCommand
-from common_utils.common_db import CommonDB, SEQUENCE_DBS_RELATIVE_DIR
+from common_utils.common_db import CommonDB
 from common_utils.terminal_layout import StringColumns
 from common_utils.file_utils import read_file_as_list, silent_remove_file
 
@@ -26,8 +26,6 @@ class _CommonDBCommand(NonProjectCommand):
             '-r', '--record', help='Search all occurences of a record(s) in given path. Format <rec>,<rec>,...')
         parser.add_argument(
             '-R', '--records-filename', help='Search all occurences of a records read from given file.')
-        dbs = CommonDB.get_zci_sequence_dbs()
-        parser.add_argument('-S', '--sequence-db', help=f'Sequence database to use: {", ".join(dbs)}')
 
     def _iterate_records(self, records=None):
         # Returns records as tuples (relative_dir, record ident)
@@ -64,10 +62,6 @@ class _CommonDBCommand(NonProjectCommand):
 
     def _set_db_attrs(self):
         idents = tuple(self.args.path.split('/'))
-        db = self.args.sequence_db
-        if db:
-            CommonDB.get_check_zci_sequence_db(db)
-            idents = (SEQUENCE_DBS_RELATIVE_DIR, db) + idents
         self._common_db = CommonDB.get_zci_db(idents)
         self._db_dir = self._common_db.db_dir
         if not os.path.isdir(self._db_dir):
@@ -164,8 +158,6 @@ class CommonDBCopy(_CommonDBCommand):
         parser.add_argument(
             '-n', '--no-recursive', action='store_true', help='No recursive search, search only given path')
         parser.add_argument('-m', '--move', action='store_true', help='Move, delete original')
-        dbs = CommonDB.get_zci_sequence_dbs()
-        parser.add_argument('-S', '--sequence-db', help=f'Sequence database to use: {", ".join(dbs)}')
 
     def run(self):
         args = self.args

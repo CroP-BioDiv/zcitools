@@ -1,5 +1,5 @@
 import os.path
-from common_utils.common_db import CommonDB, SEQUENCE_DBS_RELATIVE_DIR
+from common_utils.common_db import CommonDB
 
 """
 Command classes, called from zcit script.
@@ -54,21 +54,12 @@ class _Command:
     def set_arguments(parser):
         pass
 
-    @staticmethod
-    def _sequence_db_set_arguments(parser):
-        dbs = CommonDB.get_zci_sequence_dbs()
-        parser.add_argument('-S', '--sequence-db', default='base', help=f'Sequence database to use: {", ".join(dbs)}')
-
     def run(self):
         raise NotImplementedError(f'Method {self.__class__.__name__}.run() is not implemented!')
 
     # Common DB
     def common_db_identifier(self):
         return self._COMMON_DB_IDENT
-
-    def sequence_db_identifier(self, db, *idents):
-        CommonDB.get_check_zci_sequence_db(db)
-        return (SEQUENCE_DBS_RELATIVE_DIR, db) + idents
 
     def get_common_db_object(self):
         return self._common_db_object(self)
@@ -126,7 +117,6 @@ class CreateStepFromStepCommand(CreateStepCommand):
 
     @staticmethod
     def set_arguments(parser):
-        CreateStepCommand.set_arguments(parser)
         parser.add_argument('step', help='Input sequences step')
 
     def common_db_identifier(self):
