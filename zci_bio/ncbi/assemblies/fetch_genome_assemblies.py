@@ -3,6 +3,7 @@ import tarfile
 import re
 import csv
 from decimal import Decimal
+from datetime import date
 from step_project.common.table.steps import TableStep, Rows2Table
 from common_utils.file_utils import write_str_in_file
 from common_utils.value_data_types import fromisoformat
@@ -165,6 +166,11 @@ def _ncbi_ident(x):
     return x
 
 
+def _to_date(d):
+    if d:
+        return date(*map(int, d.split('/')))
+
+
 def fetch_chloroplast_list(project, step_data, args):
     # Create table step data
     step = TableStep(project, step_data, remove_data=True)
@@ -177,7 +183,7 @@ def fetch_chloroplast_list(project, step_data, args):
             dict(column='BioSample', optional=True),
             dict(column='BioProject'),
             # ToDo: 1000000 or 1024*1024?
-            dict(column='Size(Mb)', output='size', optional=True, tranfer=lambda x: int(float(x) * 1000000)),
+            dict(column='Size(Mb)', output='length', optional=True, tranfer=lambda x: int(float(x) * 1000000)),
             dict(column='GC%', optional=True, type='decimal'),
             dict(column='Type', optional=True, check=lambda x: x == 'chloroplast'),
             dict(column='Replicons', output='ncbi_ident', type='seq_ident', transfer=_ncbi_ident),
@@ -195,7 +201,29 @@ def fetch_chloroplast_list(project, step_data, args):
             rows2table.in_table_step(step)
 
     elif args.family:
-        pass  # ToDo:
+        from ...utils.entrez import Entrez
+        data = Entrez().search_summary(
+            'nucleotide',
+            term=f'"{args.family}"[Organism] AND ("complete genome"[Title] AND chloroplast[Title]) AND refseq')
+
+        # ToDo: ?
+        #   'Status': 'live',
+        #   'ReplacedBy': '',
+        #   'Flags': IntegerElement(768, attributes={}),
+        #   'Comment': '  ',
+        #   'Extra': 'gi|334702303|ref|NC_015543.1||gnl|NCBI_GENOMES|27514[334702303]',
+        #   'AccessionVersion': 'NC_015543.1'},
+        columns = [('AccessionId', 'int'), ('ncbi_ident', 'seq_ident'),
+                   ('tax_id', 'int'), ('length', 'int'),
+                   ('create_date', 'date'), ('update_date', 'date'),
+                   ('title', 'str')]
+        rows = [
+            [int(d['Gi']), d['Caption'],
+             int(d['TaxId']), int(d['Length']),
+             _to_date(d['CreateDate']), _to_date(d['UpdateDate']),
+             d['Title']]
+            for d in data]
+        step.set_table_data(rows, columns)
 
     step.save()  # Takes a care about complete status!
     return step

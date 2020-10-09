@@ -4,10 +4,13 @@ from .import_methods import import_bio_entrez
 
 
 class Entrez:
-    def __init__(self, calls_per_sec=3):
-        assert calls_per_sec > 0, calls_per_sec
+    def __init__(self, calls_per_sec=None):
         self.entrez = import_bio_entrez()
         self.last_call = None
+        #
+        if not calls_per_sec:
+            calls_per_sec = 10 if self.entrez.email else 3
+        assert calls_per_sec > 0, calls_per_sec
         self.between_calls = datetime.timedelta(milliseconds=round(1000 / calls_per_sec) + 1)
 
     def _sleep(self):
@@ -41,3 +44,8 @@ class Entrez:
     def esummary(self, **kwargs):
         self._sleep()
         return self._read(self.entrez.esummary(**kwargs))
+
+    #
+    def search_summary(self, db, **kwargs):
+        records = self.esearch(db=db, usehistory='y', retmax=1, **kwargs)  # retmax=1: to have less network traffic
+        return self.esummary(db=db, query_key=records['QueryKey'], WebEnv=records['WebEnv'])
