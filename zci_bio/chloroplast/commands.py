@@ -1,7 +1,6 @@
 from step_project.base_commands import ProjectCommand, CreateStepFromStepCommand
 
 
-#
 class ChloroplastAnalyse(CreateStepFromStepCommand):
     _COMMAND = 'analyse_chloroplast'
     _HELP = "Analyse chloroplast genomes. Output is a table with result data."
@@ -9,15 +8,21 @@ class ChloroplastAnalyse(CreateStepFromStepCommand):
     _STEP_BASE_NAME = 'AnalyseChloroplast'
     _INPUT_STEP_DATA_TYPE = 'annotations'
 
-    # @classmethod
-    # def set_arguments(cls, parser):
-    #     CreateStepFromStepCommand.set_arguments(parser)
-    #     parser.add_argument('-t', '--table-step', help="Input table step, with taxon id's")
-
     def run(self, step_data):
         from .analyse import analyse_genomes
-        # Table step for taxon ids
         return analyse_genomes(step_data, self._input_step(no_data_check=True))
+
+# Test: not usable.
+# class AnalyseNs(CreateStepFromStepCommand):
+#     _COMMAND = 'analyse_ns'
+#     _HELP = "Analyse genomes for missing bases. Output is a table with result data."
+#     _COMMAND_GROUP = 'Chloroplast'
+#     _STEP_BASE_NAME = 'AnalyseNs'
+#     _INPUT_STEP_DATA_TYPE = ('sequences', 'annotations')
+
+#     def run(self, step_data):
+#         from .analyse import analyse_ns
+#         return analyse_ns(step_data, self._input_step(no_data_check=True))
 
 
 # Info commands

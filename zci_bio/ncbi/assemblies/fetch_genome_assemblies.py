@@ -7,6 +7,7 @@ from datetime import date
 from step_project.common.table.steps import TableStep, Rows2Table
 from common_utils.file_utils import write_str_in_file
 from common_utils.value_data_types import fromisoformat
+from ...utils.ncbi_taxonomy import NCBITaxonomy
 
 _instructions = """
 Steps:
@@ -174,8 +175,10 @@ def _to_date(d):
 def fetch_chloroplast_list(project, step_data, args):
     # Create table step data
     step = TableStep(project, step_data, remove_data=True)
+    max_taxid = None
     if args.family:
         step.set_step_name_prefix(args.family)
+        max_taxid = NCBITaxonomy().name_2_taxid(args.family)
 
     if args.csv_filename and os.path.isfile(args.csv_filename):
         column_descs = [
@@ -190,6 +193,7 @@ def fetch_chloroplast_list(project, step_data, args):
             dict(column='Replicons', output='other_ncbi_ident', type='seq_ident', transfer=lambda x: x.split('/')[1]),
             dict(column='CDS', optional=True, type='int'),
             dict(column='Release Date', optional=True, type='date'),
+            dict(output='max_taxid', type='int', value=max_taxid),
         ]
 
         with open(args.csv_filename, 'r') as incsv:
@@ -216,12 +220,12 @@ def fetch_chloroplast_list(project, step_data, args):
         columns = [('AccessionId', 'int'), ('ncbi_ident', 'seq_ident'),
                    ('tax_id', 'int'), ('length', 'int'),
                    ('create_date', 'date'), ('update_date', 'date'),
-                   ('title', 'str')]
+                   ('title', 'str'), ('max_taxid', 'int')]
         rows = [
             [int(d['Gi']), d['Caption'],
              int(d['TaxId']), int(d['Length']),
              _to_date(d['CreateDate']), _to_date(d['UpdateDate']),
-             d['Title']]
+             d['Title'], max_taxid]
             for d in data]
         step.set_table_data(rows, columns)
 

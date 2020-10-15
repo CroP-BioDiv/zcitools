@@ -56,6 +56,24 @@ class MAFFT(ClustalO):
         finish_mafft_data(step_obj)
 
 
+class MUSCLE(ClustalO):
+    _COMMAND = 'muscle'
+    _HELP = "Align sequences using MUSCLE"
+    _STEP_BASE_NAME = 'MUSCLE'
+
+    def run(self, step_data):
+        from .muscle import create_muscle_data
+        align_params = [a.lower() for a in self.args.alignments]
+        not_sup_params = [a for a in align_params if a not in self._SUPPORTED_ALIGNS]
+        if not_sup_params:
+            raise ZCItoolsValueError(f'No valid alignments set ({", ".join(sorted(not_sup_params))}).')
+        return create_muscle_data(step_data, self._input_step(), align_params, self.args.whole_partition, self.args.run)
+
+    def finish(self, step_obj):
+        from .muscle import finish_muscle_data
+        finish_muscle_data(step_obj)
+
+
 class mVISTA(CreateStepFromStepCommand):
     _COMMAND = 'mvista'
     _HELP = "Align sequences with mVISTA programs"

@@ -272,6 +272,7 @@ class Rows2Table:
         # * optional : default False
         # * type     : column type, from KNOWN_DATA_TYPES. Default 'str'
         # * tranfer  : format method
+        # * value    : value of static column
         # * check    : callable that returns True if record has to be added.
 
         # Same as in TableStep
@@ -283,7 +284,23 @@ class Rows2Table:
         if column_names:
             not_in = []
             for d in column_description:
-                col = d['column']
+                col = d.get('column')
+
+                # Column with static value
+                if not col:
+                    output_col = d.get('output')
+                    if not output_col:
+                        print('Warning: description without column and output columns!', d)
+                        continue
+                    _type = d.get('type', 'str')
+                    assert _type in KNOWN_DATA_TYPES, d
+                    self._columns.append((output_col, _type))
+
+                    # Format method
+                    self._formaters.append((None, d.get('value'), None))
+                    continue
+
+                # Column with value taken from input data
                 try:
                     idx = column_names.index(col)
                 except ValueError:
@@ -301,6 +318,7 @@ class Rows2Table:
                 self._formaters.append(
                     (idx, d.get('transfer', _type_format.get(_type)), d.get('check')))
 
+            #
             if not_in:
                 raise ZCItoolsValueError(f'Mandatory columns not presented in csv file: {not_in}')
 
@@ -308,11 +326,14 @@ class Rows2Table:
         for row in rows:
             out_row = []
             for idx, tranfer, check in self._formaters:
-                d = row[idx]
-                if check and not check(d):
-                    out_row = None
-                    break
-                out_row.append(tranfer(d) if tranfer else d)
+                if idx is None:  # Static column
+                    out_row.append(tranfer)
+                else:
+                    d = row[idx]
+                    if check and not check(d):
+                        out_row = None
+                        break
+                    out_row.append(tranfer(d) if tranfer else d)
             if out_row:
                 self._rows.append(out_row)
 

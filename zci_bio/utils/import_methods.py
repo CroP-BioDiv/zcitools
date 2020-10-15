@@ -41,6 +41,19 @@ def import_bio_entrez():
 
 
 @import_method("""
+ETE Toolkit library (http://etetoolkit.org/docs/latest/index.html) is missing.
+
+For installation instruction check web page:
+http://etetoolkit.org/download/
+
+Short: pip install ete3
+""")
+def import_ete3_NCBITaxa():
+    from ete3 import NCBITaxa
+    return NCBITaxa
+
+
+@import_method("""
 GFF parsing library (https://biopython.org/wiki/GFF_Parsing) is missing.
 
 For installation instruction check web page:

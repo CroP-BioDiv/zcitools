@@ -78,8 +78,11 @@ class Feature:
             return self.feature.extract(seq_record)
         seq = seq_record.seq
         dna = ''.join(str(seq)[p.start:p.end] for p in self._intervals)
-        seq = type(seq)(dna, seq.alphabet)  # Omitting import of Bio.Seq
-        return type(seq_record)(seq)        # Omitting import of Bio.SeqRecord
+        seq = type(seq)(dna)          # Omitting import of Bio.Seq
+        return type(seq_record)(seq)  # Omitting import of Bio.SeqRecord
+
+    def ends(self):
+        return self.real_start, self.real_end
 
 
 class Partition:
@@ -112,6 +115,7 @@ class Partition:
         return [p for p in self._parts if not p.name]
 
     def put_features_in_parts(self, features):
+        # Returns dict partition_name -> list of features
         assert all(p.name for p in self._parts), 'All parts have to have a name!'
         ret = defaultdict(list)
         for f in features:

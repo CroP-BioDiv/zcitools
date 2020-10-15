@@ -26,16 +26,22 @@ def find_chloroplast_partition(seq):
     irs = find_chloroplast_irs(seq)
     if irs:
         ira, irb = irs
-        l_seq = len(seq)
-        partition = Partition(
-            [Feature(l_seq, name='ira', feature=ira), Feature(l_seq, name='irb', feature=irb)],
-            fill=True)
-        n_parts = partition.not_named_parts()
-        assert len(n_parts) == 2, len(n_parts)
-        ssc_ind = int(len(n_parts[0]) > len(n_parts[1]))
-        n_parts[1 - ssc_ind].name = 'lsc'
-        n_parts[ssc_ind].name = 'ssc'
-        return partition
+        return create_chloroplast_partition(len(seq), ira, irb)
+
+
+def create_chloroplast_partition(l_seq, ira, irb, in_interval=False):
+    if in_interval:
+        ps = [Feature(l_seq, name='ira', interval=ira), Feature(l_seq, name='irb', interval=irb)]
+    else:
+        ps = [Feature(l_seq, name='ira', feature=ira), Feature(l_seq, name='irb', feature=irb)]
+
+    partition = Partition(ps, fill=True)
+    n_parts = partition.not_named_parts()
+    assert len(n_parts) == 2, len(n_parts)
+    ssc_ind = int(len(n_parts[0]) > len(n_parts[1]))
+    n_parts[1 - ssc_ind].name = 'lsc'
+    n_parts[ssc_ind].name = 'ssc'
+    return partition
 
 
 def find_referent_genome(seq_idents, referent_seq_ident):
