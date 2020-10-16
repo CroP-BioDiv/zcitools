@@ -52,10 +52,14 @@ def analyse_genomes(step_data, annotations_step):
         )) for seq_ident, seq in annotations_step._iterate_records())
 
     # Find missing IR partitions
-    find_missing_partitions(step, data, ncbi_2_max_taxid, taxid_2_ncbi)
+    found_partitions = find_missing_partitions(step, data, ncbi_2_max_taxid, taxid_2_ncbi)
 
     # Set partition data
     cs = ('lsc', 'ssc', 'ira')
+    without_parts = []
+    wrong_oriented_parts = []
+    with_offset = []
+
     for seq_ident, d in data.items():
         if parts := d['_parts']:
             # Part lengths
@@ -76,12 +80,17 @@ def analyse_genomes(step_data, annotations_step):
 
             # Offset
             d['offset'] = parts.get_part_by_name('lsc').real_start
+            if d['offset']:
+                with_offset.append(seq_ident)
 
             # Part orientation
             orient = chloroplast_parts_orientation(d['_seq'], parts)
             d['part_orientation'] = ''.join('P' if orient[p] else 'N' for p in ('lsc', 'ira', 'ssc'))
+            if any(not v for v in orient.values()):
+                wrong_oriented_parts.append(seq_ident)
 
         else:
+            without_parts.append(seq_ident)
             for x in cs + ('ssc_ends', 'lsc_genes', 'ssc_genes', 'ira_genes', 'irb_genes',
                            'offset', 'part_orientation'):
                 d[x] = None
@@ -110,7 +119,26 @@ def analyse_genomes(step_data, annotations_step):
         [[d[c] for c, _, _ in columns] for seq_ident, d in sorted(data.items())],
         [(n, t) for _, n, t in columns])
     step.save()
+
+    #
+    errors = []
+    l_start = '\n - '
+    if found_partitions:
+        x = l_start.join(sorted(f'{s} ({m})' for s, (_, _, m) in found_partitions.items()))
+        errors.append(f'Found partitions for sequences:{l_start}{x}')
+    if without_parts:
+        errors.append(f"No partitions for sequences:{l_start}{l_start.join(sorted(without_parts))}")
+    if wrong_oriented_parts:
+        errors.append(f"Partitions with wrong orientation in sequences:{l_start}{l_start.join(sorted(wrong_oriented_parts))}")
+    if with_offset:
+        errors.append(f"Sequneces with offset:{l_start}{l_start.join(sorted(with_offset))}")
+    if errors:
+        with open((r_file := step.step_file('README.txt')), 'w') as _out:
+            _out.write('\n'.join(errors))
+            _out.write('\n')
+        print(f'Problems found in sequences! Check file {r_file}.')
     step.to_excel('analyse.xls')  # Test
+
     return step
 
 
@@ -124,7 +152,7 @@ def find_missing_partitions(step, data, ncbi_2_max_taxid, taxid_2_ncbi):
 
     # Run alignment of related species IR ends onto sequences without IRs
     ncbi_tax = ncbi_taxonomy()
-    seq_2_result_object = dict()
+    seq_2_result_object = dict()  # dict seq_ident -> tuple (ira interval, irb interval, matche seq_ident)
     with ThreadPoolExecutor(max_workers=multiprocessing.cpu_count()) as executor:
         for seq_ident, seq_data in data.items():
             if seq_data['_parts']:
@@ -145,6 +173,8 @@ def find_missing_partitions(step, data, ncbi_2_max_taxid, taxid_2_ncbi):
         d = data[seq_ident]
         d['_parts'] = create_chloroplast_partition(len(d['_seq']), ira, irb, in_interval=True)
         d['irs_transfered_from'] = transfer_from
+
+    return seq_2_result_object
 
 
 def _run_align(step, seq_ident, seq_data, close_data, seq_2_result_object, taxid_2_ncbi, match_length=100):
