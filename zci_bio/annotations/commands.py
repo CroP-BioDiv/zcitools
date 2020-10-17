@@ -2,6 +2,29 @@ from step_project.base_commands import ProjectCommand, NonProjectCommand, Create
 from common_utils.exceptions import ZCItoolsValueError
 
 
+class FeatureProperties(ProjectCommand):
+    _COMMAND = 'feature_properties'
+    _HELP = "Displays feature properties"
+    _COMMAND_GROUP = 'Bio'
+
+    @staticmethod
+    def set_arguments(parser):
+        parser.add_argument('step', help='Input annotation step')
+        parser.add_argument('feature', help='Feature to display')
+
+    def run(self):
+        from ..utils.helpers import feature_location_desc
+        step = self.project.read_step(self.args.step, check_data_type='annotations', update_mode=False, no_check=True)
+        name = self.args.feature
+        ret = []
+        for seq_ident, seq in step._iterate_records():
+            features = [f for f in seq.features if f.type == 'gene' and f.qualifiers['gene'][0] == name]
+            if features:
+                ret.append((seq_ident, len(seq), [(f.type, feature_location_desc(f.location)) for f in features]))
+        for x in ret:
+            print(*x)
+
+
 class AnnotationsMerge(CreateStepCommand):
     _COMMAND = 'annotation_merge'
     _HELP = "Merge more annotations steps into one"

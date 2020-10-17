@@ -102,6 +102,14 @@ class Step:
         if c:
             return tuple(c)
 
+    def seq_ident_of_our_change(self, seq_ident, change):
+        # Our change method is specified with lower case letter!
+        assert isinstance(change, str) and len(change) == 1 and change.islower(), change
+        fields = seq_ident.split('_')
+        if fields[0].islower():  # Our changes already prepended, just add one more at the start
+            return f'{change}{seq_ident}'
+        return f'{change}_{seq_ident}'
+
     def is_completed(self):
         return self._step_data['completed']
 

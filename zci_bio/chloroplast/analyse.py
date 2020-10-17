@@ -31,13 +31,15 @@ def _run_align_cmd(seq_fasta, qry_fasta, out_prefix):
 def analyse_genomes(step_data, annotations_step):
     project = annotations_step.project
     step = TableStep(project, step_data, remove_data=True)
+    annotations_step.propagate_step_name_prefix(step)
 
     #
     table_step = project.find_previous_step_of_type(annotations_step, 'table')
     ncbi_2_taxid = table_step.mapping_between_columns('ncbi_ident', 'tax_id')
     taxid_2_ncbi = dict((v, k) for k, v in ncbi_2_taxid.items())
-    ncbi_2_title = table_step.mapping_between_columns('ncbi_ident', 'title')
+    # ncbi_2_title = table_step.mapping_between_columns('ncbi_ident', 'title')
     ncbi_2_max_taxid = table_step.mapping_between_columns('ncbi_ident', 'max_taxid')
+    table_data = table_step.index_on_table('ncbi_ident')
 
     data = dict((seq_ident, dict(
             _seq=seq,
@@ -47,8 +49,10 @@ def analyse_genomes(step_data, annotations_step):
             genes=sum(1 for f in seq.features if f.type == 'gene' and f.location),
             cds=sum(1 for f in seq.features if f.type == 'CDS' and f.location),
             taxid=ncbi_2_taxid[seq_ident],
-            title=ncbi_2_title[seq_ident],
+            title=table_data.get_cell(seq_ident, 'title'),  # ncbi_2_title[seq_ident],
+            created_date=table_data.get_cell(seq_ident, 'create_date'),  # ncbi_2_title[seq_ident],
             irs_transfered_from=None,
+            trnH_GUG=_trnH_GUG_start(seq),
         )) for seq_ident, seq in annotations_step._iterate_records())
 
     # Find missing IR partitions
@@ -100,6 +104,7 @@ def analyse_genomes(step_data, annotations_step):
         # tuples (dict's attribute, column name, column type)
         ('seq_ident', 'AccesionNumber', 'seq_ident'),
         ('title', 'Title', 'str'),
+        ('created_date', 'Date', 'date'),
         ('length', 'Length', 'int'),
         ('genes', 'Genes', 'int'),
         ('irs_transfered_from', 'IRS took', 'seq_ident'),
@@ -113,6 +118,7 @@ def analyse_genomes(step_data, annotations_step):
         ('ira_genes', 'IRA genes', 'int'),
         ('irb_genes', 'IRB genes', 'int'),
         ('offset', 'Offset', 'int'),
+        ('trnH_GUG', 'trnH_GUG', 'int'),
         ('part_orientation', 'Orientation', 'str'),
     ]
     step.set_table_data(
@@ -140,6 +146,12 @@ def analyse_genomes(step_data, annotations_step):
     step.to_excel('analyse.xls')  # Test
 
     return step
+
+
+def _trnH_GUG_start(seq):
+    features = [f for f in seq.features if f.type == 'gene' and f.qualifiers['gene'][0] == 'trnH-GUG' and f.location]
+    if features:
+        return min(f.location.start for f in features)
 
 
 def find_missing_partitions(step, data, ncbi_2_max_taxid, taxid_2_ncbi):

@@ -12,6 +12,31 @@ class ChloroplastAnalyse(CreateStepFromStepCommand):
         from .analyse import analyse_genomes
         return analyse_genomes(step_data, self._input_step(no_data_check=True))
 
+
+class ChloroplastFixByAnalyse(CreateStepFromStepCommand):
+    _COMMAND = 'fix_by_analyse_parts'
+    _HELP = "Fix chloroplast genome parts by done analyse. Output is a sequences step."
+    _COMMAND_GROUP = 'Chloroplast'
+    _STEP_BASE_NAME = 'FixByParts'
+    _INPUT_STEP_DATA_TYPE = 'table'
+    _COMMON_DB_IDENT = ('sequences',)
+
+    @staticmethod
+    def set_arguments(parser):
+        CreateStepFromStepCommand.set_arguments(parser)
+        parser.add_argument('-o', '--omit-offset', default=10, type=int,
+                            help='Do not position LSC if offset is less than given value.')
+
+    def step_base_name(self):
+        n = super().step_base_name()
+        return f'{n}_{self.args.omit_offset}' if self.args.omit_offset else n
+
+    def run(self, step_data):
+        from .fix_by_analyse import fix_by_parts
+        return fix_by_parts(
+            step_data, self._input_step(no_data_check=True), self.get_common_db_object(),
+            omit_offset=self.args.omit_offset)
+
 # Test: not usable.
 # class AnalyseNs(CreateStepFromStepCommand):
 #     _COMMAND = 'analyse_ns'

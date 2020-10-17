@@ -40,7 +40,7 @@ def _alignment_file(f):
 
 
 def _run_single(mafft_exe, filename, output_file, threads):
-    cmd = f"{mafft_exe} --thread {threads} {filename} > {output_file}"
+    cmd = f"{mafft_exe} --maxiterate 10 --thread {threads} {filename} > {output_file}"
     print(f"Command: {cmd}")
     os.system(cmd)
 

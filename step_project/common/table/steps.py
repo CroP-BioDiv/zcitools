@@ -83,13 +83,14 @@ Table data is stored in table.csv with header, separator ;, quote character ".
     # Init object
     def _init_data(self, type_description):
         self._rows = None
-        if type_description:
-            self._columns = type_description['columns']
-        else:
-            self._columns = None
+        self._columns = type_description['columns'] if type_description else None
 
     def _check_data(self):
         _check_columns(self._columns)
+
+    def rows_as_dicts(self):
+        idxs = self.get_column_indices()
+        return (_RowReader(idxs, r) for r in self.get_rows())
 
     # Set data
     def set_columns(self, columns):
@@ -140,22 +141,24 @@ Table data is stored in table.csv with header, separator ;, quote character ".
         if self._rows is None:
             self._rows = _read_csv(self._get_table_filename())
             for i, (_, dt) in enumerate(self._columns):
-                ff = _type_format.get(dt)
-                if ff:
+                if ff := _type_format.get(dt):
                     for r in self._rows:
                         if r[i]:
                             r[i] = ff(r[i])
             _check_rows(self._columns, self._rows)
         return self._rows
 
-    def _column_index(self, column_name):
+    def column_index(self, column_name):
         for i, (name, _) in enumerate(self._columns):
             if name == column_name:
                 return i
         raise ZCItoolsValueError(f"No column named {column_name}! Columns: {self._columns}")
 
+    def get_column_indices(self):
+        return dict((c, i) for i, (c, _) in enumerate(self._columns))
+
     def get_column_values(self, column_name):
-        idx = self._column_index(column_name)
+        idx = self.column_index(column_name)
         return set(row[idx] for row in self.get_rows())
 
     def _column_index_by_type(self, data_type, column_name=None):
@@ -170,9 +173,12 @@ Table data is stored in table.csv with header, separator ;, quote character ".
         return set(row[idx] for row in self.get_rows())
 
     def mapping_between_columns(self, from_column, to_column):
-        idx_from = self._column_index(from_column)
-        idx_to = self._column_index(to_column)
+        idx_from = self.column_index(from_column)
+        idx_to = self.column_index(to_column)
         return dict((r[idx_from], r[idx_to]) for r in self.get_rows())
+
+    def index_on_table(self, *columns):
+        return IndexOnTable(self.get_column_names(), self.get_rows(), *columns)
 
     # Show data
     def show_data(self, params=None):
@@ -339,3 +345,33 @@ class Rows2Table:
 
     def in_table_step(self, table_step):
         table_step.set_table_data(self._rows, self._columns)
+
+
+class IndexOnTable:
+    def __init__(self, columns, rows, *index):
+        self._column_idxs = dict((c, i) for i, c in enumerate(columns))
+        if len(index) == 1:
+            idx = self._column_idxs[index[0]]
+            self._data = dict((r[idx], r) for r in rows)
+        else:
+            idxs = [self._column_idxs[c] for c in columns]
+            self._data = dict((tuple(r[i] for i in idxs), r) for r in rows)
+
+    def get_row(self, index_value):
+        return self._data[index_value]
+
+    def get_cell(self, index_value, column_name):
+        return self._data[index_value][self._column_idxs[column_name]]
+
+    def get_cells(self, index_value, *column_names):
+        row = self._data[index_value]
+        return tuple(row[self._column_idxs[c]] for c in column_names)
+
+
+class _RowReader:
+    def __init__(self, idxs, row):
+        self._idxs = idxs
+        self._row = row
+
+    def __getitem__(self, c):
+        return self._row[self._idxs[c]]
