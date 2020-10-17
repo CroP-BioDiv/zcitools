@@ -110,14 +110,21 @@ class CreateStepFromStepCommand(CreateStepCommand):
     _INPUT_STEP_DATA_TYPE = None
 
     def step_base_name(self):
-        name_prefix = self._input_step(no_data_check=True).get_step_name_prefix()
+        step = self._input_step(no_data_check=True)
+        name_prefix = step.get_step_name_prefix()
+        name = super().step_base_name()
         if name_prefix:
-            return f'{name_prefix}_{super().step_base_name()}'
-        return super().step_base_name()
+            name = f'{name_prefix}_{name}'
+        if self.args.append_input_step_name:
+            if sn := step.get_base_step_name():
+                name = f'{name}_{sn}'
+        return name
 
     @staticmethod
     def set_arguments(parser):
         parser.add_argument('step', help='Input sequences step')
+        parser.add_argument('-A', '--append-input-step-name', action='store_true',
+                            help='Append input sequence step name')
 
     def common_db_identifier(self):
         return self._COMMON_DB_IDENT or self._input_step(no_data_check=True).common_db_identifier()

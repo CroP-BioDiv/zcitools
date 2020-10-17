@@ -7,7 +7,7 @@ class ClustalO(CreateStepFromStepCommand):
     _COMMAND = 'clustal'
     _HELP = "Align sequences using Clustal Omega"
     _STEP_BASE_NAME = 'Clustal'
-    _INPUT_STEP_DATA_TYPE = 'annotations'
+    _INPUT_STEP_DATA_TYPE = ('sequences', 'annotations')
     _ALIGNMENTS = (('w', 'whole'),
                    ('gs', 'genes single'), ('gc', 'genes concatenate'),
                    ('cs', 'CDS single'), ('cc', 'CDS concatenated'))

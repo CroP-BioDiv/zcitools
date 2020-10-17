@@ -91,6 +91,18 @@ class Step:
     def set_step_name_prefix(self, n):
         self._step_data['step_name_prefix'] = n
 
+    def get_base_step_name(self):
+        if n := self._step_data.get('step_name'):
+            if p := self.get_step_name_prefix():
+                if p in n:
+                    i = n.index(p)
+                    return n[(i + len(p)):].strip('_')
+            fields = n.split('_')
+            if fields[0].isdigit():
+                i = n.index(fields[0])
+                return n[(i + len(fields[0])):].strip('_')
+            return n
+
     def propagate_step_name_prefix(self, to_step):
         name_prefix = self.get_step_name_prefix()
         if name_prefix:

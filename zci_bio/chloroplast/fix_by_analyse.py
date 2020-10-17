@@ -5,6 +5,21 @@ from .utils import find_chloroplast_partition, create_chloroplast_partition
 from zci_bio.sequences.steps import SequencesStep
 
 
+def _copy_from_origin(step, annotation_step, seq_ident):
+    an_filename = annotation_step.get_sequence_filename(seq_ident)
+    shutil.copy(an_filename, step.directory)
+    step.add_sequence_file(os.path.basename(an_filename))
+
+
+def _store_fasta(step, new_seq_ident, new_seq, common_db):
+    fa_filename = step.step_file(f'{new_seq_ident}.fa')
+    write_fasta(fa_filename, [(new_seq_ident, str(new_seq.seq))])
+    step.add_sequence_file(os.path.basename(fa_filename))
+    # ToDo: force stavljanja u common_db. Brisati u common_db_annot
+    if common_db:
+        common_db.set_record(new_seq_ident, fa_filename)
+
+
 def fix_by_parts(step_data, analyse_step, common_db, omit_offset=10):
     project = analyse_step.project
     step = SequencesStep(project, step_data, remove_data=True)
@@ -20,10 +35,7 @@ def fix_by_parts(step_data, analyse_step, common_db, omit_offset=10):
 
         if (not_offset := (offset <= omit_offset or (l_seq - offset) <= omit_offset)) and \
            (not_parts := all(o == 'P' for o in orientation)):
-            # copy from annotation_step seq_ident
-            an_filename = annotation_step.get_sequence_filename(seq_ident)
-            shutil.copy(an_filename, step.directory)
-            step.add_sequence_file(os.path.basename(an_filename))
+            _copy_from_origin(step, annotation_step, seq_ident)
             continue
 
         seq = new_seq = annotation_step.get_sequence_record(seq_ident)
@@ -61,12 +73,38 @@ def fix_by_parts(step_data, analyse_step, common_db, omit_offset=10):
             new_seq = new_seq[offset:] + new_seq[0:offset]
 
         # Store file
-        fa_filename = step.step_file(f'{new_seq_ident}.fa')
-        write_fasta(fa_filename, [(new_seq_ident, str(new_seq.seq))])
-        step.add_sequence_file(os.path.basename(fa_filename))
-        # ToDo: force stavljanja u common_db. Brisati u common_db_annot
-        if common_db:
-            common_db.set_record(new_seq_ident, fa_filename)
+        _store_fasta(step, new_seq_ident, new_seq, common_db)
+
+    #
+    step.save()
+    return step
+
+
+def fix_by_trnh_gug(step_data, analyse_step, common_db, omit_offset=10):
+    project = analyse_step.project
+    step = SequencesStep(project, step_data, remove_data=True)
+    analyse_step.propagate_step_name_prefix(step)
+    annotation_step = project.find_previous_step_of_type(analyse_step, 'annotations')
+
+    #
+    for row in analyse_step.rows_as_dicts():
+        seq_ident = row['AccesionNumber']
+        l_seq = row['Length']
+        offset = row['trnH-GUG']
+
+        if offset <= omit_offset or (l_seq - offset) <= omit_offset:
+            _copy_from_origin(step, annotation_step, seq_ident)
+            continue
+
+        seq = new_seq = annotation_step.get_sequence_record(seq_ident)
+        new_seq_ident = step.seq_ident_of_our_change(seq_ident, 't')
+
+        if common_db and (f := common_db.get_record(new_seq_ident, step.directory, info=True)):
+            step.add_sequence_file(os.path.basename(f))
+            continue
+
+        new_seq = new_seq[offset:] + new_seq[0:offset]
+        _store_fasta(step, new_seq_ident, new_seq, common_db)
 
     #
     step.save()

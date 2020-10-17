@@ -25,7 +25,7 @@ class ChloroplastFixByAnalyse(CreateStepFromStepCommand):
     def set_arguments(parser):
         CreateStepFromStepCommand.set_arguments(parser)
         parser.add_argument('-o', '--omit-offset', default=10, type=int,
-                            help='Do not position LSC if offset is less than given value.')
+                            help='Do not rotate genome if offset is less than given value.')
 
     def step_base_name(self):
         n = super().step_base_name()
@@ -36,6 +36,20 @@ class ChloroplastFixByAnalyse(CreateStepFromStepCommand):
         return fix_by_parts(
             step_data, self._input_step(no_data_check=True), self.get_common_db_object(),
             omit_offset=self.args.omit_offset)
+
+
+class ChloroplastFixByTrnHGUG(ChloroplastFixByAnalyse):
+    _COMMAND = 'fix_by_analyse_trnh_gug'
+    _HELP = "Fix chloroplast genome offset by done analyse (vie position of gene trnH-GUG. Output is a sequences step."
+    _STEP_BASE_NAME = 'FixByTrnH-GUG'
+
+    def run(self, step_data):
+        from .fix_by_analyse import fix_by_trnh_gug
+        return fix_by_trnh_gug(
+            step_data, self._input_step(no_data_check=True), self.get_common_db_object(),
+            omit_offset=self.args.omit_offset)
+
+
 
 # Test: not usable.
 # class AnalyseNs(CreateStepFromStepCommand):

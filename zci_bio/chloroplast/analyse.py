@@ -118,7 +118,7 @@ def analyse_genomes(step_data, annotations_step):
         ('ira_genes', 'IRA genes', 'int'),
         ('irb_genes', 'IRB genes', 'int'),
         ('offset', 'Offset', 'int'),
-        ('trnH_GUG', 'trnH_GUG', 'int'),
+        ('trnH_GUG', 'trnH-GUG', 'int'),
         ('part_orientation', 'Orientation', 'str'),
     ]
     step.set_table_data(
