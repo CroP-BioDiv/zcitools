@@ -4,7 +4,7 @@ from common_utils.exceptions import ZCItoolsValueError
 from common_utils.file_utils import read_fasta_identifiers, write_lines_in_file
 from common_utils.misc import sets_equal
 from common_utils.terminal_layout import TableByColumns
-from ..utils.import_methods import import_bio_seq_io, import_bio_align_io, import_bio_alphabet
+from ..utils.import_methods import import_bio_seq_io, import_bio_align_io
 
 
 class AlignmentStep(Step):
@@ -94,27 +94,25 @@ Data is stored:
 
     def get_phylip_file(self):
         f = self.step_file('alignment.phy')
-        if os.path.isfile(f):
-            return f
-        assert False, 'ToDo: fa -> phy'
-        # ToDo: when other formats are in, change this
+        if not os.path.isfile(f):
+            fa_f = self.step_file('alignment.fa')
+            AlignIO = import_bio_align_io()
+            AlignIO.convert(fa_f, 'fasta', f, 'phylip')
+        return f
 
     def get_nexus_file(self):
         f = self.step_file('alignment.nex')
         if os.path.isfile(f):
             return f
-        p_f = self.get_phylip_file()
-        if p_f:
-            AlignIO = import_bio_align_io()
-            Alphabet = import_bio_alphabet()
-            AlignIO.convert(p_f, 'phylip', f, 'nexus', alphabet=Alphabet.generic_dna)
+        if p_f := self.get_phylip_file():
+
+            import_bio_align_io().convert(p_f, 'phylip', f, 'nexus', molecule_type='DNA')
             return f
 
     # Partitions (used for phylogeny analysis)
     def iterate_partitions(self):
         for seq_ident in self._sequences:
-            p = self.get_partitions(seq_ident)
-            if p:
+            if p := self.get_partitions(seq_ident):
                 yield seq_ident, p
 
     def get_partitions(self, seq_ident):

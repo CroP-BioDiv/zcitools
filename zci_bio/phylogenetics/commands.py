@@ -11,7 +11,7 @@ class RAxML(CreateStepFromStepCommand):
 
     @staticmethod
     def set_arguments(parser):
-        parser.add_argument('step', help='Input sequences step')
+        CreateStepFromStepCommand.set_arguments(parser)
         parser.add_argument('-p', '--no-partitions', action='store_true', help='Do not set partitions')
         parser.add_argument('-r', '--run', action='store_true', help='Run RAxML locale')
 
@@ -33,7 +33,7 @@ class MrBayes(CreateStepFromStepCommand):
 
     @staticmethod
     def set_arguments(parser):
-        parser.add_argument('step', help='Input sequences step')
+        CreateStepFromStepCommand.set_arguments(parser)
         parser.add_argument('-r', '--run', action='store_true', help='Run MrBayes locale')
         parser.add_argument('--ngen', default=10000000, type=int, help='ngen parameter')
         parser.add_argument('--burnin', default=2500, type=int, help='burnin parameter')

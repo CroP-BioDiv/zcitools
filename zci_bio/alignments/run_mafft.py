@@ -36,11 +36,11 @@ def _find_exe(default_exe, env_var):
 
 
 def _alignment_file(f):
-    return os.path.join(os.path.dirname(f), 'alignment.fa')
+    return os.path.join(os.path.dirname(f), 'alignment.phy')
 
 
 def _run_single(mafft_exe, filename, output_file, threads):
-    cmd = f"{mafft_exe} --maxiterate 10 --thread {threads} {filename} > {output_file}"
+    cmd = f"{mafft_exe} --maxiterate 10 --phylipout --thread {threads} {filename} > {output_file}"
     print(f"Command: {cmd}")
     os.system(cmd)
 

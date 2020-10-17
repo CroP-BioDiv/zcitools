@@ -24,12 +24,6 @@ def import_bio_align_io():
 
 
 @import_method(_missing_bio)
-def import_bio_alphabet():
-    from Bio import Alphabet
-    return Alphabet
-
-
-@import_method(_missing_bio)
 def import_bio_entrez():
     from Bio import Entrez
     # Set email from settings file

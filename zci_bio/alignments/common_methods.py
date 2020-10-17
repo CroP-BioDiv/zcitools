@@ -109,6 +109,7 @@ def create_alignment_data(step_data, annotations_step, alignments, whole_partiti
     write_yaml(seq_files, files_to_zip[-1])
 
     # Stores description.yml
+    annotations_step.propagate_step_name_prefix(base_step)
     base_step.save(completed=run)
 
     if run:
