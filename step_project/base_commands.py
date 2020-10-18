@@ -113,11 +113,11 @@ class CreateStepFromStepCommand(CreateStepCommand):
         step = self._input_step(no_data_check=True)
         name_prefix = step.get_step_name_prefix()
         name = super().step_base_name()
-        if name_prefix:
-            name = f'{name_prefix}_{name}'
         if self.args.append_input_step_name:
             if sn := step.get_base_step_name():
-                name = f'{name}_{sn}'
+                name = f'{sn}_{name}'  # Clearer naming with prefix, than sufix
+        if name_prefix:
+            name = f'{name_prefix}_{name}'
         return name
 
     @staticmethod

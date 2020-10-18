@@ -92,7 +92,7 @@ def fix_by_trnh_gug(step_data, analyse_step, common_db, omit_offset=10):
         l_seq = row['Length']
         offset = row['trnH-GUG']
 
-        if offset <= omit_offset or (l_seq - offset) <= omit_offset:
+        if not offset or offset <= omit_offset or (l_seq - offset) <= omit_offset:
             _copy_from_origin(step, annotation_step, seq_ident)
             continue
 

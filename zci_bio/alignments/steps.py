@@ -105,7 +105,6 @@ Data is stored:
         if os.path.isfile(f):
             return f
         if p_f := self.get_phylip_file():
-
             import_bio_align_io().convert(p_f, 'phylip', f, 'nexus', molecule_type='DNA')
             return f
 

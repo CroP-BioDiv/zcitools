@@ -177,7 +177,7 @@ def fetch_chloroplast_list(project, step_data, args):
     step = TableStep(project, step_data, remove_data=True)
     max_taxid = None
     if args.family:
-        step.set_step_name_prefix(args.family)
+        # step.set_step_name_prefix(args.family)  # No need for this
         max_taxid = NCBITaxonomy().name_2_taxid(args.family)
 
     if args.csv_filename and os.path.isfile(args.csv_filename):
