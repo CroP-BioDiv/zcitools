@@ -34,7 +34,7 @@ def fix_by_parts(step_data, analyse_step, common_db, omit_offset=10):
         orientation = row['Orientation']
 
         if (not_offset := (offset <= omit_offset or (l_seq - offset) <= omit_offset)) and \
-           (not_parts := all(o == 'P' for o in orientation)):
+           (not orientation):
             _copy_from_origin(step, annotation_step, seq_ident)
             continue
 
@@ -45,7 +45,7 @@ def fix_by_parts(step_data, analyse_step, common_db, omit_offset=10):
             step.add_sequence_file(os.path.basename(f))
             continue
 
-        if not not_parts:  # Orientate parts
+        if orientation:  # Orientate parts
             if row['IRS took']:
                 ir_l = row['IR']
                 ira_end, irb_start = tuple(map(int, row['SSC ends'].split('-')))
@@ -55,11 +55,11 @@ def fix_by_parts(step_data, analyse_step, common_db, omit_offset=10):
                 partition = find_chloroplast_partition(seq)
 
             parts = partition.extract(seq)  # dict name -> Seq object
-            if orientation[0] == 'N':  # LSC
+            if 'lsc' in orientation:  # LSC
                 parts['lsc'] = parts['lsc'].reverse_complement()
-            if orientation[1] == 'N':  # IRs
+            if 'ira' in orientation:  # IRs
                 parts['ssc'] = parts['ssc'].reverse_complement()
-            if orientation[2] == 'N':  # SSC
+            if 'ssc' in orientation:  # SSC
                 print(f'  REVERT IRs: WHAT TO DO {seq_ident}?')
                 continue
 

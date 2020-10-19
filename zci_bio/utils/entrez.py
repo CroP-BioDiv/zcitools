@@ -25,7 +25,7 @@ class Entrez:
         self.last_call = datetime.datetime.now()
 
     def _read(self, handle):
-        records = self.entrez.read(handle)
+        records = self.entrez.read(handle) if handle else None
         handle.close()
         return records
 
@@ -46,6 +46,15 @@ class Entrez:
         return self._read(self.entrez.esummary(**kwargs))
 
     #
-    def search_summary(self, db, **kwargs):
-        records = self.esearch(db=db, usehistory='y', retmax=1, **kwargs)  # retmax=1: to have less network traffic
-        return self.esummary(db=db, query_key=records['QueryKey'], WebEnv=records['WebEnv'])
+    def search_summary(self, db, retmax=None, **kwargs):
+        search = self.esearch(db=db, usehistory='y', retmax=1, **kwargs)  # retmax=1: to have less network traffic
+        if int(search['Count']):
+            if retmax:
+                return self.esummary(db=db, query_key=search['QueryKey'], WebEnv=search['WebEnv'], retmax=retmax)
+            return self.esummary(db=db, query_key=search['QueryKey'], WebEnv=search['WebEnv'])
+
+    def search_count(self, db, info=True, **kwargs):
+        if info:
+            print(f'Entrez search count ({db}): {", ".join(f"{k}={v}" for k, v in kwargs.items())}')
+        search = self.esearch(db=db, usehistory='y', retmax=1, **kwargs)  # retmax=1: to have less network traffic
+        return int(search['Count'])

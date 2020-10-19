@@ -1,12 +1,15 @@
 import os.path
+from datetime import datetime
 import multiprocessing
 from concurrent.futures import ThreadPoolExecutor
 from step_project.common.table.steps import TableStep
 from common_utils.file_utils import ensure_directory, write_fasta
+from common_utils.properties_db import PropertiesDB
 from .utils import find_chloroplast_partition, create_chloroplast_partition
 from ..utils.features import Feature
 from ..utils.mummer import MummerDelta
 from ..utils.ncbi_taxonomy import ncbi_taxonomy
+from ..utils.entrez import Entrez
 
 
 def _run_align_cmd(seq_fasta, qry_fasta, out_prefix):
@@ -33,6 +36,7 @@ def analyse_genomes(step_data, annotations_step):
     step = TableStep(project, step_data, remove_data=True)
     annotations_step.propagate_step_name_prefix(step)
 
+    properties_db = PropertiesDB()
     #
     table_step = project.find_previous_step_of_type(annotations_step, 'table')
     ncbi_2_taxid = table_step.mapping_between_columns('ncbi_ident', 'tax_id')
@@ -89,7 +93,8 @@ def analyse_genomes(step_data, annotations_step):
 
             # Part orientation
             orient = chloroplast_parts_orientation(d['_seq'], parts)
-            d['part_orientation'] = ''.join('P' if orient[p] else 'N' for p in ('lsc', 'ira', 'ssc'))
+            ppp = [p for p in ('lsc', 'ira', 'ssc') if not orient[p]]
+            d['part_orientation'] = ','.join(ppp) if ppp else None
             if any(not v for v in orient.values()):
                 wrong_oriented_parts.append(seq_ident)
 
@@ -99,12 +104,18 @@ def analyse_genomes(step_data, annotations_step):
                            'offset', 'part_orientation'):
                 d[x] = None
 
+    # Extract data from NCBI GenBank files (comments)
+    sequence_step = project.find_previous_step_of_type(annotations_step, 'sequences')
+    _extract_ncbi_comments(data, sequence_step, properties_db)
+
     # Extract data, and set table properties
     columns = [
         # tuples (dict's attribute, column name, column type)
         ('seq_ident', 'AccesionNumber', 'seq_ident'),
+        ('bio_project', 'BioProject', 'str'),
         ('title', 'Title', 'str'),
         ('created_date', 'Date', 'date'),
+        ('first_date', 'First date', 'date'),
         ('length', 'Length', 'int'),
         ('genes', 'Genes', 'int'),
         ('irs_transfered_from', 'IRS took', 'seq_ident'),
@@ -120,6 +131,12 @@ def analyse_genomes(step_data, annotations_step):
         ('offset', 'Offset', 'int'),
         ('trnH_GUG', 'trnH-GUG', 'int'),
         ('part_orientation', 'Orientation', 'str'),
+        ('artcle_title', 'Article', 'str'),
+        ('journal', 'Journal', 'str'),
+        ('pubmed_id', 'PubMed', 'int'),
+        ('assembly_method', 'Assembly Method', 'str'),
+        ('sequencing_technology', 'Sequencing Technology', 'str'),
+        ('sra_count', 'SRA count', 'int'),
     ]
     step.set_table_data(
         [[d[c] for c, _, _ in columns] for seq_ident, d in sorted(data.items())],
@@ -269,6 +286,56 @@ def chloroplast_parts_orientation(seq_rec, partition):
     return dict(lsc=(lsc_count <= 0),
                 ssc=(ssc_count <= 0),
                 ira=(ira_count >= 0))
+
+
+def _extract_ncbi_comments(data, sequences_step, properties_db):
+    n = dict((x, None) for x in ('artcle_title', 'journal', 'pubmed_id', 'first_date',
+                                 'assembly_method', 'sequencing_technology', 'bio_project', 'sra_count'))
+    for d in data.values():
+        d.update(n)
+    if not sequences_step:
+        return
+
+    prop_key = 'NCBI GenBank data'
+    for seq_ident in sequences_step.all_sequences():
+        if not properties_db or not (vals := properties_db.get_property(seq_ident, prop_key)):
+            vals = dict()
+            seq = sequences_step.get_sequence_record(seq_ident)
+
+            refs = seq.annotations['references']
+            if refs[0].title != 'Direct Submission':
+                vals['artcle_title'] = refs[0].title
+                vals['journal'] = refs[0].journal
+                if refs[0].pubmed_id:
+                    vals['pubmed_id'] = int(refs[0].pubmed_id)
+            if refs[-1].title == 'Direct Submission':
+                # ToDo: re ...
+                vals['first_date'] = datetime.strptime(
+                    refs[-1].journal.split('(', 1)[1].split(')', 1)[0], '%d-%b-%Y').date()
+
+            if (sc := seq.annotations.get('structured_comment')) and \
+               (ad := sc.get('Assembly-Data')):
+                vals['assembly_method'] = ad.get('Assembly Method')
+                vals['sequencing_technology'] = ad.get('Sequencing Technology')
+
+            #
+            prop_sra = 'NCBI SRA count'
+            if not properties_db or not (vals_sra := properties_db.get_property(seq_ident, prop_sra)):
+                vals_sra = dict()
+                for x in seq.dbxrefs:  # format ['BioProject:PRJNA400982', 'BioSample:SAMN07225454'
+                    if x.startswith('BioProject:'):
+                        if bp := x.split(':', 1)[1]:
+                            vals_sra['bio_project'] = bp
+                            sra_count = Entrez().search_count('sra', term=f"{bp}[BioProject]")
+                            vals_sra['sra_count'] = sra_count or None  # None means empty cell :-)
+                if properties_db:
+                    properties_db.set_property(seq_ident, prop_sra, vals_sra)
+
+            vals.update(vals_sra)
+            if properties_db:
+                properties_db.set_property(seq_ident, prop_key, vals)
+
+        data[seq_ident].update(vals)
 
 
 # ---------------------------------------------------------
