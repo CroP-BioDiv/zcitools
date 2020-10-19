@@ -1,5 +1,7 @@
 import os.path
 from datetime import datetime
+import itertools
+from collections import defaultdict
 import multiprocessing
 from concurrent.futures import ThreadPoolExecutor
 from step_project.common.table.steps import TableStep
@@ -48,15 +50,17 @@ def analyse_genomes(step_data, annotations_step):
     data = dict((seq_ident, dict(
             _seq=seq,
             _parts=find_chloroplast_partition(seq),
+            _genes=(_genes := _find_uniq_features(seq, 'gene')),
+            _cds=(_cds := _find_uniq_features(seq, 'CDS')),
             seq_ident=seq_ident,
             length=len(seq),
-            genes=sum(1 for f in seq.features if f.type == 'gene' and f.location),
-            cds=sum(1 for f in seq.features if f.type == 'CDS' and f.location),
+            genes=len(_genes),
+            cds=len(_cds),
             taxid=ncbi_2_taxid[seq_ident],
             title=table_data.get_cell(seq_ident, 'title'),  # ncbi_2_title[seq_ident],
             created_date=table_data.get_cell(seq_ident, 'create_date'),  # ncbi_2_title[seq_ident],
             irs_transfered_from=None,
-            trnH_GUG=_trnH_GUG_start(seq),
+            trnH_GUG=_trnH_GUG_start(_genes),
         )) for seq_ident, seq in annotations_step._iterate_records())
 
     # Find missing IR partitions
@@ -81,8 +85,7 @@ def analyse_genomes(step_data, annotations_step):
             # Number of genes in parts
             seq = d['_seq']
             length = len(seq)
-            part_genes = parts.put_features_in_parts(
-                [Feature(length, feature=f) for f in seq.features if f.type == 'gene' and f.location])
+            part_genes = parts.put_features_in_parts([Feature(length, feature=f) for f in d['_genes']])
             for p in ('lsc', 'ssc', 'ira', 'irb'):
                 d[f'{p}_genes'] = len(part_genes[p])
 
@@ -92,7 +95,7 @@ def analyse_genomes(step_data, annotations_step):
                 with_offset.append(seq_ident)
 
             # Part orientation
-            orient = chloroplast_parts_orientation(d['_seq'], parts)
+            orient = chloroplast_parts_orientation(d['_seq'], parts, d['_genes'])
             ppp = [p for p in ('lsc', 'ira', 'ssc') if not orient[p]]
             d['part_orientation'] = ','.join(ppp) if ppp else None
             if any(not v for v in orient.values()):
@@ -165,8 +168,19 @@ def analyse_genomes(step_data, annotations_step):
     return step
 
 
-def _trnH_GUG_start(seq):
-    features = [f for f in seq.features if f.type == 'gene' and f.qualifiers['gene'][0] == 'trnH-GUG' and f.location]
+def _find_uniq_features(seq, _type):
+    fs = defaultdict(list)
+    for idx, f in enumerate(seq.features):
+        if f.type == _type and f.location:
+            name = f.qualifiers['gene'][0]
+            if not fs[name] or \
+               ((s_f := set(f.location)) and not any(set(x.location).intersection(s_f) for _, x in fs[name])):
+                fs[name].append((idx, f))
+    return [y[1] for y in sorted(itertools.chain(*fs.values()))]
+
+
+def _trnH_GUG_start(genes):
+    features = [f for f in genes if f.qualifiers['gene'][0] == 'trnH-GUG']
     if features:
         return min(f.location.start for f in features)
 
@@ -265,7 +279,7 @@ def _run_align(step, seq_ident, seq_data, close_data, seq_2_result_object, taxid
                 return
 
 
-def chloroplast_parts_orientation(seq_rec, partition):
+def chloroplast_parts_orientation(seq_rec, partition, genes):
     # Check chloroplast sequence part orientation.
     # Default orientation is same as one uses in Fast-Plast. Check:
     #  - source file orientate_plastome_v.2.0.pl
@@ -275,8 +289,7 @@ def chloroplast_parts_orientation(seq_rec, partition):
     #  - https://en.wikipedia.org/wiki/Chloroplast_DNA#/media/File:Plastomap_of_Arabidopsis_thaliana.svg
 
     l_seq = len(seq_rec)
-    in_parts = partition.put_features_in_parts(
-        Feature(l_seq, feature=f) for f in seq_rec.features if f.type == 'gene' and f.location)
+    in_parts = partition.put_features_in_parts(Feature(l_seq, feature=f) for f in genes)
 
     lsc_count = sum(f.feature.strand if any(x in f.name for x in ('rpl', 'rps')) else 0
                     for f in in_parts.get('lsc', []))
