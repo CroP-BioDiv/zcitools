@@ -9,8 +9,8 @@ def find_chloroplast_irs(seq):
                 if f.type == 'repeat_region' and
                 f.qualifiers.get('rpt_type', _ir)[0] == 'inverted']
     if rep_regs:
-        max_len = max(map(len, rep_regs))
-        max_regs = [f for f in rep_regs if len(f) == max_len]
+        max_len = max(map(len, rep_regs)) - 3  # Some tolerance :-)
+        max_regs = [f for f in rep_regs if len(f) >= max_len]
         if len(max_regs) == 2:
             check_l = len(seq) // 4
             ira, irb = max_regs

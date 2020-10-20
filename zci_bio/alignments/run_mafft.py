@@ -39,8 +39,9 @@ def _alignment_file(f):
     return os.path.join(os.path.dirname(f), 'alignment.phy')
 
 
-def _run_single(mafft_exe, filename, output_file, threads):
-    cmd = f"{mafft_exe} --maxiterate 10 --phylipout --thread {threads} {filename} > {output_file}"
+def _run_single(mafft_exe, filename, namelength, output_file, threads):
+    cmd = f"{mafft_exe} --maxiterate 10 --phylipout --namelength {namelength} " + \
+        f"--thread {threads} {filename} > {output_file}"
     print(f"Command: {cmd}")
     os.system(cmd)
 
@@ -61,11 +62,11 @@ def run(locale=True, threads=None):
         with ThreadPoolExecutor(max_workers=threads) as executor:
             for d in short_files:
                 outputs.append(_alignment_file(d['filename']))
-                executor.submit(_run_single, mafft_exe, d['filename'], outputs[-1], 1)
+                executor.submit(_run_single, mafft_exe, d['filename'], d['namelength'], outputs[-1], 1)
 
     for d in long_files:
         outputs.append(_alignment_file(d['filename']))
-        _run_single(mafft_exe, d['filename'], outputs[-1], threads)
+        _run_single(mafft_exe, d['filename'], d['namelength'], outputs[-1], threads)
 
     # Zip files
     if not locale:

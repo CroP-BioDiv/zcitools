@@ -14,7 +14,10 @@ def _add_sequences(al_step, seq_type, sequences, sequence_data):
         if partition:
             al_step.store_partition(seq_ident, partition)
     #
-    return dict(filename=seq_file, short=al_step.is_short(), max_seq_length=max(len(s) for _, s, _ in sequence_data))
+    return dict(filename=seq_file,
+                short=al_step.is_short(),
+                namelength=max(len(i) for i, _, _ in sequence_data),
+                max_seq_length=max(len(s) for _, s, _ in sequence_data))
 
 
 def _lengths_2_features(data):

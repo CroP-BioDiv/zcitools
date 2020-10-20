@@ -57,11 +57,11 @@ def fix_by_parts(step_data, analyse_step, common_db, omit_offset=10):
             parts = partition.extract(seq)  # dict name -> Seq object
             if 'lsc' in orientation:  # LSC
                 parts['lsc'] = parts['lsc'].reverse_complement()
-            if 'ira' in orientation:  # IRs
-                parts['ssc'] = parts['ssc'].reverse_complement()
             if 'ssc' in orientation:  # SSC
-                print(f'  REVERT IRs: WHAT TO DO {seq_ident}?')
-                continue
+                parts['ssc'] = parts['ssc'].reverse_complement()
+            if 'ira' in orientation:  # IRs
+                parts['ira'] = parts['ira'].reverse_complement()
+                parts['irb'] = parts['irb'].reverse_complement()
 
             new_seq = parts['lsc'] + parts['ira'] + parts['ssc'] + parts['irb']
             assert len(seq.seq) == len(new_seq.seq), \

@@ -121,13 +121,13 @@ class Partition:
         for f in features:
             in_ps = [p for p in self._parts if p.intersects(f)]
             l_ps = len(in_ps)
-            assert l_ps
+            assert l_ps, f.name
             if l_ps == 1:
                 ret[in_ps[0].name].append(f)
             elif l_ps == 2:
                 ret[' '.join(p.name for p in in_ps)].append(f)
             else:
-                print(f'  warning: feature {f.name} in more than two parts!')
+                print(f'  warning: feature {f.name} in more than two parts!', [ff.name for ff in in_ps])
                 ret['_more_'].append(f)
         return ret
 
