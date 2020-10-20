@@ -1,17 +1,16 @@
 import os.path
 from datetime import datetime
-import itertools
-from collections import defaultdict
-import multiprocessing
-from concurrent.futures import ThreadPoolExecutor
+# import multiprocessing
+# from concurrent.futures import ThreadPoolExecutor
 from step_project.common.table.steps import TableStep
 from common_utils.file_utils import ensure_directory, write_fasta
 from common_utils.properties_db import PropertiesDB
-from .utils import find_chloroplast_partition, create_chloroplast_partition
+from .utils import find_chloroplast_partition
+from .analyse_step_1 import find_uniq_features, extract_ncbi_comments
+from .analyse_step_2 import evaluate_credibility
+from .analyse_step_3 import run_align_cmd, find_missing_partitions
 from ..utils.features import Feature
-from ..utils.mummer import MummerDelta
 from ..utils.ncbi_taxonomy import ncbi_taxonomy
-from ..utils.entrez import Entrez
 
 
 # ---------------------------------------------------------
@@ -36,8 +35,8 @@ def analyse_genomes(step_data, annotations_step):
     data = dict((seq_ident, dict(
             _seq=seq,
             _parts=find_chloroplast_partition(seq),
-            _genes=(_genes := _find_uniq_features(seq, 'gene')),
-            _cds=(_cds := _find_uniq_features(seq, 'CDS')),
+            _genes=(_genes := find_uniq_features(seq, 'gene')),
+            _cds=(_cds := find_uniq_features(seq, 'CDS')),
             seq_ident=seq_ident,
             length=len(seq),
             genes=len(_genes),
@@ -49,14 +48,13 @@ def analyse_genomes(step_data, annotations_step):
         )) for seq_ident, seq in annotations_step._iterate_records())
 
     # Extract data from NCBI GenBank files (comments)
-    _extract_ncbi_comments(data, sequence_step, properties_db)
+    extract_ncbi_comments(data, sequence_step, properties_db)
 
     #  2. Evaluate credibility of collected data
+    evaluate_credibility(data, annotations_step)
+
     #  3. Find missing or more credible data
-    # Find missing IR partitions
-    ncbi_2_max_taxid = table_step.mapping_between_columns('ncbi_ident', 'max_taxid')
-    taxid_2_ncbi = table_step.mapping_between_columns('tax_id', 'ncbi_ident')
-    found_partitions = find_missing_partitions(step, data, ncbi_2_max_taxid, taxid_2_ncbi)
+    find_missing_partitions(step, data, table_step)
 
     # Set partition data
     cs = ('lsc', 'ssc', 'ira')
@@ -82,11 +80,11 @@ def analyse_genomes(step_data, annotations_step):
                 d[f'{p}_genes'] = len(part_genes[p])
 
             # Offset
-            d['offset'] = _seq_offset(d['length'], parts.get_part_by_name('lsc').real_start)
-            d['trnH_GUG'] = _trnH_GUG_offset(len(seq), d.get('offset', 0), d['_genes'])
+            d['offset'] = _seq_offset(length, parts.get_part_by_name('lsc').real_start)
+            d['trnH_GUG'] = _trnH_GUG_offset(length, d.get('offset', 0), d['_genes'])
 
             # Part orientation
-            orient = chloroplast_parts_orientation(d['_seq'], parts, d['_genes'])
+            orient = chloroplast_parts_orientation(seq, parts, d['_genes'])
             ppp = [p for p in ('lsc', 'ira', 'ssc') if not orient[p]]
             d['part_orientation'] = ','.join(ppp) if ppp else None
 
@@ -151,6 +149,7 @@ def analyse_genomes(step_data, annotations_step):
     return step
 
 
+# Step 3.
 def _seq_offset(seq_length, offset):
     o2 = offset - seq_length
     return offset if offset <= abs(o2) else o2
@@ -161,111 +160,6 @@ def _trnH_GUG_offset(seq_length, lsc_start, genes):
     if features:
         rel_to_lsc = [((f.location.start - lsc_start) % seq_length) for f in features]
         return min(_seq_offset(seq_length, d) for d in rel_to_lsc)
-
-
-def _find_uniq_features(seq, _type):
-    fs = defaultdict(list)
-    for idx, f in enumerate(seq.features):
-        if f.type == _type and f.location:
-            name = f.qualifiers['gene'][0]
-            if not fs[name] or \
-               ((s_f := set(f.location)) and not any(set(x.location).intersection(s_f) for _, x in fs[name])):
-                fs[name].append((idx, f))
-    return [y[1] for y in sorted(itertools.chain(*fs.values()))]
-
-
-def find_missing_partitions(step, data, ncbi_2_max_taxid, taxid_2_ncbi):
-    with_irs = set(d['taxid'] for d in data.values() if d['_parts'])
-    if len(with_irs) == len(data):  # All in
-        return
-    if not with_irs:
-        print('Warning: all genomes miss IR parts!!!')
-        return
-
-    # Run alignment of related species IR ends onto sequences without IRs
-    ncbi_tax = ncbi_taxonomy()
-    seq_2_result_object = dict()  # dict seq_ident -> tuple (ira interval, irb interval, matche seq_ident)
-    with ThreadPoolExecutor(max_workers=multiprocessing.cpu_count()) as executor:
-        for seq_ident, seq_data in data.items():
-            if seq_data['_parts']:
-                continue
-
-            close_taxids = ncbi_tax.find_close_taxids(seq_data['taxid'], ncbi_2_max_taxid[seq_ident], with_irs)
-            if not close_taxids:
-                print(f"Warning: sequence {seq_ident} doesn't have close relative with IR partition!")
-                continue
-
-            # _run_align(step, seq_ident, seq_data, [data[taxid_2_ncbi[t]] for t in close_taxids],
-            #            seq_2_result_object, taxid_2_ncbi)
-            executor.submit(_run_align, step, seq_ident, seq_data, [data[taxid_2_ncbi[t]] for t in close_taxids],
-                            seq_2_result_object, taxid_2_ncbi)
-
-    #
-    for seq_ident, (ira, irb, transfer_from) in seq_2_result_object.items():
-        d = data[seq_ident]
-        d['_parts'] = create_chloroplast_partition(len(d['_seq']), ira, irb, in_interval=True)
-        d['irs_transfered_from'] = transfer_from
-
-    return seq_2_result_object
-
-
-def _run_align(step, seq_ident, seq_data, close_data, seq_2_result_object, taxid_2_ncbi, match_length=100):
-    # Store fasta
-    f_dir = step.step_file('find_irs', seq_ident)
-    ensure_directory(f_dir)
-    seq_fasta = os.path.join(f_dir, f"{seq_ident}.fa")
-    write_fasta(seq_fasta, [(seq_ident, seq_data['_seq'].seq)])
-
-    all_aligns = []
-    for d in close_data:
-        ira = d['_parts'].get_part_by_name('ira')
-        rec = ira.extract(d['_seq'])
-        qry_fasta = os.path.join(f_dir, f"qry_{d['seq_ident']}.fa")
-        write_fasta(qry_fasta, [('end1', rec.seq[:match_length]), ('end2', rec.seq[-match_length:])])
-        align = _run_align_cmd(seq_fasta, qry_fasta, f"res_{d['seq_ident']}")
-        if 2 == len(align.aligns(seq_ident, 'end1')) == len(align.aligns(seq_ident, 'end2')):  # All sides
-            ira_1, irb_2 = align.aligns(seq_ident, 'end1')
-            ira_2, irb_1 = align.aligns(seq_ident, 'end2')
-            seq_2_result_object[seq_ident] = \
-                ((ira_1.sequence_interval[0], ira_2.sequence_interval[1]),
-                 (irb_1.sequence_interval[0], irb_2.sequence_interval[1]),
-                 d['seq_ident'])
-            break
-        all_aligns.append(align)
-    else:
-        # No alignment matched all ends.
-        # Try partial (2+1)
-        for align in all_aligns:
-            if len(align.aligns(seq_ident, 'end1')) == 2 and len(align.aligns(seq_ident, 'end2')) == 1:
-                ira_1, irb_2 = align.aligns(seq_ident, 'end1')
-                ir = align.aligns(seq_ident, 'end2')[0]
-                if ir.positive:  # In positive direction (IRA matched)
-                    x = ir.sequence_interval[1]
-                    y = irb_2.sequence_interval[1] - (x - ira_1.sequence_interval[0])
-                else:
-                    y = ir.sequence_interval[0]
-                    x = ira_1.sequence_interval[0] + (irb_2.sequence_interval[1] - y)
-                seq_2_result_object[seq_ident] = \
-                    ((ira_1.sequence_interval[0], x),
-                     (y, irb_2.sequence_interval[1]),
-                     d['seq_ident'])
-                return
-        # Try partial (1+2)
-        for align in all_aligns:
-            if len(align.aligns(seq_ident, 'end1')) == 1 and len(align.aligns(seq_ident, 'end2')) == 2:
-                ir = align.aligns(seq_ident, 'end1')[0]
-                ira_2, irb_1 = align.aligns(seq_ident, 'end2')
-                if ir.positive:  # In positive direction (IRA matched)
-                    x = ir.sequence_interval[0]
-                    y = irb_1.sequence_interval[0] + (ira_2.sequence_interval[1] - x)
-                else:
-                    y = ir.sequence_interval[1]
-                    x = ira_2.sequence_interval[1] - (y - irb_1.sequence_interval[0])
-                seq_2_result_object[seq_ident] = \
-                    ((x, ira_2.sequence_interval[1]),
-                     (irb_1.sequence_interval[0], y),
-                     d['seq_ident'])
-                return
 
 
 def chloroplast_parts_orientation(seq_rec, partition, genes):
@@ -288,59 +182,6 @@ def chloroplast_parts_orientation(seq_rec, partition, genes):
     return dict(lsc=(lsc_count <= 0),
                 ssc=(ssc_count <= 0),
                 ira=(ira_count >= 0))
-
-
-def _extract_ncbi_comments(data, sequences_step, properties_db):
-    # Notes:
-    #  - sequences_step contains GenBank files collected from NCBI which contains genome info
-    #  - properties_db is used to cache results dince they are static
-    n = dict((x, None) for x in ('artcle_title', 'journal', 'pubmed_id', 'first_date',
-                                 'assembly_method', 'sequencing_technology', 'bio_project', 'sra_count'))
-    for d in data.values():
-        d.update(n)
-    if not sequences_step:
-        return
-
-    prop_key = 'NCBI GenBank data'
-    for seq_ident in sequences_step.all_sequences():
-        if not properties_db or not (vals := properties_db.get_property(seq_ident, prop_key)):
-            vals = dict()
-            seq = sequences_step.get_sequence_record(seq_ident)
-
-            refs = seq.annotations['references']
-            if refs[0].title != 'Direct Submission':
-                vals['artcle_title'] = refs[0].title
-                vals['journal'] = refs[0].journal
-                if refs[0].pubmed_id:
-                    vals['pubmed_id'] = int(refs[0].pubmed_id)
-            if refs[-1].title == 'Direct Submission':
-                # ToDo: re ...
-                vals['first_date'] = datetime.strptime(
-                    refs[-1].journal.split('(', 1)[1].split(')', 1)[0], '%d-%b-%Y').date()
-
-            if (sc := seq.annotations.get('structured_comment')) and \
-               (ad := sc.get('Assembly-Data')):
-                vals['assembly_method'] = ad.get('Assembly Method')
-                vals['sequencing_technology'] = ad.get('Sequencing Technology')
-
-            #
-            prop_sra = 'NCBI SRA count'
-            if not properties_db or not (vals_sra := properties_db.get_property(seq_ident, prop_sra)):
-                vals_sra = dict()
-                for x in seq.dbxrefs:  # format ['BioProject:PRJNA400982', 'BioSample:SAMN07225454'
-                    if x.startswith('BioProject:'):
-                        if bp := x.split(':', 1)[1]:
-                            vals_sra['bio_project'] = bp
-                            sra_count = Entrez().search_count('sra', term=f"{bp}[BioProject]")
-                            vals_sra['sra_count'] = sra_count or None  # None means empty cell :-)
-                if properties_db:
-                    properties_db.set_property(seq_ident, prop_sra, vals_sra)
-
-            vals.update(vals_sra)
-            if properties_db:
-                properties_db.set_property(seq_ident, prop_key, vals)
-
-        data[seq_ident].update(vals)
 
 
 # ---------------------------------------------------------
@@ -431,25 +272,5 @@ def _run_manage_ns(seq_ident, sequences, ns, f_dir, close_seq_idents, match_side
     print(len(parts), len(ns))
     # Extract query data
     write_fasta(query_filename, [(f"{f.real_start}_{f.real_end}", f.extract(seq).seq) for f in parts])
-    align = _run_align_cmd(close_filename, query_filename, 'result')
+    align = run_align_cmd(close_filename, query_filename, 'result')
     # ToDo: ...
-
-
-# ---------------------------------------------------------
-# Common
-def _run_align_cmd(seq_fasta, qry_fasta, out_prefix):
-    # Blast version
-    # cmd = f"blastn -subject {seq_fasta} -query {qry_fasta} " + \
-    #     f"-perc_identity 40 -num_alignments 2 -max_hsps 2 -outfmt 5 > {out_prefix}.xml"
-    # ...
-
-    # Mummer version
-    out_prefix = os.path.join(os.path.dirname(seq_fasta), out_prefix)
-    cmd = f"nucmer -p {out_prefix} {seq_fasta} {qry_fasta}"
-    print(f"Command: {cmd}")
-    os.system(cmd)
-
-    # Read output file
-    return MummerDelta(f'{out_prefix}.delta')
-
-
