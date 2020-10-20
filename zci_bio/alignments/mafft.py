@@ -1,9 +1,6 @@
 import os.path
 from . import run_mafft
-from .common_methods import create_alignment_data
-# from common_utils.misc import sets_equal
-# from common_utils.file_utils import unzip_file, list_zip_files, read_yaml
-# from common_utils.exceptions import ZCItoolsValueError
+from .common_methods import create_alignment_data, finish_alignment_data
 
 _instructions = """
 Steps:
@@ -27,3 +24,7 @@ Notes:
 def create_mafft_data(step_data, annotations_step, alignments, whole_partition, run):
     return create_alignment_data(
         step_data, annotations_step, alignments, whole_partition, run, run_mafft, _instructions)
+
+
+def finish_mafft_data(step_obj):
+    finish_alignment_data(step_obj, None)

@@ -1,6 +1,10 @@
+import os.path
 from .steps import AlignmentStep, AlignmentsStep
 from ..utils.import_methods import import_bio_seq_io
-from common_utils.file_utils import write_fasta, write_yaml, run_module_script, set_run_instructions
+from common_utils.file_utils import write_fasta, write_yaml, run_module_script, set_run_instructions, \
+    unzip_file, list_zip_files, read_yaml
+from common_utils.misc import sets_equal
+from common_utils.exceptions import ZCItoolsValueError
 
 
 def _add_sequences(al_step, seq_type, sequences, sequence_data):
@@ -121,3 +125,19 @@ def create_alignment_data(step_data, annotations_step, alignments, whole_partiti
         set_run_instructions(run_module, base_step, files_to_zip, _instructions)
     #
     return base_step
+
+
+def finish_alignment_data(step_obj, files):
+    output_f = step_obj.step_file('output.zip')
+    if not os.path.isfile(output_f):
+        raise ZCItoolsValueError('No calculation output file output.zip!')
+
+    # ToDo: possible problems with file separator
+    if files:
+        sets_equal(files, set(list_zip_files(output_f)), 'file')  # raise exception if data is not good
+
+    # Unzip data
+    unzip_file(output_f, step_obj.directory)
+
+    step_obj._check_data()
+    step_obj.save(create=False)

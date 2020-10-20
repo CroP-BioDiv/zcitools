@@ -14,37 +14,23 @@ from ..utils.ncbi_taxonomy import ncbi_taxonomy
 from ..utils.entrez import Entrez
 
 
-def _run_align_cmd(seq_fasta, qry_fasta, out_prefix):
-    # Blast version
-    # cmd = f"blastn -subject {seq_fasta} -query {qry_fasta} " + \
-    #     f"-perc_identity 40 -num_alignments 2 -max_hsps 2 -outfmt 5 > {out_prefix}.xml"
-    # ...
-
-    # Mummer version
-    out_prefix = os.path.join(os.path.dirname(seq_fasta), out_prefix)
-    cmd = f"nucmer -p {out_prefix} {seq_fasta} {qry_fasta}"
-    print(f"Command: {cmd}")
-    os.system(cmd)
-
-    # Read output file
-    return MummerDelta(f'{out_prefix}.delta')
-
-
 # ---------------------------------------------------------
 # Analyse genomes
+# Steps:
+#  1. Collect data from steps (input annotations, previous table)
+#  2. Evaluate credibility of collected data
+#  3. Find missing or more credible data
+#  4. Set table from collected and evaluated data
 # ---------------------------------------------------------
 def analyse_genomes(step_data, annotations_step):
     project = annotations_step.project
     step = TableStep(project, step_data, remove_data=True)
     annotations_step.propagate_step_name_prefix(step)
-
     properties_db = PropertiesDB()
-    #
+
+    # 1. Collect data from steps
     table_step = project.find_previous_step_of_type(annotations_step, 'table')
-    ncbi_2_taxid = table_step.mapping_between_columns('ncbi_ident', 'tax_id')
-    taxid_2_ncbi = dict((v, k) for k, v in ncbi_2_taxid.items())
-    # ncbi_2_title = table_step.mapping_between_columns('ncbi_ident', 'title')
-    ncbi_2_max_taxid = table_step.mapping_between_columns('ncbi_ident', 'max_taxid')
+    sequence_step = project.find_previous_step_of_type(annotations_step, 'sequences')
     table_data = table_step.index_on_table('ncbi_ident')
 
     data = dict((seq_ident, dict(
@@ -56,21 +42,27 @@ def analyse_genomes(step_data, annotations_step):
             length=len(seq),
             genes=len(_genes),
             cds=len(_cds),
-            taxid=ncbi_2_taxid[seq_ident],
-            title=table_data.get_cell(seq_ident, 'title'),  # ncbi_2_title[seq_ident],
-            created_date=table_data.get_cell(seq_ident, 'create_date'),  # ncbi_2_title[seq_ident],
+            taxid=table_data.get_cell(seq_ident, 'tax_id'),
+            title=table_data.get_cell(seq_ident, 'title'),
+            created_date=table_data.get_cell(seq_ident, 'create_date'),
             irs_transfered_from=None,
-            trnH_GUG=_trnH_GUG_start(_genes),
         )) for seq_ident, seq in annotations_step._iterate_records())
 
+    # Extract data from NCBI GenBank files (comments)
+    _extract_ncbi_comments(data, sequence_step, properties_db)
+
+    #  2. Evaluate credibility of collected data
+    #  3. Find missing or more credible data
     # Find missing IR partitions
+    ncbi_2_max_taxid = table_step.mapping_between_columns('ncbi_ident', 'max_taxid')
+    taxid_2_ncbi = table_step.mapping_between_columns('tax_id', 'ncbi_ident')
     found_partitions = find_missing_partitions(step, data, ncbi_2_max_taxid, taxid_2_ncbi)
 
     # Set partition data
     cs = ('lsc', 'ssc', 'ira')
-    without_parts = []
-    wrong_oriented_parts = []
-    with_offset = []
+    no_parts_d = dict(
+        (x, None) for x in cs + ('ssc_ends', 'lsc_genes', 'ssc_genes', 'ira_genes', 'irb_genes',
+                                 'offset', 'part_orientation', 'trnH_GUG'))
 
     for seq_ident, d in data.items():
         if parts := d['_parts']:
@@ -90,28 +82,18 @@ def analyse_genomes(step_data, annotations_step):
                 d[f'{p}_genes'] = len(part_genes[p])
 
             # Offset
-            d['offset'] = parts.get_part_by_name('lsc').real_start
-            if d['offset']:
-                with_offset.append(seq_ident)
+            d['offset'] = _seq_offset(d['length'], parts.get_part_by_name('lsc').real_start)
+            d['trnH_GUG'] = _trnH_GUG_offset(len(seq), d.get('offset', 0), d['_genes'])
 
             # Part orientation
             orient = chloroplast_parts_orientation(d['_seq'], parts, d['_genes'])
             ppp = [p for p in ('lsc', 'ira', 'ssc') if not orient[p]]
             d['part_orientation'] = ','.join(ppp) if ppp else None
-            if any(not v for v in orient.values()):
-                wrong_oriented_parts.append(seq_ident)
 
         else:
-            without_parts.append(seq_ident)
-            for x in cs + ('ssc_ends', 'lsc_genes', 'ssc_genes', 'ira_genes', 'irb_genes',
-                           'offset', 'part_orientation'):
-                d[x] = None
+            d.update(no_parts_d)
 
-    # Extract data from NCBI GenBank files (comments)
-    sequence_step = project.find_previous_step_of_type(annotations_step, 'sequences')
-    _extract_ncbi_comments(data, sequence_step, properties_db)
-
-    # Extract data, and set table properties
+    #  4. Set table from collected and evaluated data
     columns = [
         # tuples (dict's attribute, column name, column type)
         ('seq_ident', 'AccesionNumber', 'seq_ident'),
@@ -149,15 +131,16 @@ def analyse_genomes(step_data, annotations_step):
     #
     errors = []
     l_start = '\n - '
-    if found_partitions:
-        x = l_start.join(sorted(f'{s} ({m})' for s, (_, _, m) in found_partitions.items()))
-        errors.append(f'Found partitions for sequences:{l_start}{x}')
-    if without_parts:
+    if f_ps := [(s, d['irs_transfered_from']) for s, d in data.items() if d['irs_transfered_from']]:
+        errors.append(f'Found partitions for sequences:{l_start}{l_start.join(sorted(f"{s} ({m})" for s, m in f_ps))}')
+    if without_parts := [seq_ident for seq_ident, d in data.items() if not d['_parts']]:
         errors.append(f"No partitions for sequences:{l_start}{l_start.join(sorted(without_parts))}")
-    if wrong_oriented_parts:
+    if wrong_oriented_parts := [seq_ident for seq_ident, d in data.items() if d['part_orientation']]:
         errors.append(f"Partitions with wrong orientation in sequences:{l_start}{l_start.join(sorted(wrong_oriented_parts))}")
-    if with_offset:
-        errors.append(f"Sequneces with offset:{l_start}{l_start.join(sorted(with_offset))}")
+    if with_offset := [seq_ident for seq_ident, d in data.items() if abs(d['offset']) > 50]:
+        errors.append(f"Sequences with offset:{l_start}{l_start.join(sorted(with_offset))}")
+    if with_trnH_offset := [seq_ident for seq_ident, d in data.items() if abs(d['trnH_GUG']) > 50]:
+        errors.append(f"Sequneces with trnH-GUG offset:{l_start}{l_start.join(sorted(with_trnH_offset))}")
     if errors:
         with open((r_file := step.step_file('README.txt')), 'w') as _out:
             _out.write('\n'.join(errors))
@@ -166,6 +149,18 @@ def analyse_genomes(step_data, annotations_step):
     step.to_excel('analyse.xls')  # Test
 
     return step
+
+
+def _seq_offset(seq_length, offset):
+    o2 = offset - seq_length
+    return offset if offset <= abs(o2) else o2
+
+
+def _trnH_GUG_offset(seq_length, lsc_start, genes):
+    features = [f for f in genes if f.qualifiers['gene'][0] == 'trnH-GUG']
+    if features:
+        rel_to_lsc = [((f.location.start - lsc_start) % seq_length) for f in features]
+        return min(_seq_offset(seq_length, d) for d in rel_to_lsc)
 
 
 def _find_uniq_features(seq, _type):
@@ -177,12 +172,6 @@ def _find_uniq_features(seq, _type):
                ((s_f := set(f.location)) and not any(set(x.location).intersection(s_f) for _, x in fs[name])):
                 fs[name].append((idx, f))
     return [y[1] for y in sorted(itertools.chain(*fs.values()))]
-
-
-def _trnH_GUG_start(genes):
-    features = [f for f in genes if f.qualifiers['gene'][0] == 'trnH-GUG']
-    if features:
-        return min(f.location.start for f in features)
 
 
 def find_missing_partitions(step, data, ncbi_2_max_taxid, taxid_2_ncbi):
@@ -302,6 +291,9 @@ def chloroplast_parts_orientation(seq_rec, partition, genes):
 
 
 def _extract_ncbi_comments(data, sequences_step, properties_db):
+    # Notes:
+    #  - sequences_step contains GenBank files collected from NCBI which contains genome info
+    #  - properties_db is used to cache results dince they are static
     n = dict((x, None) for x in ('artcle_title', 'journal', 'pubmed_id', 'first_date',
                                  'assembly_method', 'sequencing_technology', 'bio_project', 'sra_count'))
     for d in data.values():
@@ -441,3 +433,23 @@ def _run_manage_ns(seq_ident, sequences, ns, f_dir, close_seq_idents, match_side
     write_fasta(query_filename, [(f"{f.real_start}_{f.real_end}", f.extract(seq).seq) for f in parts])
     align = _run_align_cmd(close_filename, query_filename, 'result')
     # ToDo: ...
+
+
+# ---------------------------------------------------------
+# Common
+def _run_align_cmd(seq_fasta, qry_fasta, out_prefix):
+    # Blast version
+    # cmd = f"blastn -subject {seq_fasta} -query {qry_fasta} " + \
+    #     f"-perc_identity 40 -num_alignments 2 -max_hsps 2 -outfmt 5 > {out_prefix}.xml"
+    # ...
+
+    # Mummer version
+    out_prefix = os.path.join(os.path.dirname(seq_fasta), out_prefix)
+    cmd = f"nucmer -p {out_prefix} {seq_fasta} {qry_fasta}"
+    print(f"Command: {cmd}")
+    os.system(cmd)
+
+    # Read output file
+    return MummerDelta(f'{out_prefix}.delta')
+
+

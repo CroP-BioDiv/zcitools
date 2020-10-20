@@ -1,9 +1,6 @@
 import os.path
 from . import run_clustal_omega
-from .common_methods import create_alignment_data
-from common_utils.misc import sets_equal
-from common_utils.file_utils import unzip_file, list_zip_files, read_yaml
-from common_utils.exceptions import ZCItoolsValueError
+from .common_methods import create_alignment_data, finish_alignment_data
 
 _instructions = """
 Steps:
@@ -30,18 +27,7 @@ def create_clustal_data(step_data, annotations_step, alignments, whole_partition
 
 
 def finish_clustal_data(step_obj):
-    output_f = step_obj.step_file('output.zip')
-    if not os.path.isfile(output_f):
-        raise ZCItoolsValueError('No calculation output file output.zip!')
-
     # Check are needed files in zip, not something strange
     files = set(d['filename'].replace('sequences.fa', 'alignment.phy')
                 for d in read_yaml(step_obj.step_file('finish.yml')))
-    # ToDo: possible problems with file separator
-    sets_equal(files, set(list_zip_files(output_f)), 'file')  # raise exception if data is not good
-
-    # Unzip data
-    unzip_file(output_f, step_obj.directory)
-
-    step_obj._check_data()
-    step_obj.save(create=False)
+    finish_alignment_data(step_obj, files)

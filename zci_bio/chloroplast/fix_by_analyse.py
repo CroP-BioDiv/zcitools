@@ -69,7 +69,10 @@ def fix_by_parts(step_data, analyse_step, common_db, omit_offset=10):
                     [(n, len(p)) for n, p in parts.items()],
                     [(n, len(p)) for n, p in partition.extract(seq).items()])
 
-        if not not_offset:  # Offset sequence
+        # Offset sequence
+        # Note: it is not needed to make offset if orientation was changed,
+        # since parts concatenation orients the sequence
+        elif not not_offset:
             new_seq = new_seq[offset:] + new_seq[0:offset]
 
         # Store file
