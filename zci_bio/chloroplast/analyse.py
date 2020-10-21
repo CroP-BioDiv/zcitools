@@ -57,7 +57,7 @@ def analyse_genomes(step_data, annotations_step):
         ('num_cds', 'CDS', 'int'),
         ('part_starts', 'Part starts', 'str'),
         ('part_lengths', 'Part lengths', 'str'),
-        ('part_genes', 'Part genes', 'str'),
+        ('part_num_genes', 'Part genes', 'str'),
         ('irs_took_from', 'IRS took', 'seq_ident'),
         ('took_part_starts', 'Took part starts', 'str'),
         ('offset', 'Offset', 'int'),

@@ -4,6 +4,7 @@ from .utils import find_chloroplast_partition
 from ..utils.entrez import Entrez
 from ..utils.helpers import fetch_from_properties_db
 from ..utils.features import Feature
+from common_utils.cache import cache
 
 
 class SequenceDesc:
@@ -17,9 +18,6 @@ class SequenceDesc:
         self._cds = find_uniq_features(seq, 'CDS')
         self._parts = find_chloroplast_partition(seq)
         self._parts_data = _PartsDesc(self._parts, self._genes, self.length) if self._parts else None
-        self.part_starts = None
-        self.part_lengths = None
-        self.part_genes = None
         # Set in step 2. (Evaluate credibility of collected data)
         self.credible_whole_sequence = True
         self.credible_irs = True
@@ -27,7 +25,6 @@ class SequenceDesc:
         self.irs_took_from = None
         self._took_parts = None
         self._tool_parts_data = None
-        self.took_part_starts = None
         self.part_orientation = None
 
         # Extract data from NCBI GenBank files (comments)
@@ -38,6 +35,12 @@ class SequenceDesc:
     taxid = property(lambda self: self._table_data.get_cell(self.seq_ident, 'tax_id'))
     title = property(lambda self: self._table_data.get_cell(self.seq_ident, 'title'))
     created_date = property(lambda self: self._table_data.get_cell(self.seq_ident, 'create_date'))
+    part_starts = property(lambda self: self._parts_data.starts_str() if self._parts_data else None)
+    part_lengths = property(lambda self: self._parts_data.lengths_str() if self._parts_data else None)
+    part_num_genes = property(lambda self: self._parts_data.num_genes_str() if self._parts_data else None)
+    took_part_starts = property(lambda self: self._tool_parts_data.starts_str() if self._tool_parts_data else None)
+    took_part_lengths = property(lambda self: self._tool_parts_data.lengths_str() if self._tool_parts_data else None)
+    took_part_num_genes = property(lambda self: self._tool_parts_data.num_genes_str() if self._tool_parts_data else None)
 
     _ncbi_comment_fields = dict(
         (x, None) for x in ('artcle_title', 'journal', 'pubmed_id', 'first_date',
@@ -94,12 +97,6 @@ class SequenceDesc:
 
     #
     def set_parts_data(self):
-        if self._parts:
-            self.part_starts, self.part_lengths, self.part_genes = _parts_desc(self._parts, self._genes, self.length)
-
-        if self._took_parts:
-            self.took_part_starts, _ = _parts_desc(self._took_parts, None, self.length)
-
         if parts := self._took_parts or self._parts:  # Take better one
             # Offset
             self.offset = seq_offset(self.length, parts.get_part_by_name('lsc').real_start)
@@ -154,19 +151,34 @@ def _parts_desc(parts, genes, length):
 
 class _PartsDesc:
     def __init__(self, parts, genes, seq_length):
-        lsc, ira, ssc, irb = [parts[p] for p in ('lsc', 'ira', 'ssc', 'irb')]
-        lsc_s = seq_offset(seq_length, lsc.real_start)
-
-        self.starts = [lsc_s] + [p.real_start for p in (ira, ssc, irb)]
-        self.lengths = [len(p) for p in (lsc, ira, ssc, irb)]
-        self.offset = seq_offset(seq_length, lsc.real_start)
+        self.seq_length = seq_length
+        self.oriented = [parts[p] for p in ('lsc', 'ira', 'ssc', 'irb')]
+        self.lsc, self.ira, self.ssc, self.irb = self.oriented
+        self.offset = seq_offset(seq_length, self.lsc.real_start)
         if genes is None:
-            self.num_genes = None
+            self.part_genes = None
             self.trnH_GUG = None
         else:
             part_genes = parts.put_features_in_parts([Feature(seq_length, feature=f) for f in genes])
-            self.num_genes = [len(part_genes[p]) for p in ('lsc', 'ira', 'ssc', 'irb')]
+            self.part_genes = [part_genes[p.name] for p in self.oriented]
             self.trnH_GUG = trnH_GUG_offset(seq_length, self.offset, genes)
+
+    def _in_k(self, num):
+        s = str(round(num / 1000, 1))
+        return s[:-2] if s.endswith('.0') else s
+
+    @cache
+    def starts_str(self):
+        return ', '.join([self._in_k(self.offset)] + [self._in_k(p.real_start) for p in self.oriented[1:]])
+
+    @cache
+    def lengths_str(self):
+        return ', '.join(self._in_k(len(p)) for p in self.oriented[:-1])
+
+    @cache
+    def num_genes_str(self):
+        if self.part_genes:
+            return ', '.join(str(len(p)) for p in self.part_genes)
 
 
 def seq_offset(seq_length, offset):
