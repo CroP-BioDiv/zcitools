@@ -5,8 +5,7 @@ from datetime import datetime
 from step_project.common.table.steps import TableStep
 from common_utils.file_utils import ensure_directory, write_fasta
 from common_utils.properties_db import PropertiesDB
-from .utils import find_chloroplast_partition
-from .analyse_step_1 import find_uniq_features, extract_ncbi_comments
+from .analyse_step_1 import SequenceDesc
 from .analyse_step_2 import evaluate_credibility
 from .analyse_step_3 import run_align_cmd, find_missing_partitions
 from ..utils.features import Feature
@@ -32,23 +31,8 @@ def analyse_genomes(step_data, annotations_step):
     sequence_step = project.find_previous_step_of_type(annotations_step, 'sequences')
     table_data = table_step.index_on_table('ncbi_ident')
 
-    data = dict((seq_ident, dict(
-            _seq=seq,
-            _parts=find_chloroplast_partition(seq),
-            _genes=(_genes := find_uniq_features(seq, 'gene')),
-            _cds=(_cds := find_uniq_features(seq, 'CDS')),
-            seq_ident=seq_ident,
-            length=len(seq),
-            genes=len(_genes),
-            cds=len(_cds),
-            taxid=table_data.get_cell(seq_ident, 'tax_id'),
-            title=table_data.get_cell(seq_ident, 'title'),
-            created_date=table_data.get_cell(seq_ident, 'create_date'),
-            irs_transfered_from=None,
-        )) for seq_ident, seq in annotations_step._iterate_records())
-
-    # Extract data from NCBI GenBank files (comments)
-    extract_ncbi_comments(data, sequence_step, properties_db)
+    data = dict((seq_ident, SequenceDesc(seq_ident, seq, table_data, sequence_step, properties_db))
+                for seq_ident, seq in annotations_step._iterate_records())
 
     #  2. Evaluate credibility of collected data
     evaluate_credibility(data, annotations_step)
@@ -57,39 +41,8 @@ def analyse_genomes(step_data, annotations_step):
     find_missing_partitions(step, data, table_step)
 
     # Set partition data
-    cs = ('lsc', 'ssc', 'ira')
-    no_parts_d = dict(
-        (x, None) for x in cs + ('ssc_ends', 'lsc_genes', 'ssc_genes', 'ira_genes', 'irb_genes',
-                                 'offset', 'part_orientation', 'trnH_GUG'))
-
     for seq_ident, d in data.items():
-        if parts := d['_parts']:
-            # Part lengths
-            for part in cs:
-                d[part] = len(parts.get_part_by_name(part))
-
-            # SSC ends
-            ssc_start, ssc_end = parts.get_part_by_name('ssc').ends()
-            d['ssc_ends'] = f'{ssc_start}-{ssc_end}'
-
-            # Number of genes in parts
-            seq = d['_seq']
-            length = len(seq)
-            part_genes = parts.put_features_in_parts([Feature(length, feature=f) for f in d['_genes']])
-            for p in ('lsc', 'ssc', 'ira', 'irb'):
-                d[f'{p}_genes'] = len(part_genes[p])
-
-            # Offset
-            d['offset'] = _seq_offset(length, parts.get_part_by_name('lsc').real_start)
-            d['trnH_GUG'] = _trnH_GUG_offset(length, d.get('offset', 0), d['_genes'])
-
-            # Part orientation
-            orient = chloroplast_parts_orientation(seq, parts, d['_genes'])
-            ppp = [p for p in ('lsc', 'ira', 'ssc') if not orient[p]]
-            d['part_orientation'] = ','.join(ppp) if ppp else None
-
-        else:
-            d.update(no_parts_d)
+        d.set_parts_data()
 
     #  4. Set table from collected and evaluated data
     columns = [
@@ -100,17 +53,13 @@ def analyse_genomes(step_data, annotations_step):
         ('created_date', 'Date', 'date'),
         ('first_date', 'First date', 'date'),
         ('length', 'Length', 'int'),
-        ('genes', 'Genes', 'int'),
-        ('irs_transfered_from', 'IRS took', 'seq_ident'),
-        ('cds', 'CDS', 'int'),
-        ('lsc', 'LSC', 'int'),
-        ('ssc', 'SSC', 'int'),
-        ('ira', 'IR', 'int'),
-        ('ssc_ends', 'SSC ends', 'str'),
-        ('lsc_genes', 'LSC genes', 'int'),
-        ('ssc_genes', 'SSC genes', 'int'),
-        ('ira_genes', 'IRA genes', 'int'),
-        ('irb_genes', 'IRB genes', 'int'),
+        ('num_genes', 'Genes', 'int'),
+        ('num_cds', 'CDS', 'int'),
+        ('part_starts', 'Part starts', 'str'),
+        ('part_lengths', 'Part lengths', 'str'),
+        ('part_genes', 'Part genes', 'str'),
+        ('irs_took_from', 'IRS took', 'seq_ident'),
+        ('took_part_starts', 'Took part starts', 'str'),
         ('offset', 'Offset', 'int'),
         ('trnH_GUG', 'trnH-GUG', 'int'),
         ('part_orientation', 'Orientation', 'str'),
@@ -122,22 +71,22 @@ def analyse_genomes(step_data, annotations_step):
         ('sra_count', 'SRA count', 'int'),
     ]
     step.set_table_data(
-        [[d[c] for c, _, _ in columns] for seq_ident, d in sorted(data.items())],
+        [[getattr(d, c) for c, _, _ in columns] for seq_ident, d in sorted(data.items())],
         [(n, t) for _, n, t in columns])
     step.save()
 
     #
     errors = []
     l_start = '\n - '
-    if f_ps := [(s, d['irs_transfered_from']) for s, d in data.items() if d['irs_transfered_from']]:
+    if f_ps := [(s, d.irs_took_from) for s, d in data.items() if d.irs_took_from]:
         errors.append(f'Found partitions for sequences:{l_start}{l_start.join(sorted(f"{s} ({m})" for s, m in f_ps))}')
-    if without_parts := [seq_ident for seq_ident, d in data.items() if not d['_parts']]:
+    if without_parts := [seq_ident for seq_ident, d in data.items() if not d._parts]:
         errors.append(f"No partitions for sequences:{l_start}{l_start.join(sorted(without_parts))}")
-    if wrong_oriented_parts := [seq_ident for seq_ident, d in data.items() if d['part_orientation']]:
+    if wrong_oriented_parts := [seq_ident for seq_ident, d in data.items() if d.part_orientation]:
         errors.append(f"Partitions with wrong orientation in sequences:{l_start}{l_start.join(sorted(wrong_oriented_parts))}")
-    if with_offset := [seq_ident for seq_ident, d in data.items() if abs(d['offset']) > 50]:
+    if with_offset := [seq_ident for seq_ident, d in data.items() if abs(d.offset) > 50]:
         errors.append(f"Sequences with offset:{l_start}{l_start.join(sorted(with_offset))}")
-    if with_trnH_offset := [seq_ident for seq_ident, d in data.items() if abs(d['trnH_GUG']) > 50]:
+    if with_trnH_offset := [seq_ident for seq_ident, d in data.items() if abs(d.trnH_GUG) > 50]:
         errors.append(f"Sequneces with trnH-GUG offset:{l_start}{l_start.join(sorted(with_trnH_offset))}")
     if errors:
         with open((r_file := step.step_file('README.txt')), 'w') as _out:
@@ -147,41 +96,6 @@ def analyse_genomes(step_data, annotations_step):
     step.to_excel('analyse.xls')  # Test
 
     return step
-
-
-# Step 3.
-def _seq_offset(seq_length, offset):
-    o2 = offset - seq_length
-    return offset if offset <= abs(o2) else o2
-
-
-def _trnH_GUG_offset(seq_length, lsc_start, genes):
-    features = [f for f in genes if f.qualifiers['gene'][0] == 'trnH-GUG']
-    if features:
-        rel_to_lsc = [((f.location.start - lsc_start) % seq_length) for f in features]
-        return min(_seq_offset(seq_length, d) for d in rel_to_lsc)
-
-
-def chloroplast_parts_orientation(seq_rec, partition, genes):
-    # Check chloroplast sequence part orientation.
-    # Default orientation is same as one uses in Fast-Plast. Check:
-    #  - source file orientate_plastome_v.2.0.pl
-    #    (https://github.com/mrmckain/Fast-Plast/blob/master/bin/orientate_plastome_v.2.0.pl)
-    #  - explanation https://github.com/mrmckain/Fast-Plast/issues/22
-    # Consitent with Wikipedia image:
-    #  - https://en.wikipedia.org/wiki/Chloroplast_DNA#/media/File:Plastomap_of_Arabidopsis_thaliana.svg
-
-    l_seq = len(seq_rec)
-    in_parts = partition.put_features_in_parts(Feature(l_seq, feature=f) for f in genes)
-
-    lsc_count = sum(f.feature.strand if any(x in f.name for x in ('rpl', 'rps')) else 0
-                    for f in in_parts.get('lsc', []))
-    ssc_count = sum(f.feature.strand for f in in_parts.get('ssc', []))
-    ira_count = sum(f.feature.strand if 'rrn' in f.name else 0 for f in in_parts.get('ira', []))
-
-    return dict(lsc=(lsc_count <= 0),
-                ssc=(ssc_count <= 0),
-                ira=(ira_count >= 0))
 
 
 # ---------------------------------------------------------

@@ -24,7 +24,7 @@ def run_align_cmd(seq_fasta, qry_fasta, out_prefix):
 
 
 def find_missing_partitions(step, data, table_step):
-    with_irs = set(d['taxid'] for d in data.values() if d['_parts'])
+    with_irs = set(d.taxid for d in data.values() if d._parts)
     if len(with_irs) == len(data):  # All in
         return
     if not with_irs:
@@ -39,10 +39,10 @@ def find_missing_partitions(step, data, table_step):
     seq_2_result_object = dict()  # dict seq_ident -> tuple (ira interval, irb interval, matche seq_ident)
     with ThreadPoolExecutor(max_workers=multiprocessing.cpu_count()) as executor:
         for seq_ident, seq_data in data.items():
-            if seq_data['_parts']:
+            if seq_data._parts:
                 continue
 
-            close_taxids = ncbi_tax.find_close_taxids(seq_data['taxid'], ncbi_2_max_taxid[seq_ident], with_irs)
+            close_taxids = ncbi_tax.find_close_taxids(seq_data.taxid, ncbi_2_max_taxid[seq_ident], with_irs)
             if not close_taxids:
                 print(f"Warning: sequence {seq_ident} doesn't have close relative with IR partition!")
                 continue
@@ -55,8 +55,8 @@ def find_missing_partitions(step, data, table_step):
     #
     for seq_ident, (ira, irb, transfer_from) in seq_2_result_object.items():
         d = data[seq_ident]
-        d['_parts'] = create_chloroplast_partition(len(d['_seq']), ira, irb, in_interval=True)
-        d['irs_transfered_from'] = transfer_from
+        d._took_parts = create_chloroplast_partition(d.length, ira, irb, in_interval=True)
+        d.irs_took_from = transfer_from
 
     return seq_2_result_object
 
@@ -66,22 +66,22 @@ def _run_align(step, seq_ident, seq_data, close_data, seq_2_result_object, taxid
     f_dir = step.step_file('find_irs', seq_ident)
     ensure_directory(f_dir)
     seq_fasta = os.path.join(f_dir, f"{seq_ident}.fa")
-    write_fasta(seq_fasta, [(seq_ident, seq_data['_seq'].seq)])
+    write_fasta(seq_fasta, [(seq_ident, seq_data._seq.seq)])
 
     all_aligns = []
     for d in close_data:
-        ira = d['_parts'].get_part_by_name('ira')
-        rec = ira.extract(d['_seq'])
-        qry_fasta = os.path.join(f_dir, f"qry_{d['seq_ident']}.fa")
+        ira = d._parts.get_part_by_name('ira')
+        rec = ira.extract(d._seq)
+        qry_fasta = os.path.join(f_dir, f"qry_{d.seq_ident}.fa")
         write_fasta(qry_fasta, [('end1', rec.seq[:match_length]), ('end2', rec.seq[-match_length:])])
-        align = run_align_cmd(seq_fasta, qry_fasta, f"res_{d['seq_ident']}")
+        align = run_align_cmd(seq_fasta, qry_fasta, f"res_{d.seq_ident}")
         if 2 == len(align.aligns(seq_ident, 'end1')) == len(align.aligns(seq_ident, 'end2')):  # All sides
             ira_1, irb_2 = align.aligns(seq_ident, 'end1')
             ira_2, irb_1 = align.aligns(seq_ident, 'end2')
             seq_2_result_object[seq_ident] = \
                 ((ira_1.sequence_interval[0], ira_2.sequence_interval[1]),
                  (irb_1.sequence_interval[0], irb_2.sequence_interval[1]),
-                 d['seq_ident'])
+                 d.seq_ident)
             break
         all_aligns.append(align)
     else:
@@ -100,7 +100,7 @@ def _run_align(step, seq_ident, seq_data, close_data, seq_2_result_object, taxid
                 seq_2_result_object[seq_ident] = \
                     ((ira_1.sequence_interval[0], x),
                      (y, irb_2.sequence_interval[1]),
-                     d['seq_ident'])
+                     d.seq_ident)
                 return
         # Try partial (1+2)
         for align in all_aligns:
@@ -116,5 +116,5 @@ def _run_align(step, seq_ident, seq_data, close_data, seq_2_result_object, taxid
                 seq_2_result_object[seq_ident] = \
                     ((x, ira_2.sequence_interval[1]),
                      (irb_1.sequence_interval[0], y),
-                     d['seq_ident'])
+                     d.seq_ident)
                 return

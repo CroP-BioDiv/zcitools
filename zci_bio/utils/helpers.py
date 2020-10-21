@@ -209,3 +209,12 @@ def fetch_our_sequence(seq_ident, in_dir):
                     print(f"  Our sequences fetch: {f} -> {os.path.join(in_dir, f)}")
                     shutil.copyfile(os.path.join(_dir, f), os.path.join(in_dir, f))
                     return ext
+
+
+#
+def fetch_from_properties_db(properties_db, key1, key2, _callable, *args, **kwargs):
+    if not properties_db or not (vals := properties_db.get_property(key1, key2)):
+        vals = _callable(*args, **kwargs)
+        if properties_db:
+            properties_db.set_property(key1, key2, vals)
+    return vals

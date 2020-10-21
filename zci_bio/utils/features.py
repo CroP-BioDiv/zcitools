@@ -111,6 +111,8 @@ class Partition:
             if p.name == name:
                 return p
 
+    __getitem__ = get_part_by_name
+
     def not_named_parts(self):
         return [p for p in self._parts if not p.name]
 
