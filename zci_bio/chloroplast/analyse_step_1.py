@@ -24,7 +24,8 @@ class SequenceDesc:
         # Set in step 3. (Find missing or more credible data)
         self.irs_took_from = None
         self._took_parts = None
-        self._tool_parts_data = None
+        self._took_parts_data = None
+        #
         self.part_orientation = None
 
         # Extract data from NCBI GenBank files (comments)
@@ -38,9 +39,13 @@ class SequenceDesc:
     part_starts = property(lambda self: self._parts_data.starts_str() if self._parts_data else None)
     part_lengths = property(lambda self: self._parts_data.lengths_str() if self._parts_data else None)
     part_num_genes = property(lambda self: self._parts_data.num_genes_str() if self._parts_data else None)
-    took_part_starts = property(lambda self: self._tool_parts_data.starts_str() if self._tool_parts_data else None)
-    took_part_lengths = property(lambda self: self._tool_parts_data.lengths_str() if self._tool_parts_data else None)
-    took_part_num_genes = property(lambda self: self._tool_parts_data.num_genes_str() if self._tool_parts_data else None)
+    part_offset = property(lambda self: self._parts_data.offset if self._parts_data else None)
+    part_trnH_GUG = property(lambda self: self._parts_data.trnH_GUG if self._parts_data else None)
+    took_part_starts = property(lambda self: self._took_parts_data.starts_str() if self._took_parts_data else None)
+    took_part_lengths = property(lambda self: self._took_parts_data.lengths_str() if self._took_parts_data else None)
+    took_part_num_genes = property(lambda self: self._took_parts_data.num_genes_str() if self._took_parts_data else None)
+    took_part_offset = property(lambda self: self._took_parts_data.offset if self._took_parts_data else None)
+    took_part_trnH_GUG = property(lambda self: self._took_parts_data.trnH_GUG if self._took_parts_data else None)
 
     _ncbi_comment_fields = dict(
         (x, None) for x in ('artcle_title', 'journal', 'pubmed_id', 'first_date',
@@ -98,10 +103,6 @@ class SequenceDesc:
     #
     def set_parts_data(self):
         if parts := self._took_parts or self._parts:  # Take better one
-            # Offset
-            self.offset = seq_offset(self.length, parts.get_part_by_name('lsc').real_start)
-            self.trnH_GUG = trnH_GUG_offset(self.length, self.offset, self._genes)
-
             # Part orientation
             orient = chloroplast_parts_orientation(self._seq, parts, self._genes)
             if ppp := [p for p in ('lsc', 'ira', 'ssc') if not orient[p]]:
@@ -157,10 +158,12 @@ class _PartsDesc:
         self.offset = seq_offset(seq_length, self.lsc.real_start)
         if genes is None:
             self.part_genes = None
+            self.offset = None
             self.trnH_GUG = None
         else:
             part_genes = parts.put_features_in_parts([Feature(seq_length, feature=f) for f in genes])
             self.part_genes = [part_genes[p.name] for p in self.oriented]
+            self.offset = seq_offset(seq_length, self.lsc.real_start)
             self.trnH_GUG = trnH_GUG_offset(seq_length, self.offset, genes)
 
     def _in_k(self, num):

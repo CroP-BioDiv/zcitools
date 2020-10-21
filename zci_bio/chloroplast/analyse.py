@@ -60,8 +60,8 @@ def analyse_genomes(step_data, annotations_step):
         ('part_num_genes', 'Part genes', 'str'),
         ('irs_took_from', 'IRS took', 'seq_ident'),
         ('took_part_starts', 'Took part starts', 'str'),
-        ('offset', 'Offset', 'int'),
-        ('trnH_GUG', 'trnH-GUG', 'int'),
+        ('took_part_offset', 'Offset', 'int'),
+        ('took_part_trnH_GUG', 'trnH-GUG', 'int'),
         ('part_orientation', 'Orientation', 'str'),
         ('artcle_title', 'Article', 'str'),
         ('journal', 'Journal', 'str'),
@@ -84,9 +84,9 @@ def analyse_genomes(step_data, annotations_step):
         errors.append(f"No partitions for sequences:{l_start}{l_start.join(sorted(without_parts))}")
     if wrong_oriented_parts := [seq_ident for seq_ident, d in data.items() if d.part_orientation]:
         errors.append(f"Partitions with wrong orientation in sequences:{l_start}{l_start.join(sorted(wrong_oriented_parts))}")
-    if with_offset := [seq_ident for seq_ident, d in data.items() if abs(d.offset) > 50]:
+    if with_offset := [seq_ident for seq_ident, d in data.items() if abs(d.part_offset or 0) > 50]:
         errors.append(f"Sequences with offset:{l_start}{l_start.join(sorted(with_offset))}")
-    if with_trnH_offset := [seq_ident for seq_ident, d in data.items() if abs(d.trnH_GUG) > 50]:
+    if with_trnH_offset := [seq_ident for seq_ident, d in data.items() if abs(d.part_trnH_GUG or 0) > 50]:
         errors.append(f"Sequneces with trnH-GUG offset:{l_start}{l_start.join(sorted(with_trnH_offset))}")
     if errors:
         with open((r_file := step.step_file('README.txt')), 'w') as _out:
