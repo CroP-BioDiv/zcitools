@@ -10,7 +10,7 @@ except ImportError:
 _ncbi_taxonomy = None
 
 
-def ncbi_taxonomy():
+def get_ncbi_taxonomy():
     global _ncbi_taxonomy
     if _ncbi_taxonomy is None:
         _ncbi_taxonomy = NCBITaxonomy()

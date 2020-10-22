@@ -4,7 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 from common_utils.file_utils import ensure_directory, write_fasta
 from .utils import create_chloroplast_partition
 from ..utils.mummer import MummerDelta
-from ..utils.ncbi_taxonomy import ncbi_taxonomy
+from ..utils.ncbi_taxonomy import get_ncbi_taxonomy
 
 
 def run_align_cmd(seq_fasta, qry_fasta, out_prefix):
@@ -23,47 +23,46 @@ def run_align_cmd(seq_fasta, qry_fasta, out_prefix):
     return MummerDelta(f'{out_prefix}.delta')
 
 
-def find_missing_partitions(step, data, table_step):
-    with_irs = set(d.taxid for d in data.values() if d._parts)
-    if len(with_irs) == len(data):  # All in
+def find_missing_partitions(seq_descs):
+    with_irs = set(d.taxid for d in seq_descs.values() if d._parts)
+    if len(with_irs) == len(seq_descs):  # All in
         return
     if not with_irs:
         print('Warning: all genomes miss IR parts!!!')
         return
 
-    ncbi_2_max_taxid = table_step.mapping_between_columns('ncbi_ident', 'max_taxid')
-    taxid_2_ncbi = table_step.mapping_between_columns('tax_id', 'ncbi_ident')
-
     # Run alignment of related species IR ends onto sequences without IRs
-    ncbi_tax = ncbi_taxonomy()
+    ncbi_tax = get_ncbi_taxonomy()
     seq_2_result_object = dict()  # dict seq_ident -> tuple (ira interval, irb interval, matche seq_ident)
     with ThreadPoolExecutor(max_workers=multiprocessing.cpu_count()) as executor:
-        for seq_ident, seq_data in data.items():
+        for seq_ident, seq_data in seq_descs.items():
             if seq_data._parts:
                 continue
 
+            ncbi_2_max_taxid = seq_data._analyse.ncbi_2_max_taxid
             close_taxids = ncbi_tax.find_close_taxids(seq_data.taxid, ncbi_2_max_taxid[seq_ident], with_irs)
             if not close_taxids:
                 print(f"Warning: sequence {seq_ident} doesn't have close relative with IR partition!")
                 continue
 
-            # _run_align(step, seq_ident, seq_data, [data[taxid_2_ncbi[t]] for t in close_taxids],
-            #            seq_2_result_object, taxid_2_ncbi)
-            executor.submit(_run_align, step, seq_ident, seq_data, [data[taxid_2_ncbi[t]] for t in close_taxids],
-                            seq_2_result_object, taxid_2_ncbi)
+            taxid_2_ncbi = seq_data._analyse.taxid_2_ncbi
+            # _run_align(seq_ident, seq_data, [seq_descs[taxid_2_ncbi[t]] for t in close_taxids],
+            #            seq_2_result_object)
+            executor.submit(_run_align, seq_ident, seq_data, [seq_descs[taxid_2_ncbi[t]] for t in close_taxids],
+                            seq_2_result_object)
 
     #
     for seq_ident, (ira, irb, transfer_from) in seq_2_result_object.items():
-        d = data[seq_ident]
+        d = seq_descs[seq_ident]
         d._took_parts = create_chloroplast_partition(d.length, ira, irb, in_interval=True)
         d.irs_took_from = transfer_from
 
     return seq_2_result_object
 
 
-def _run_align(step, seq_ident, seq_data, close_data, seq_2_result_object, taxid_2_ncbi, match_length=100):
+def _run_align(seq_ident, seq_data, close_data, seq_2_result_object, match_length=100):
     # Store fasta
-    f_dir = step.step_file('find_irs', seq_ident)
+    f_dir = seq_data._analyse.step.step_file('find_irs', seq_ident)
     ensure_directory(f_dir)
     seq_fasta = os.path.join(f_dir, f"{seq_ident}.fa")
     write_fasta(seq_fasta, [(seq_ident, seq_data._seq.seq)])
@@ -118,3 +117,22 @@ def _run_align(step, seq_ident, seq_data, close_data, seq_2_result_object, taxid
                      (irb_1.sequence_interval[0], y),
                      d.seq_ident)
                 return
+
+
+def find_irs_by_similar(seq_descs, seq_ident, seq_data):
+    with_irs = set(d.taxid for d in seq_descs.values() if d._parts)
+    with_irs.discard(seq_data.taxid)
+    if not with_irs:
+        print('Warning: all genomes miss IR parts!!!')
+        return
+
+    ncbi_2_max_taxid = seq_data._analyse.ncbi_2_max_taxid
+    close_taxids = get_ncbi_taxonomy().find_close_taxids(seq_data.taxid, ncbi_2_max_taxid[seq_ident], with_irs)
+    if not close_taxids:
+        print(f"Warning: sequence {seq_ident} doesn't have close relative with IR partition!")
+        return
+
+    taxid_2_ncbi = seq_data._analyse.taxid_2_ncbi
+    seq_2_result_object = dict()
+    _run_align(seq_ident, seq_data, [data[taxid_2_ncbi[t]] for t in close_taxids], seq_2_result_object)
+    return seq_2_result_object.get(seq_ident)  # None or (ira, irb, transfer_from)

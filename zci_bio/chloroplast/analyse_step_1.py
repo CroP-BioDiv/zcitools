@@ -8,10 +8,11 @@ from common_utils.cache import cache
 
 
 class SequenceDesc:
-    def __init__(self, seq_ident, seq, table_data, sequence_step, properties_db):
+    def __init__(self, seq_ident, seq, analyse):  # table_data, sequence_step,
         self.seq_ident = seq_ident
         self._seq = seq
-        self._table_data = table_data
+        self._analyse = analyse
+        self._table_data = analyse.table_data
         #
         self.length = len(seq)
         self._genes = find_uniq_features(seq, 'gene')
@@ -23,14 +24,21 @@ class SequenceDesc:
         self.credible_irs = True
         # Set in step 3. (Find missing or more credible data)
         self.irs_took_from = None
+        self.irs_took_reason = None
         self._took_parts = None
         self._took_parts_data = None
         #
         self.part_orientation = None
 
         # Extract data from NCBI GenBank files (comments)
-        self.extract_ncbi_comments(sequence_step, properties_db)
+        self.extract_ncbi_comments(analyse.properties_db)
 
+    # Environment
+    step = property(lambda self: self._analyse.step)
+    annotations_step = property(lambda self: self._analyse.annotations_step)
+    sequences_step = property(lambda self: self._analyse.sequences_step)
+    table_step = property(lambda self: self._analyse.table_step)
+    #
     num_genes = property(lambda self: len(self._genes))
     num_cds = property(lambda self: len(self._cds))
     taxid = property(lambda self: self._table_data.get_cell(self.seq_ident, 'tax_id'))
@@ -53,7 +61,7 @@ class SequenceDesc:
     _key_genbank_data = 'NCBI GenBank data'
     _key_sra_count = 'NCBI SRA count'
 
-    def extract_ncbi_comments(self, sequences_step, properties_db):
+    def extract_ncbi_comments(self, properties_db):
         # Notes:
         #  - sequences_step contains GenBank files collected from NCBI which contains genome info
         #  - properties_db is used to cache results dince they are static
@@ -62,11 +70,11 @@ class SequenceDesc:
 
         self.__dict__.update(fetch_from_properties_db(
             properties_db, self.seq_ident, self._key_genbank_data,
-            self._genbank_data, sequences_step, self.seq_ident, properties_db))
+            self._genbank_data, self.sequences_step, self.seq_ident, properties_db))
 
-    def _genbank_data(self, sequences_step, seq_ident, properties_db):
+    def _genbank_data(self, seq_ident, properties_db):
         vals = dict()
-        seq = sequences_step.get_sequence_record(seq_ident)
+        seq = self.sequences_step.get_sequence_record(seq_ident)
 
         refs = seq.annotations['references']
         if refs[0].title != 'Direct Submission':

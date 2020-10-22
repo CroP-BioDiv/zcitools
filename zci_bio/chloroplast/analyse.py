@@ -5,11 +5,12 @@ from datetime import datetime
 from step_project.common.table.steps import TableStep
 from common_utils.file_utils import ensure_directory, write_fasta
 from common_utils.properties_db import PropertiesDB
+from common_utils.cache import cache
 from .analyse_step_1 import SequenceDesc
 from .analyse_step_2 import evaluate_credibility
 from .analyse_step_3 import run_align_cmd, find_missing_partitions
 from ..utils.features import Feature
-from ..utils.ncbi_taxonomy import ncbi_taxonomy
+from ..utils.ncbi_taxonomy import get_ncbi_taxonomy
 
 
 # ---------------------------------------------------------
@@ -21,81 +22,102 @@ from ..utils.ncbi_taxonomy import ncbi_taxonomy
 #  4. Set table from collected and evaluated data
 # ---------------------------------------------------------
 def analyse_genomes(step_data, annotations_step):
-    project = annotations_step.project
-    step = TableStep(project, step_data, remove_data=True)
+    step = TableStep(annotations_step.project, step_data, remove_data=True)
     annotations_step.propagate_step_name_prefix(step)
-    properties_db = PropertiesDB()
-
-    # 1. Collect data from steps
-    table_step = project.find_previous_step_of_type(annotations_step, 'table')
-    sequence_step = project.find_previous_step_of_type(annotations_step, 'sequences')
-    table_data = table_step.index_on_table('ncbi_ident')
-
-    data = dict((seq_ident, SequenceDesc(seq_ident, seq, table_data, sequence_step, properties_db))
-                for seq_ident, seq in annotations_step._iterate_records())
-
-    #  2. Evaluate credibility of collected data
-    evaluate_credibility(data, annotations_step)
-
-    #  3. Find missing or more credible data
-    find_missing_partitions(step, data, table_step)
-
-    # Set partition data
-    for seq_ident, d in data.items():
-        d.set_parts_data()
-
-    #  4. Set table from collected and evaluated data
-    columns = [
-        # tuples (dict's attribute, column name, column type)
-        ('seq_ident', 'AccesionNumber', 'seq_ident'),
-        ('bio_project', 'BioProject', 'str'),
-        ('title', 'Title', 'str'),
-        ('created_date', 'Date', 'date'),
-        ('first_date', 'First date', 'date'),
-        ('length', 'Length', 'int'),
-        ('num_genes', 'Genes', 'int'),
-        ('num_cds', 'CDS', 'int'),
-        ('part_starts', 'Part starts', 'str'),
-        ('part_lengths', 'Part lengths', 'str'),
-        ('part_num_genes', 'Part genes', 'str'),
-        ('irs_took_from', 'IRS took', 'seq_ident'),
-        ('took_part_starts', 'Took part starts', 'str'),
-        ('took_part_offset', 'Offset', 'int'),
-        ('took_part_trnH_GUG', 'trnH-GUG', 'int'),
-        ('part_orientation', 'Orientation', 'str'),
-        ('artcle_title', 'Article', 'str'),
-        ('journal', 'Journal', 'str'),
-        ('pubmed_id', 'PubMed', 'int'),
-        ('assembly_method', 'Assembly Method', 'str'),
-        ('sequencing_technology', 'Sequencing Technology', 'str'),
-        ('sra_count', 'SRA count', 'int'),
-    ]
-    step.set_table_data(
-        [[getattr(d, c) for c, _, _ in columns] for seq_ident, d in sorted(data.items())],
-        [(n, t) for _, n, t in columns])
+    AnalyseGenomes(step, annotations_step).run()
     step.save()
-
-    #
-    errors = []
-    l_start = '\n - '
-    if f_ps := [(s, d.irs_took_from) for s, d in data.items() if d.irs_took_from]:
-        errors.append(f'Found partitions for sequences:{l_start}{l_start.join(sorted(f"{s} ({m})" for s, m in f_ps))}')
-    if without_parts := [seq_ident for seq_ident, d in data.items() if not d._parts]:
-        errors.append(f"No partitions for sequences:{l_start}{l_start.join(sorted(without_parts))}")
-    if wrong_oriented_parts := [seq_ident for seq_ident, d in data.items() if d.part_orientation]:
-        errors.append(f"Partitions with wrong orientation in sequences:{l_start}{l_start.join(sorted(wrong_oriented_parts))}")
-    if with_offset := [seq_ident for seq_ident, d in data.items() if abs(d.part_offset or 0) > 50]:
-        errors.append(f"Sequences with offset:{l_start}{l_start.join(sorted(with_offset))}")
-    if with_trnH_offset := [seq_ident for seq_ident, d in data.items() if abs(d.part_trnH_GUG or 0) > 50]:
-        errors.append(f"Sequneces with trnH-GUG offset:{l_start}{l_start.join(sorted(with_trnH_offset))}")
-    if errors:
-        with open((r_file := step.step_file('README.txt')), 'w') as _out:
-            _out.write('\n'.join(errors))
-            _out.write('\n')
-        print(f'Problems found in sequences! Check file {r_file}.')
     step.to_excel('analyse.xls')  # Test
-
     return step
+
+
+class AnalyseGenomes:
+    def __init__(self, step, annotations_step):
+        self.step = step
+        self.annotations_step = annotations_step
+        project = step.project
+        self.table_step = project.find_previous_step_of_type(self.annotations_step, 'table')
+        self.sequences_step = project.find_previous_step_of_type(self.annotations_step, 'sequences')
+
+    @property
+    @cache
+    def ncbi_2_max_taxid(self):
+        print('aaa')
+        return self.table_step.mapping_between_columns('ncbi_ident', 'max_taxid')
+
+    @property
+    @cache
+    def taxid_2_ncbi(self):
+        print('bbb')
+        return self.table_step.mapping_between_columns('tax_id', 'ncbi_ident')
+
+    def run(self):
+        self.properties_db = PropertiesDB()
+
+        # 1. Collect data from steps
+        self.table_data = self.table_step.index_on_table('ncbi_ident')
+
+        data = dict((seq_ident, SequenceDesc(seq_ident, seq, self))
+                    for seq_ident, seq in self.annotations_step._iterate_records())
+        self.seq_descs = data
+
+        #  2. Evaluate credibility of collected data
+        evaluate_credibility(self.seq_descs)
+
+        #  3. Find missing or more credible data
+        find_missing_partitions(self.seq_descs)
+
+        # Set partition data
+        for seq_ident, d in data.items():
+            d.set_parts_data()
+
+        #  4. Set table from collected and evaluated data
+        columns = [
+            # tuples (dict's attribute, column name, column type)
+            ('seq_ident', 'AccesionNumber', 'seq_ident'),
+            ('bio_project', 'BioProject', 'str'),
+            ('title', 'Title', 'str'),
+            ('created_date', 'Date', 'date'),
+            ('first_date', 'First date', 'date'),
+            ('length', 'Length', 'int'),
+            ('num_genes', 'Genes', 'int'),
+            ('num_cds', 'CDS', 'int'),
+            ('part_starts', 'Part starts', 'str'),
+            ('part_lengths', 'Part lengths', 'str'),
+            ('part_num_genes', 'Part genes', 'str'),
+            ('irs_took_from', 'IRS took', 'seq_ident'),
+            ('took_part_starts', 'Took part starts', 'str'),
+            ('took_part_offset', 'Offset', 'int'),
+            ('took_part_trnH_GUG', 'trnH-GUG', 'int'),
+            ('part_orientation', 'Orientation', 'str'),
+            ('artcle_title', 'Article', 'str'),
+            ('journal', 'Journal', 'str'),
+            ('pubmed_id', 'PubMed', 'int'),
+            ('assembly_method', 'Assembly Method', 'str'),
+            ('sequencing_technology', 'Sequencing Technology', 'str'),
+            ('sra_count', 'SRA count', 'int'),
+        ]
+        self.step.set_table_data(
+            [[getattr(d, c) for c, _, _ in columns] for seq_ident, d in sorted(data.items())],
+            [(n, t) for _, n, t in columns])
+
+        #
+        errors = []
+        l_start = '\n - '
+        if f_ps := [(s, d.irs_took_from) for s, d in data.items() if d.irs_took_from]:
+            errors.append(f'Found partitions for sequences:{l_start}{l_start.join(sorted(f"{s} ({m})" for s, m in f_ps))}')
+        if without_parts := [seq_ident for seq_ident, d in data.items() if not d._parts]:
+            errors.append(f"No partitions for sequences:{l_start}{l_start.join(sorted(without_parts))}")
+        if wrong_oriented_parts := [seq_ident for seq_ident, d in data.items() if d.part_orientation]:
+            errors.append(f"Partitions with wrong orientation in sequences:{l_start}{l_start.join(sorted(wrong_oriented_parts))}")
+        if with_offset := [seq_ident for seq_ident, d in data.items() if abs(d.part_offset or 0) > 50]:
+            errors.append(f"Sequences with offset:{l_start}{l_start.join(sorted(with_offset))}")
+        if with_trnH_offset := [seq_ident for seq_ident, d in data.items() if abs(d.part_trnH_GUG or 0) > 50]:
+            errors.append(f"Sequneces with trnH-GUG offset:{l_start}{l_start.join(sorted(with_trnH_offset))}")
+        if errors:
+            with open((r_file := self.step.step_file('README.txt')), 'w') as _out:
+                _out.write('\n'.join(errors))
+                _out.write('\n')
+            print(f'Problems found in sequences! Check file {r_file}.')
 
 
 # ---------------------------------------------------------
@@ -130,7 +152,7 @@ def analyse_ns(step_data, sequences_step):
 
     if seq_ident_2_ns:
         rows = []
-        ncbi_tax = ncbi_taxonomy()
+        ncbi_tax = get_ncbi_taxonomy()
         # with ThreadPoolExecutor(max_workers=multiprocessing.cpu_count()) as executor:
         for seq_ident, ns in seq_ident_2_ns.items():
             row = [seq_ident, len(sequences[seq_ident]), len(ns), sum(b - a for a, b in ns), None, None]
