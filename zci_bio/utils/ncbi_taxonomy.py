@@ -108,7 +108,6 @@ class NCBITaxonomy:
 
     def find_close_taxids(self, taxid, max_taxid, from_taxids):
         parents = self._nt().get_lineage_translator([taxid] + list(from_taxids))
-        print(taxid, )
         for p_id in parents[taxid][-2::-1]:
             if f_taxids := [t for t in from_taxids if p_id in parents[t]]:
                 return f_taxids

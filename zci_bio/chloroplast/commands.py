@@ -38,19 +38,6 @@ class ChloroplastFixByAnalyse(CreateStepFromStepCommand):
             omit_offset=self.args.omit_offset)
 
 
-class ChloroplastFixByTrnHGUG(ChloroplastFixByAnalyse):
-    _COMMAND = 'fix_by_analyse_trnh_gug'
-    _HELP = "Fix chloroplast genome offset by done analyse (vie position of gene trnH-GUG. Output is a sequences step."
-    _STEP_BASE_NAME = 'FixByTrnH-GUG'
-
-    def run(self, step_data):
-        from .fix_by_analyse import fix_by_trnh_gug
-        return fix_by_trnh_gug(
-            step_data, self._input_step(no_data_check=True), self.get_common_db_object(),
-            omit_offset=self.args.omit_offset)
-
-
-
 # Test: not usable.
 # class AnalyseNs(CreateStepFromStepCommand):
 #     _COMMAND = 'analyse_ns'

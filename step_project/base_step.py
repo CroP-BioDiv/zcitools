@@ -120,6 +120,8 @@ class Step:
         fields = seq_ident.split('_')
         if fields[0].islower():  # Our changes already prepended, just add one more at the start
             return f'{change}{seq_ident}'
+        if fields[0] == 'NC':  # Remove NC to have shorter ident. Longer than 10 chars can cause problems :-/
+            return '_'.join([change] + fields[1:])
         return f'{change}_{seq_ident}'
 
     def is_completed(self):

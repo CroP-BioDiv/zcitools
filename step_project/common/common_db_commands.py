@@ -18,7 +18,7 @@ class _CommonDBCommand(NonProjectCommand):
 
     @staticmethod
     def set_arguments(parser):
-        parser.add_argument('path', help='CommonDB path')
+        parser.add_argument('path', nargs='?', default='.', help='CommonDB path')
         parser.add_argument('-p', '--filter-path', help='Filter path')
         parser.add_argument(
             '-n', '--no-recursive', action='store_true', help='No recursive search, search only given path')

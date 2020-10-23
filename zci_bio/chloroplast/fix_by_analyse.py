@@ -40,8 +40,7 @@ def fix_by_parts(step_data, analyse_step, common_db, omit_offset=10):
         l_seq = row['Length']
         orientation = row['Orientation']
 
-        if (not_offset := (offset <= omit_offset or (l_seq - offset) <= omit_offset)) and \
-           (not orientation):
+        if (abs(offset) <= omit_offset) and not orientation:
             _copy_from_origin(step, annotation_step, seq_ident)
             continue
 
@@ -72,41 +71,10 @@ def fix_by_parts(step_data, analyse_step, common_db, omit_offset=10):
         # Offset sequence
         # Note: it is not needed to make offset if orientation was changed,
         # since parts concatenation orients the sequence
-        elif not not_offset:
+        elif offset:
             new_seq = new_seq[offset:] + new_seq[0:offset]
 
         # Store file
-        _store_fasta(step, new_seq_ident, new_seq, common_db)
-
-    #
-    step.save()
-    return step
-
-
-def fix_by_trnh_gug(step_data, analyse_step, common_db, omit_offset=10):
-    project = analyse_step.project
-    step = SequencesStep(project, step_data, remove_data=True)
-    analyse_step.propagate_step_name_prefix(step)
-    annotation_step = project.find_previous_step_of_type(analyse_step, 'annotations')
-
-    #
-    for row in analyse_step.rows_as_dicts():
-        seq_ident = row['AccesionNumber']
-        l_seq = row['Length']
-        offset = row['trnH-GUG']
-
-        if not offset or offset <= omit_offset or (l_seq - offset) <= omit_offset:
-            _copy_from_origin(step, annotation_step, seq_ident)
-            continue
-
-        seq = new_seq = annotation_step.get_sequence_record(seq_ident)
-        new_seq_ident = step.seq_ident_of_our_change(seq_ident, 't')
-
-        if common_db and (f := common_db.get_record(new_seq_ident, step.directory, info=True)):
-            step.add_sequence_file(os.path.basename(f))
-            continue
-
-        new_seq = new_seq[offset:] + new_seq[0:offset]
         _store_fasta(step, new_seq_ident, new_seq, common_db)
 
     #

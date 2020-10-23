@@ -32,6 +32,6 @@ class MummerDelta:
         return len(self._matches)
 
     def aligns(self, s, q):
-        return sorted((m for m in self._matches if m.sequence == s and m.query == q),
+        return sorted((m for m in self._matches if (s is None or m.sequence == s) and m.query == q),
                       key=lambda x: x.positive,
                       reverse=True)
