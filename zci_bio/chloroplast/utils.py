@@ -12,9 +12,10 @@ def find_chloroplast_irs(seq):
         max_len = max(map(len, rep_regs)) - 3  # Some tolerance :-)
         max_regs = [f for f in rep_regs if len(f) >= max_len]
         if len(max_regs) == 2:
-            check_l = len(seq) // 4
             ira, irb = max_regs
-            return (irb, ira) if (check_l < irb.location.parts[0].start < ira.location.parts[0].start) else (ira, irb)
+            diff_1 = (irb.location.parts[0].start - ira.location.parts[-1].end) % len(seq)
+            diff_2 = (ira.location.parts[0].start - irb.location.parts[-1].end) % len(seq)
+            return (ira, irb) if diff_1 < diff_2 else (irb, ira)
 
 
 def irb_start(irb):

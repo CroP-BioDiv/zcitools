@@ -214,7 +214,7 @@ def trnH_GUG_offset(seq_length, lsc_start, genes):
 def find_uniq_features(seq, _type):
     fs = defaultdict(list)
     for idx, f in enumerate(seq.features):
-        if f.type == _type and f.location:
+        if f.type == _type:
             name = f.qualifiers['gene'][0]
             if not fs[name] or \
                ((s_f := set(f.location)) and not any(set(x.location).intersection(s_f) for _, x in fs[name])):

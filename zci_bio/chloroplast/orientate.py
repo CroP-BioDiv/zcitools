@@ -253,9 +253,6 @@ def orientate_chloroplast(command_obj, cmd_args, step_data, annotation_step, com
             _copy_annotation(bad, an_file)
             continue
 
-        # Fix sequence features
-        seq.features = [f for f in seq.features if f.location]
-
         # Count gene orintation
         l_seq = len(seq)
         in_parts = partition.put_features_in_parts(Feature(l_seq, feature=f) for f in seq.features if f.type == 'gene')

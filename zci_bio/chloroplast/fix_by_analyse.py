@@ -64,7 +64,7 @@ def fix_by_parts(step_data, analyse_step, common_db, omit_offset=10):
 
             new_seq = parts['lsc'] + parts['ira'] + parts['ssc'] + parts['irb']
             assert len(seq.seq) == len(new_seq.seq), \
-                (seq_ident, len(seq.seq), len(new_seq.seq),
+                (seq_ident, len(seq.seq), len(new_seq.seq), starts,
                     [(n, len(p)) for n, p in parts.items()],
                     [(n, len(p)) for n, p in partition.extract(seq).items()])
 

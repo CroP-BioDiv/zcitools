@@ -63,6 +63,9 @@ Annotations are stored:
         with open(self.get_sequence_filename(seq_ident), 'r') as in_s:
             seq_record = import_bio_seq_io().read(in_s, 'genbank')
             assert seq_ident == seq_record.id, (seq_ident, seq_record.id)
+            # Fix features!!!
+            # Note: it can crash Bio/SeqRecord.py file also!!
+            seq_record.features = [f for f in seq_record.features if f.location]
         return seq_record
 
     def get_sequence(self, seq_ident):
@@ -158,9 +161,11 @@ Annotations are stored:
         # IR
         elif cmd == 'ir':
             # seq_ident -> list of feature locations
-            data = dict((seq_ident,
-                         [feature_location_desc(f.location) for f in seq_record.features if f.type == 'repeat_region'])
-                        for seq_ident, seq_record in self._iterate_records(filter_seqs=filter_seqs))
+            data = dict((
+                seq_ident,
+                [feature_location_desc(f.location)
+                 for f in seq_record.features if f.type == 'repeat_region'])
+                for seq_ident, seq_record in self._iterate_records(filter_seqs=filter_seqs))
 
             for seq_ident, locations in sorted(data.items()):
                 print(f"{seq_ident} ({len(locations)}): {', '.join(map(str, sorted(locations)))}")

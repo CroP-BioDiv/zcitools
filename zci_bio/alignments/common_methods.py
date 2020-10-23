@@ -101,7 +101,7 @@ def create_alignment_data(step_data, annotations_step, alignments, whole_partiti
                 seq_rec = annotations_step.get_sequence_record(seq_ident)
                 # Copy SeqRecord and filter features
                 sr_copy = seq_rec[:]
-                sr_copy.features = [f for f in sr_copy.features if f.location and f.type == whole_partition]
+                sr_copy.features = [f for f in sr_copy.features if f.type == whole_partition]
                 SeqIO.write([sr_copy], al_step.step_file(f'{seq_ident}.gb'), 'genbank')
 
     assert created_steps

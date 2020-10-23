@@ -89,7 +89,11 @@ Each sequence can be stored in one or more files in different formats.
             f = seq_ident + ext
             if f in files:
                 with open(self.step_file(f), 'r') as in_s:
-                    return import_bio_seq_io().read(in_s, st)
+                    seq_record = import_bio_seq_io().read(in_s, st)
+                    # Fix features!!!
+                    # Note: it can crash Bio/SeqRecord.py file also!!
+                    seq_record.features = [f for f in seq_record.features if f.location]
+                    return seq_record
 
     # def get_all_seqs_fa(self):
     #     f = self.cache_file('all_seqs.fa')

@@ -17,7 +17,7 @@ def chloroplast_annotation(annotations, num_genes=1, feature_type='gene', featur
         irb = partition.get_part_by_name('irb')
         l_seq = len(seq)
         in_parts = partition.put_features_in_parts(
-            Feature(l_seq, feature=f) for f in seq.features if f.type == feature_type and f.location)
+            Feature(l_seq, feature=f) for f in seq.features if f.type == feature_type)
         with_first_col |= ('irb-lsc' in in_parts)
         #
         header = ['|', f'LSC ({len(in_parts.get("lsc", []))})', '  |', f'IRa ({len(in_parts.get("ira", []))})', '  |',

@@ -97,7 +97,7 @@ class AnnotationExtract(NonProjectCommand):
             write_fasta(
                 os.path.join(od, f"extract_{basename_no_ext(i_filename)}.fasta"),
                 ((feature_qualifiers_to_desc(f), str(f.extract(seq_rec).seq))
-                 for f in seq_rec.features if f.type == type_ and 'gene' in f.qualifiers))
+                 for f in seq_rec.features if location and f.type == type_ and 'gene' in f.qualifiers))
 
 
 class AnnotationGroup(AnnotationExtract):  # Works only with given file
