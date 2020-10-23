@@ -1,5 +1,6 @@
 from collections import defaultdict
 import itertools
+from datetime import datetime
 from .utils import find_chloroplast_partition, create_chloroplast_partition
 from ..utils.entrez import Entrez
 from ..utils.helpers import fetch_from_properties_db
@@ -70,7 +71,7 @@ class SequenceDesc:
 
         self.__dict__.update(fetch_from_properties_db(
             properties_db, self.seq_ident, self._key_genbank_data,
-            self._genbank_data, self.sequences_step, self.seq_ident, properties_db))
+            self._genbank_data, self.seq_ident, properties_db))
 
     def _genbank_data(self, seq_ident, properties_db):
         vals = dict()
@@ -95,7 +96,7 @@ class SequenceDesc:
         #
         vals.update(fetch_from_properties_db(
             properties_db, self.seq_ident, self._key_sra_count,
-            self._sra_count_data, sequences_step, seq_ident, properties_db))
+            self._sra_count_data, seq))
         return vals
 
     def _sra_count_data(self, seq):
