@@ -1,6 +1,6 @@
 from collections import defaultdict
 import itertools
-from .utils import find_chloroplast_partition
+from .utils import find_chloroplast_partition, create_chloroplast_partition
 from ..utils.entrez import Entrez
 from ..utils.helpers import fetch_from_properties_db
 from ..utils.features import Feature
@@ -23,10 +23,10 @@ class SequenceDesc:
         self.credible_whole_sequence = True
         self.credible_irs = True
         # Set in step 3. (Find missing or more credible data)
-        self.irs_took_from = None
-        self.irs_took_reason = None
         self._took_parts = None
         self._took_parts_data = None
+        self.irs_took_from = None
+        self.irs_took_reason = None
         #
         self.part_orientation = None
 
@@ -116,6 +116,12 @@ class SequenceDesc:
             if ppp := [p for p in ('lsc', 'ira', 'ssc') if not orient[p]]:
                 self.part_orientation = ','.join(ppp)
 
+    def set_took_part(self, ira, irb, transfer_from, reason):
+        self._took_parts = create_chloroplast_partition(self.length, ira, irb, in_interval=True)
+        self._took_parts_data = _PartsDesc(self._took_parts, self._genes, self.length)
+        self.irs_took_from = transfer_from
+        self.irs_took_reason = reason
+
 
 def chloroplast_parts_orientation(seq_rec, partition, genes):
     # Check chloroplast sequence part orientation.
@@ -180,7 +186,7 @@ class _PartsDesc:
 
     @cache
     def starts_str(self):
-        return ', '.join([self._in_k(self.offset)] + [self._in_k(p.real_start) for p in self.oriented[1:]])
+        return ', '.join([str(self.offset)] + [str(p.real_start) for p in self.oriented[1:]])
 
     @cache
     def lengths_str(self):

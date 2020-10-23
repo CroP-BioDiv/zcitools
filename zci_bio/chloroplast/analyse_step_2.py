@@ -16,16 +16,8 @@ from ..utils.ncbi_taxonomy import get_ncbi_taxonomy
 # Note: if IRs were located shorter on SSC side,
 # that can cause problem only if IRs are wrongly oriented and fixing reverts them
 #
-def _evaluate_by_trnH_GUG(seq_descs):
-    # for seq_ident, d in seq_descs.items():
-    #     if d._parts and abs(d.part_trnH_GUG or 0) > 100:  # Contains parts and trnH-GUG located far enough
-    #         d = find_irs_by_similar(seq_descs, seq_ident, d)
-    #         print(seq_ident, d.part_trnH_GUG)
-    # Duljina sekvence
-    # Duljina djelova sekvence
-    #  - trnH-GUG + duljina djelova
-    pass
-
-
 def evaluate_credibility(seq_descs):
-    _evaluate_by_trnH_GUG(seq_descs)
+    for seq_ident, d in seq_descs.items():
+        if d._parts and abs(d.part_trnH_GUG or 0) > 100:  # Contains parts and trnH-GUG located far enough
+            if res := find_irs_by_similar(seq_descs, seq_ident, d):
+                d.set_took_part(*res, 'trnH-GUG')

@@ -44,6 +44,12 @@ def create_chloroplast_partition(l_seq, ira, irb, in_interval=False):
     return partition
 
 
+def create_chloroplast_partition_all(l_seq, starts):
+    assert len(starts) == 4, starts
+    return Partition([Feature(l_seq, name=n, interval=(s, e))
+                      for n, s, e in zip(('lsc', 'ira', 'ssc', 'irb'), starts, starts[1:] + starts[:1])])
+
+
 def find_referent_genome(seq_idents, referent_seq_ident):
     if referent_seq_ident in seq_idents:
         return referent_seq_ident

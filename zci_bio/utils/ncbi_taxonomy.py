@@ -107,14 +107,10 @@ class NCBITaxonomy:
         return tree
 
     def find_close_taxids(self, taxid, max_taxid, from_taxids):
-        if not isinstance(from_taxids, set):
-            from_taxids = set(from_taxids)
-
-        sn = self.taxa(taxid)
-        for t_id in sn.parents:
-            p_sn = self.taxa(t_id)
-            f_taxids = p_sn.down & from_taxids
-            if f_taxids:
+        parents = self._nt().get_lineage_translator([taxid] + list(from_taxids))
+        print(taxid, )
+        for p_id in parents[taxid][-2::-1]:
+            if f_taxids := [t for t in from_taxids if p_id in parents[t]]:
                 return f_taxids
-            if t_id == max_taxid:
+            if p_id == max_taxid:
                 break

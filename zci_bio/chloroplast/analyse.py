@@ -41,13 +41,11 @@ class AnalyseGenomes:
     @property
     @cache
     def ncbi_2_max_taxid(self):
-        print('aaa')
         return self.table_step.mapping_between_columns('ncbi_ident', 'max_taxid')
 
     @property
     @cache
     def taxid_2_ncbi(self):
-        print('bbb')
         return self.table_step.mapping_between_columns('tax_id', 'ncbi_ident')
 
     def run(self):
@@ -84,10 +82,9 @@ class AnalyseGenomes:
             ('part_starts', 'Part starts', 'str'),
             ('part_lengths', 'Part lengths', 'str'),
             ('part_num_genes', 'Part genes', 'str'),
+            ('part_trnH_GUG', 'trnH-GUG', 'int'),
             ('irs_took_from', 'IRS took', 'seq_ident'),
             ('took_part_starts', 'Took part starts', 'str'),
-            ('took_part_offset', 'Offset', 'int'),
-            ('took_part_trnH_GUG', 'trnH-GUG', 'int'),
             ('part_orientation', 'Orientation', 'str'),
             ('artcle_title', 'Article', 'str'),
             ('journal', 'Journal', 'str'),
@@ -205,7 +202,6 @@ def _run_manage_ns(seq_ident, sequences, ns, f_dir, close_seq_idents, match_side
         else:
             parts.append(Feature(seq_length, interval=(a - m, b + m)))
 
-    print(len(parts), len(ns))
     # Extract query data
     write_fasta(query_filename, [(f"{f.real_start}_{f.real_end}", f.extract(seq).seq) for f in parts])
     align = run_align_cmd(close_filename, query_filename, 'result')

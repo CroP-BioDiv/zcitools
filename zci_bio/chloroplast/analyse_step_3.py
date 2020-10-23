@@ -2,7 +2,6 @@ import os
 import multiprocessing
 from concurrent.futures import ThreadPoolExecutor
 from common_utils.file_utils import ensure_directory, write_fasta
-from .utils import create_chloroplast_partition
 from ..utils.mummer import MummerDelta
 from ..utils.ncbi_taxonomy import get_ncbi_taxonomy
 
@@ -24,7 +23,7 @@ def run_align_cmd(seq_fasta, qry_fasta, out_prefix):
 
 
 def find_missing_partitions(seq_descs):
-    with_irs = set(d.taxid for d in seq_descs.values() if d._parts)
+    with_irs = set(d.taxid for d in seq_descs.values() if d._parts and not d._took_parts)
     if len(with_irs) == len(seq_descs):  # All in
         return
     if not with_irs:
@@ -36,7 +35,7 @@ def find_missing_partitions(seq_descs):
     seq_2_result_object = dict()  # dict seq_ident -> tuple (ira interval, irb interval, matche seq_ident)
     with ThreadPoolExecutor(max_workers=multiprocessing.cpu_count()) as executor:
         for seq_ident, seq_data in seq_descs.items():
-            if seq_data._parts:
+            if seq_data._parts or seq_data._took_parts:
                 continue
 
             ncbi_2_max_taxid = seq_data._analyse.ncbi_2_max_taxid
@@ -53,9 +52,7 @@ def find_missing_partitions(seq_descs):
 
     #
     for seq_ident, (ira, irb, transfer_from) in seq_2_result_object.items():
-        d = seq_descs[seq_ident]
-        d._took_parts = create_chloroplast_partition(d.length, ira, irb, in_interval=True)
-        d.irs_took_from = transfer_from
+        seq_descs[seq_ident].set_took_part(ira, irb, transfer_from, 'missing')
 
     return seq_2_result_object
 
@@ -134,5 +131,5 @@ def find_irs_by_similar(seq_descs, seq_ident, seq_data):
 
     taxid_2_ncbi = seq_data._analyse.taxid_2_ncbi
     seq_2_result_object = dict()
-    _run_align(seq_ident, seq_data, [data[taxid_2_ncbi[t]] for t in close_taxids], seq_2_result_object)
+    _run_align(seq_ident, seq_data, [seq_descs[taxid_2_ncbi[t]] for t in close_taxids], seq_2_result_object)
     return seq_2_result_object.get(seq_ident)  # None or (ira, irb, transfer_from)

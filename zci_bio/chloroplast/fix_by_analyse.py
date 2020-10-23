@@ -1,7 +1,7 @@
 import shutil
 import os.path
 from common_utils.file_utils import write_fasta
-from .utils import find_chloroplast_partition, create_chloroplast_partition
+from .utils import create_chloroplast_partition_all
 from zci_bio.sequences.steps import SequencesStep
 
 
@@ -29,8 +29,15 @@ def fix_by_parts(step_data, analyse_step, common_db, omit_offset=10):
     #
     for row in analyse_step.rows_as_dicts():
         seq_ident = row['AccesionNumber']
+        starts = row['Took part starts'] or row['Part starts']
+        if not starts:
+            print(f"Warning: sequence {seq_ident} doesn't have starts!")
+            _copy_from_origin(step, annotation_step, seq_ident)
+            continue
+
+        starts = [int(f.strip()) for f in starts.split(',')]
+        offset = starts[0]
         l_seq = row['Length']
-        offset = row['Offset']
         orientation = row['Orientation']
 
         if (not_offset := (offset <= omit_offset or (l_seq - offset) <= omit_offset)) and \
@@ -46,14 +53,7 @@ def fix_by_parts(step_data, analyse_step, common_db, omit_offset=10):
             continue
 
         if orientation:  # Orientate parts
-            if row['IRS took']:
-                ir_l = row['IR']
-                ira_end, irb_start = tuple(map(int, row['SSC ends'].split('-')))
-                partition = create_chloroplast_partition(
-                    l_seq, (ira_end - ir_l, ira_end), (irb_start, irb_start + ir_l), in_interval=True)
-            else:
-                partition = find_chloroplast_partition(seq)
-
+            partition = create_chloroplast_partition_all(l_seq, starts)
             parts = partition.extract(seq)  # dict name -> Seq object
             if 'lsc' in orientation:  # LSC
                 parts['lsc'] = parts['lsc'].reverse_complement()
