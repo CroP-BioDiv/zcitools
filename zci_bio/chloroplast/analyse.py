@@ -2,12 +2,13 @@ import os.path
 # import multiprocessing
 # from concurrent.futures import ThreadPoolExecutor
 from step_project.common.table.steps import TableStep
-from common_utils.file_utils import ensure_directory, write_fasta
+from common_utils.file_utils import ensure_directory, write_str_in_file, write_fasta
 from common_utils.properties_db import PropertiesDB
 from common_utils.cache import cache
 from .analyse_step_1 import SequenceDesc
 from .analyse_step_2 import evaluate_credibility
 from .analyse_step_3 import run_align_cmd, find_missing_partitions
+from .utils import find_chloroplast_partition
 from ..utils.features import Feature
 from ..utils.ncbi_taxonomy import get_ncbi_taxonomy
 
@@ -96,6 +97,18 @@ class AnalyseGenomes:
             [[getattr(d, c) for c, _, _ in columns] for seq_ident, d in sorted(data.items())],
             [(n, t) for _, n, t in columns])
 
+        # Statistics
+        sequences_step = next(iter(data.values())).sequences_step
+        num_ge_seq_irs = sum(int(bool(seq_data._parts)) for seq_data in data.values())
+        num_ncbi_irs = sum(int(bool(find_chloroplast_partition(seq))) for _, seq in sequences_step._iterate_records())
+        stats = f"""Statistics:
+
+Number of genomes containing IRS by NCBI annotation  : {num_ncbi_irs}
+Number of genomes containing IRS by GeSeq annotation : {num_ge_seq_irs}
+"""
+        print(stats)
+        write_str_in_file(self.step.step_file('statistics.txt'), stats)
+
         #
         errors = []
         l_start = '\n - '
@@ -110,9 +123,8 @@ class AnalyseGenomes:
         if with_trnH_offset := [seq_ident for seq_ident, d in data.items() if abs(d.part_trnH_GUG or 0) > 50]:
             errors.append(f"Sequneces with trnH-GUG offset:{l_start}{l_start.join(sorted(with_trnH_offset))}")
         if errors:
-            with open((r_file := self.step.step_file('README.txt')), 'w') as _out:
-                _out.write('\n'.join(errors))
-                _out.write('\n')
+            r_file = self.step.step_file('README.txt')
+            write_str_in_file(r_file, '\n'.join(errors) + '\n')
             print(f'Problems found in sequences! Check file {r_file}.')
 
 
