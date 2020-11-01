@@ -176,7 +176,7 @@ def read_raw_sequences_from_all(input_data, extensions=None):
 
 
 #
-def get_bio_io_type(filename, format_):
+def get_bio_io_type(filename, format_=None):
     if not format_:
         ext = extension_no_dot(filename)
         format_ = ext_2_bio_io_type.get(ext, ext)

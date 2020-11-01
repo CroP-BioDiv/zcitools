@@ -99,13 +99,19 @@ class AnalyseGenomes:
 
         # Statistics
         sequences_step = next(iter(data.values())).sequences_step
+        sp_stats = self._find_species_stats()
         num_ge_seq_irs = sum(int(bool(seq_data._parts)) for seq_data in data.values())
         num_ncbi_irs = sum(int(bool(find_chloroplast_partition(seq))) for _, seq in sequences_step._iterate_records())
         stats = f"""Statistics:
 
+Minimum sequence length: {min(len(seq) for _, seq in sequences_step._iterate_records())}
+Maximum sequence length: {max(len(seq) for _, seq in sequences_step._iterate_records())}
 Number of genomes containing IRS by NCBI annotation  : {num_ncbi_irs}
 Number of genomes containing IRS by GeSeq annotation : {num_ge_seq_irs}
 """
+        if sp_stats := self._find_species_stats():
+            stats += '\n' + '\n'.join(sp_stats) + '\n'
+
         print(stats)
         write_str_in_file(self.step.step_file('statistics.txt'), stats)
 
@@ -126,6 +132,27 @@ Number of genomes containing IRS by GeSeq annotation : {num_ge_seq_irs}
             r_file = self.step.step_file('README.txt')
             write_str_in_file(r_file, '\n'.join(errors) + '\n')
             print(f'Problems found in sequences! Check file {r_file}.')
+
+    def _find_species_stats(self):
+        ncbi_tax = get_ncbi_taxonomy()
+        ident_2_taxid = dict(self.table_data.iterate_column('tax_id'))
+        taxid_2_ident = dict((v, k) for k, v in ident_2_taxid.items())
+        species, without_sp = ncbi_tax.group_taxids_in_species(set(ident_2_taxid.values()))
+
+        # Species with more genomes
+        ret = []
+        for (sp_taxid, sp_name), data in species.items():
+            if len(data) > 1:
+                ret.append(f'Species {sp_name} ({sp_taxid}) has more genomes:')
+                ret.extend(f' - {taxid_2_ident[taxid]} {name} ({taxid}) of rank {rank}' for taxid, name, rank in data)
+        if not ret:
+            ret.append('No species found with more genomes!')
+
+        # Wihtout species
+        if without_sp:
+            ret.append("No 'base' species in NCBI taxa database found for:")
+            ret.extend(f' - {taxid_2_ident[taxid]} {name} ({taxid}) of rank {rank}' for taxid, name, rank in without_sp)
+        return ret
 
 
 # ---------------------------------------------------------

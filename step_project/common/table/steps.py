@@ -148,6 +148,9 @@ Table data is stored in table.csv with header, separator ;, quote character ".
             _check_rows(self._columns, self._rows)
         return self._rows
 
+    def num_rows(self):
+        return len(self.get_rows())
+
     def column_index(self, column_name):
         for i, (name, _) in enumerate(self._columns):
             if name == column_name:
@@ -357,6 +360,9 @@ class IndexOnTable:
             idxs = [self._column_idxs[c] for c in columns]
             self._data = dict((tuple(r[i] for i in idxs), r) for r in rows)
 
+    def __len__(self):
+        return len(self._data)
+
     def get_row(self, index_value):
         return self._data[index_value]
 
@@ -366,6 +372,11 @@ class IndexOnTable:
     def get_cells(self, index_value, *column_names):
         row = self._data[index_value]
         return tuple(row[self._column_idxs[c]] for c in column_names)
+
+    def iterate_column(self, column_name):
+        idx = self._column_idxs[column_name]
+        for k, row in self._data.items():
+            yield k, row[idx]
 
 
 class _RowReader:

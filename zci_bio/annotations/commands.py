@@ -1,4 +1,5 @@
 from step_project.base_commands import ProjectCommand, NonProjectCommand, CreateStepCommand, CreateStepFromStepCommand
+from step_project.common.common_db_commands import CommonDBCommand, CommonDB
 from common_utils.exceptions import ZCItoolsValueError
 
 
@@ -148,6 +149,29 @@ class GeSeq(CreateStepFromStepCommand):
     def finish(self, step_obj):
         from .ge_seq import finish_ge_seq_data
         finish_ge_seq_data(step_obj, self.get_step_db_object(step_obj))
+
+
+class GeSeqCDBClean(CommonDBCommand):
+    _COMMAND = 'ge_seq_cache_clean'
+    _HELP = "Remove outdated GeSeq records from CommonDB"
+
+    def run(self):
+        import io
+        from ..utils.import_methods import import_bio_seq_io
+        from ..utils.helpers import get_bio_io_type
+        SeqIO = import_bio_seq_io()
+        self._set_db_attrs(('GeSeq',))
+        seq_db = CommonDB.get_zci_db(('sequences',))
+        for rel_dir, rec in self._iterate_records():
+            record_ident = self._db_ident(rel_dir, rec)
+            if gs_ret := self._common_db.get_one_file(record_ident):
+                if seq_ret := seq_db.get_one_file(record_ident):
+                    _, g_filename, g_data = gs_ret
+                    _, s_filename, s_data = seq_ret
+                    g_seq = SeqIO.read(io.StringIO(g_data.decode('utf-8')), get_bio_io_type(g_filename))
+                    s_seq = SeqIO.read(io.StringIO(s_data.decode('utf-8')), get_bio_io_type(s_filename))
+                    if g_seq.seq != s_seq.seq:
+                        print('ToDo: DELETE', f)
 
 
 class CPGAVAS(CreateStepFromStepCommand):

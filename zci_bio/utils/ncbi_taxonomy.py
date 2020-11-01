@@ -1,4 +1,6 @@
 from types import SimpleNamespace
+from collections import defaultdict
+import itertools
 from .import_methods import import_ete3_NCBITaxa
 from common_utils.cache import cache, cache_args
 try:
@@ -96,6 +98,27 @@ class NCBITaxonomy:
             print(f"   Didn't find taxid for '{name}'")
 
         return taxid
+
+    # Group in species
+    def group_taxids_in_species(self, taxids):
+        nt = self._nt()
+        parents = nt.get_lineage_translator(taxids)
+        query = ','.join(map(str, itertools.chain(*parents.values())))
+        result = self._db().execute(f"SELECT taxid, spname, rank FROM species WHERE taxid IN ({query});")
+        id2data = dict((tax_id, (spname, rank)) for tax_id, spname, rank in result.fetchall())
+        without_sp = []  # [(taxid, sp_name, rank), ]
+        species = defaultdict(list)  # (taxid, sp_name) -> [(taxid, sp_name, rank), ]
+        for tax_id, ps in parents.items():
+            b_spname, b_rank = id2data[tax_id]
+            for p_id in ps[::-1]:
+                spname, rank = id2data[p_id]
+                if rank == 'species':
+                    species[(p_id, spname)].append((tax_id, b_spname, b_rank))
+                    break
+                if rank == 'genus' or 'family' in rank:
+                    without_sp.append((tax_id, b_spname, b_rank))
+                    break
+        return species, without_sp
 
     #
     @cache_args

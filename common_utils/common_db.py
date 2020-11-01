@@ -124,6 +124,13 @@ class CommonDB:
         for _, _, data in self._get_zip_data(record_ident):
             return data
 
+    def get_one_file(self, record_ident):
+        files = list(self._get_zip_data(record_ident))
+        if len(files) != 1:
+            print(f"Warning: record {record_ident} has zero or more files!")
+            return
+        return files[0]
+
     #
     def remove_record(self, record_ident):
         silent_remove(self.get_record_filename(record_ident))

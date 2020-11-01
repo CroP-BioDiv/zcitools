@@ -64,6 +64,8 @@ def _run_align(seq_ident, seq_data, close_data, seq_2_result_object, match_lengt
     seq_fasta = os.path.join(f_dir, f"{seq_ident}.fa")
     write_fasta(seq_fasta, [(seq_ident, seq_data._seq.seq)])
 
+    # It is (probably) better first to prefer newer sequences!
+    close_data = sorted(close_data, reverse=True, key=lambda d: d.first_date)
     all_aligns = []
     for d in close_data:
         ira = d._parts.get_part_by_name('ira')
