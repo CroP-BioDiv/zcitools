@@ -1,3 +1,4 @@
+import numpy
 from step_project.base_commands import NonProjectCommand, CreateStepFromStepCommand
 from common_utils.exceptions import ZCItoolsValueError
 
@@ -138,17 +139,34 @@ class SequencesSumLength(NonProjectCommand):
     def set_arguments(parser):
         parser.add_argument('filenames', nargs='+', help='Sequence filename(s)')
 
+    def _stat_from_lengths(self, lengths):
+        sorted_lengths = numpy.array(sorted(lengths))
+        sum_l = int(numpy.sum(sorted_lengths[-1]))
+
+        csum = numpy.cumsum(sorted_lengths)
+        nx = int(sum_l // 2)
+        csumn = min(csum[csum >= nx])
+        l_50 = int(numpy.where(csum == csumn)[0])
+        n_50 = int(sorted_lengths[l_50])
+
+        return dict(sum_length=sum_l,
+                    max_length=int(sorted_lengths[-1]),
+                    min_length=int(sorted_lengths[0]),
+                    num_parts=len(lengths),
+                    median=int(numpy.median(sorted_lengths)),
+                    mean=numpy.mean(sorted_lengths),
+                    L50=l_50, N50=n_50)
+
     def run(self):
         from ..utils.helpers import read_sequences
-        length = 0
-        num_seqeunces = 0
+        lengths = []
         for f in self.args.filenames:
-            f_len = 0
-            f_num = 0
-            for seq in read_sequences(f):
-                f_num += 1
-                f_len += len(seq)
-            print(f'  File {f}: {f_num} sequences, of length {f_len}.')
-            num_seqeunces += f_num
-            length += f_len
-        print(f'All: {num_seqeunces} sequences, of length {length}.')
+            f_lengths = [len(seq) for seq in read_sequences(f)]
+            lengths.extend(f_lengths)
+            d = self._stat_from_lengths(f_lengths)
+            print(f"  File {f}: {d['num_parts']} sequences, of length {d['sum_length']}, " +
+                  f"max length {d['max_length']}, N50 {d['N50']}.")
+        #
+        d = self._stat_from_lengths(lengths)
+        print(f"All: {d['num_parts']} sequences, of length {d['sum_length']}, " +
+              f"max length {d['max_length']}, N50 {d['N50']}.")
