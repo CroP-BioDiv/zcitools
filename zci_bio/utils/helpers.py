@@ -66,7 +66,7 @@ def read_sequence(filename, format=None):
 
 def read_sequences(filename, format=None):
     with open(filename, 'r') as in_data:
-        return list(import_bio_seq_io().parse(in_data, get_bio_io_type(filename, format)))
+        yield from import_bio_seq_io().parse(in_data, get_bio_io_type(filename, format))
 
 
 def split_sequences(input_filename, output_ext):
@@ -154,7 +154,7 @@ def read_raw_sequences_from_all(input_data, extensions=None):
     # Yields seq_ident
     # ToDo: from alignment file
     if os.path.isfile(input_data):
-        seqs = read_sequences(input_data)
+        seqs = list(read_sequences(input_data))
         # yield seq.id, seq.seq
         if len(seqs) == 1:
             yield basename_no_ext(input_data), seqs[0].seq

@@ -128,3 +128,27 @@ or step directory of type sequences, annotations or alignements"""
             print('ERRORS:')
             for e in errors:
                 print(e)
+
+
+class SequencesSumLength(NonProjectCommand):
+    _COMMAND = 'sequences_summary'
+    _HELP = "Sum length of sequences"
+
+    @staticmethod
+    def set_arguments(parser):
+        parser.add_argument('filenames', nargs='+', help='Sequence filename(s)')
+
+    def run(self):
+        from ..utils.helpers import read_sequences
+        length = 0
+        num_seqeunces = 0
+        for f in self.args.filenames:
+            f_len = 0
+            f_num = 0
+            for seq in read_sequences(f):
+                f_num += 1
+                f_len += len(seq)
+            print(f'  File {f}: {f_num} sequences, of length {f_len}.')
+            num_seqeunces += f_num
+            length += f_len
+        print(f'All: {num_seqeunces} sequences, of length {length}.')
