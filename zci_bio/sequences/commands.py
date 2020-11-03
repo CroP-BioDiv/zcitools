@@ -139,9 +139,10 @@ class SequencesSumLength(NonProjectCommand):
     def set_arguments(parser):
         parser.add_argument('filenames', nargs='+', help='Sequence filename(s)')
 
-    def _stat_from_lengths(self, lengths):
+    def _stat_from_lengths(self, lengths, gc, ns):
         sorted_lengths = numpy.array(sorted(lengths))
-        sum_l = int(numpy.sum(sorted_lengths[-1]))
+        sum_l = int(numpy.sum(sorted_lengths))
+        print(sum_l, gc, ns)
 
         csum = numpy.cumsum(sorted_lengths)
         nx = int(sum_l // 2)
@@ -155,18 +156,30 @@ class SequencesSumLength(NonProjectCommand):
                     num_parts=len(lengths),
                     median=int(numpy.median(sorted_lengths)),
                     mean=numpy.mean(sorted_lengths),
-                    L50=l_50, N50=n_50)
+                    L50=l_50, N50=n_50,
+                    gc=100 * (gc / (sum_l - ns)))
 
     def run(self):
         from ..utils.helpers import read_sequences
         lengths = []
+        gc = 0
+        ns = 0
         for f in self.args.filenames:
-            f_lengths = [len(seq) for seq in read_sequences(f)]
+            f_lengths = []
+            f_gc = 0
+            f_ns = 0
+            for seq in read_sequences(f):
+                f_lengths.append(len(seq))
+                f_gc += seq.seq.count('G') + seq.seq.count('C')
+                f_ns += seq.seq.count('N')
             lengths.extend(f_lengths)
-            d = self._stat_from_lengths(f_lengths)
+            gc += f_gc
+            ns += f_ns
+            #
+            d = self._stat_from_lengths(f_lengths, f_gc, f_ns)
             print(f"  File {f}: {d['num_parts']} sequences, of length {d['sum_length']}, " +
-                  f"max length {d['max_length']}, N50 {d['N50']}.")
+                  f"max length {d['max_length']}, N50 {d['N50']}, GC {d['gc']:.2f}%.")
         #
-        d = self._stat_from_lengths(lengths)
+        d = self._stat_from_lengths(lengths, gc, ns)
         print(f"All: {d['num_parts']} sequences, of length {d['sum_length']}, " +
-              f"max length {d['max_length']}, N50 {d['N50']}.")
+              f"max length {d['max_length']}, N50 {d['N50']}, GC {d['gc']:.2f}%.")
