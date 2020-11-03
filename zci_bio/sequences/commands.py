@@ -132,6 +132,7 @@ or step directory of type sequences, annotations or alignements"""
 
 
 class SequencesSumLength(NonProjectCommand):
+    # This one is better: https://github.com/MikeTrizna/assembly_stats
     _COMMAND = 'sequences_summary'
     _HELP = "Sum length of sequences"
 
