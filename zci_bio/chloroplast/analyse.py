@@ -110,7 +110,7 @@ Number of genomes containing IRS by NCBI annotation  : {num_ncbi_irs}
 Number of genomes containing IRS by GeSeq annotation : {num_ge_seq_irs}
 """
         if sp_stats := self._find_species_stats():
-            summary += '\n' + '\n'.join(sp_stats) + '\n'
+            summary += '\nSpecies with more accessions:\n\n' + '\n'.join(sp_stats) + '\n'
 
         if corrections := self._find_corrections_stat():
             summary += '\nCorrections:\n\n' + '\n'.join(corrections) + '\n'

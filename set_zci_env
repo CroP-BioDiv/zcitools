@@ -28,8 +28,13 @@ _zcit()
     local cur opts
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]}"
-    opts=$(${ZCITOOLS}/bin/zcit.py list_commands | grep -v "Warning:")
 
+    # Filename for next arguments
+    if [ "${#COMP_WORDS[@]}" != "2" ]; then
+        opts=$(ls ${cur}*)
+    else
+        opts=$(${DOKTORAT_SOURCE}/bin/zcit.py list_commands | grep -v "Warning: module")
+    fi
     COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
     return 0
 }
