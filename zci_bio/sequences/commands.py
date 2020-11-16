@@ -143,7 +143,6 @@ class SequencesSumLength(NonProjectCommand):
     def _stat_from_lengths(self, lengths, gc, ns):
         sorted_lengths = numpy.array(sorted(lengths))
         sum_l = int(numpy.sum(sorted_lengths))
-        print(sum_l, gc, ns)
 
         csum = numpy.cumsum(sorted_lengths)
         nx = int(sum_l // 2)

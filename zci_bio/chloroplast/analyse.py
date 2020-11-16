@@ -102,7 +102,7 @@ class AnalyseGenomes:
         sp_stats = self._find_species_stats()
         num_ge_seq_irs = sum(int(bool(seq_data._parts)) for seq_data in data.values())
         num_ncbi_irs = sum(int(bool(find_chloroplast_partition(seq))) for _, seq in sequences_step._iterate_records())
-        stats = f"""Statistics:
+        summary = f"""Statistics:
 
 Minimum sequence length: {min(len(seq) for _, seq in sequences_step._iterate_records())}
 Maximum sequence length: {max(len(seq) for _, seq in sequences_step._iterate_records())}
@@ -110,26 +110,19 @@ Number of genomes containing IRS by NCBI annotation  : {num_ncbi_irs}
 Number of genomes containing IRS by GeSeq annotation : {num_ge_seq_irs}
 """
         if sp_stats := self._find_species_stats():
-            stats += '\n' + '\n'.join(sp_stats) + '\n'
+            summary += '\n' + '\n'.join(sp_stats) + '\n'
 
-        print(stats)
-        write_str_in_file(self.step.step_file('statistics.txt'), stats)
+        if corrections := self._find_corrections_stat():
+            summary += '\nCorrections:\n\n' + '\n'.join(corrections) + '\n'
+        else:
+            summary += '\nNo corrections were done!'
+
+        print(summary)
+        write_str_in_file(self.step.step_file('summary.txt'), summary)
 
         #
-        errors = []
-        l_start = '\n - '
-        if f_ps := [(s, d.irs_took_from) for s, d in data.items() if d.irs_took_from]:
-            errors.append(f'Found partitions for sequences:{l_start}{l_start.join(sorted(f"{s} ({m})" for s, m in f_ps))}')
-        if without_parts := [seq_ident for seq_ident, d in data.items() if not d._parts]:
-            errors.append(f"No partitions for sequences:{l_start}{l_start.join(sorted(without_parts))}")
-        if wrong_oriented_parts := [seq_ident for seq_ident, d in data.items() if d.part_orientation]:
-            errors.append(f"Partitions with wrong orientation in sequences:{l_start}{l_start.join(sorted(wrong_oriented_parts))}")
-        if with_offset := [seq_ident for seq_ident, d in data.items() if abs(d.part_offset or 0) > 50]:
-            errors.append(f"Sequences with offset:{l_start}{l_start.join(sorted(with_offset))}")
-        if with_trnH_offset := [seq_ident for seq_ident, d in data.items() if abs(d.part_trnH_GUG or 0) > 50]:
-            errors.append(f"Sequneces with trnH-GUG offset:{l_start}{l_start.join(sorted(with_trnH_offset))}")
-        if errors:
-            r_file = self.step.step_file('README.txt')
+        if errors := self._find_errors():
+            r_file = self.step.step_file('errors.txt')
             write_str_in_file(r_file, '\n'.join(errors) + '\n')
             print(f'Problems found in sequences! Check file {r_file}.')
 
@@ -153,6 +146,44 @@ Number of genomes containing IRS by GeSeq annotation : {num_ge_seq_irs}
             ret.append("No 'base' species in NCBI taxa database found for:")
             ret.extend(f' - {taxid_2_ident[taxid]} {name} ({taxid}) of rank {rank}' for taxid, name, rank in without_sp)
         return ret
+
+    def _find_corrections_stat(self):
+        corrs = []
+        if num := sum(1 for d in self.seq_descs.values() if d.part_orientation):
+            corrs.append(f'Found partitions: {num}')
+        if num := sum(1 for d in self.seq_descs.values() if not d._parts):
+            corrs.append(f'Without partitions: {num}')
+        if num := sum(1 for d in self.seq_descs.values() if d.part_orientation):
+            corrs.append(f'Wrong partition orientation: {num}')
+        if num := sum(1 for d in self.seq_descs.values() if abs(d.part_offset or 0) > 50):
+            corrs.append(f'Wrong LSC offset: {num}')
+        if num := sum(1 for d in self.seq_descs.values() if abs(d.part_trnH_GUG or 0) > 50):
+            corrs.append(f'Wrong trnH-GUG offset: {num}')
+        #
+        if num := sum(1 for d in self.seq_descs.values()
+                      if d.part_orientation or
+                      not d._parts or
+                      d.part_orientation or
+                      abs(d.part_offset or 0) > 50 or
+                      abs(d.part_trnH_GUG or 0) > 50):
+            corrs.append(f'Fixed: {num}')
+        return corrs
+
+    def _find_errors(self):
+        data = self.seq_descs
+        errors = []
+        l_start = '\n - '
+        if f_ps := [(s, d.irs_took_from) for s, d in data.items() if d.irs_took_from]:
+            errors.append(f'Found partitions for sequences:{l_start}{l_start.join(sorted(f"{s} ({m})" for s, m in f_ps))}')
+        if without_parts := [seq_ident for seq_ident, d in data.items() if not d._parts]:
+            errors.append(f"No partitions for sequences:{l_start}{l_start.join(sorted(without_parts))}")
+        if wrong_oriented_parts := [seq_ident for seq_ident, d in data.items() if d.part_orientation]:
+            errors.append(f"Partitions with wrong orientation in sequences:{l_start}{l_start.join(sorted(wrong_oriented_parts))}")
+        if with_offset := [seq_ident for seq_ident, d in data.items() if abs(d.part_offset or 0) > 50]:
+            errors.append(f"Sequences with offset:{l_start}{l_start.join(sorted(with_offset))}")
+        if with_trnH_offset := [seq_ident for seq_ident, d in data.items() if abs(d.part_trnH_GUG or 0) > 50]:
+            errors.append(f"Sequneces with trnH-GUG offset:{l_start}{l_start.join(sorted(with_trnH_offset))}")
+        return errors
 
 
 # ---------------------------------------------------------
