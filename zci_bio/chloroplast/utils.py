@@ -60,3 +60,38 @@ def find_referent_genome(seq_idents, referent_seq_ident):
     elif len(refs) > 1:
         raise ZCItoolsValueError(f'More genomes which name starts with {referent_seq_ident}!')
     return refs[0]
+
+
+# -----------------
+def chloroplast_alignment(step_data, annotations_step, sequences, run, alignment_program):
+    from ..alignments.common_methods import AlignmentsStep, add_sequences, run_alignment_program
+
+    # Check sequences
+    if len(sequences) < 2:
+        print('At least 2 sequences should be specified!!!')
+        return
+
+    steps = AlignmentsStep(annotations_step.project, step_data, remove_data=True)
+    annotations_step.propagate_step_name_prefix(steps)
+
+    records = [annotations_step.get_sequence_record(seq_ident) for seq_ident in sequences]
+    with_parts = [(seq_ident, rec, parts) for seq_ident, rec in zip(sequences, records)
+                  if (parts := find_chloroplast_partition(rec))]
+    print(with_parts)
+
+    seq_files = []
+    # Whole
+    seq_files.append(add_sequences(
+        steps.create_substep('whole'), 'whole',
+        [(seq_ident, rec.seq, None) for seq_ident, rec in zip(sequences, records)]))
+
+    # Parts
+    if len(with_parts) > 1:
+        for part in ('lsc', 'ira', 'ssc'):
+            seq_files.append(add_sequences(
+                steps.create_substep(part), 'gene',
+                [(seq_ident, parts[part].extract(rec).seq, None) for seq_ident, rec, parts in with_parts]))
+
+    #
+    run_alignment_program(alignment_program, steps, seq_files, run)
+    return steps

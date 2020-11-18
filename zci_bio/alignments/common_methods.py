@@ -1,4 +1,5 @@
 import os.path
+import importlib
 from .steps import AlignmentStep, AlignmentsStep
 from ..utils.import_methods import import_bio_seq_io
 from common_utils.file_utils import write_fasta, write_yaml, run_module_script, set_run_instructions, \
@@ -6,11 +7,106 @@ from common_utils.file_utils import write_fasta, write_yaml, run_module_script, 
 from common_utils.misc import sets_equal
 from common_utils.exceptions import ZCItoolsValueError
 
+"""
+Alignment step contains one (type AlignmentStep) or more alignments (type AlignmentsStep).
 
-def _add_sequences(al_step, seq_type, sequences, sequence_data):
+For each alignment (step/substep), sequences to align are stored in file 'sequences.fa'.
+
+For main step, file 'finish.yml' contains characteristics of all sets to align,
+so that alignment script can optimize hot to run alignment program.
+For each set to align, data stored are:
+ - filename       : filename of data to align (<dir>/sequences.fa)
+ - short          : should set be threated as 'short' task. It is only a hint, not request to the script.
+ - max_seq_length : maximal length of sequence to align.
+ - namelength     : max length of sequence names. Needed for phyllip format.
+"""
+
+_align_programs = dict(
+    clustal_omega=dict(run_module='run_clustal_omega',
+                       instructions="""
+Steps:
+ - copy file calculate.zip onto server
+ - unzip it
+ - change directory to {step_name}
+ - run script: python3 {script_name}
+    - to specify number of threads to use run: python3 {script_name} <num_threads>
+      default is number of cores.
+ - copy file output.zip back into project's step directory {step_name}
+ - run zcit command: zcit.py finish {step_name}
+
+Notes:
+ - Clustal Omega executable (clustalo) should be on the PATH or
+   environment variable CLUSTAL_OMEGA_EXE should point to it.
+ - It is good to use command screen for running the script.
+   screen -dm "python3 {script_name}"
+"""),
+    mafft=dict(run_module='run_mafft',
+               instructions="""
+Steps:
+ - copy file calculate.zip onto server
+ - unzip it
+ - change directory to {step_name}
+ - run script: python3 {script_name}
+    - to specify number of threads to use run: python3 {script_name} <num_threads>
+      default is number of cores.
+ - copy file output.zip back into project's step directory {step_name}
+ - run zcit command: zcit.py finish {step_name}
+
+Notes:
+ - MAFFT executable (mafft) should be on the PATH or
+   environment variable MAFFT_EXE should point to it.
+ - It is good to use command screen for running the script.
+   screen -dm "python3 {script_name}"
+"""),
+    muscle=dict(run_module='run_muscle',
+                instructions="""
+Steps:
+ - copy file calculate.zip onto server
+ - unzip it
+ - change directory to {step_name}
+ - run script: python3 {script_name}
+    - to specify number of threads to use run: python3 {script_name} <num_threads>
+      default is number of cores.
+ - copy file output.zip back into project's step directory {step_name}
+ - run zcit command: zcit.py finish {step_name}
+
+Notes:
+ - MUSCLE executable (muscle) should be on the PATH or
+   environment variable MUSCLE_EXE should point to it.
+ - It is good to use command screen for running the script.
+   screen -dm "python3 {script_name}"
+"""),
+)
+
+
+def run_alignment_program(alignment_program, base_step, seq_files, run):
+    # Check alignment program
+    if not (data := _align_programs.get(alignment_program)):
+        raise ZCItoolsValueError(f'Alignment program {alignment_program} is not recognized!!!')
+
+    # Store files desc
+    files_to_zip = [d['filename'] for d in seq_files]  # files to zip
+    # Remove step directory from files since run script is called from step directory
+    for d in seq_files:
+        d['filename'] = base_step.strip_step_dir(d['filename'])
+    files_to_zip.append(base_step.step_file('finish.yml'))
+    write_yaml(seq_files, files_to_zip[-1])
+
+    # Stores description.yml
+    base_step.save(completed=run)
+
+    # Run or store script
+    run_module = importlib.import_module('.' + data['run_module'], package='zci_bio.alignments')
+    if run:
+        run_module_script(run_module, base_step)
+    else:
+        set_run_instructions(run_module, base_step, files_to_zip, data['instructions'])
+
+
+def add_sequences(al_step, seq_type, sequence_data):
     seq_file = al_step.step_file('sequences.fa')
     write_fasta(seq_file, ((i, s) for i, s, _ in sequence_data))
-    al_step.set_sequences(sequences)
+    al_step.set_sequences(i for i, _, _ in sequence_data)
     al_step.seq_sequence_type(seq_type)
     al_step.save(completed=False)
     # Annotations
@@ -54,21 +150,22 @@ def _feature_sequences(
     if single:
         for gene in same_features:
             al_step = _create_al_step(created_steps, steps, f'{feature_type}_{gene}', annotations_step, step_data)
-            seq_files.append(_add_sequences(
-                al_step, 'gene', sequences, [(seq_ident, parts[(seq_ident, gene, None)]) for seq_ident in sequences]))
+            seq_files.append(add_sequences(
+                al_step, 'gene', [(seq_ident, parts[(seq_ident, gene, None)]) for seq_ident in sequences]))
 
     if concatenated:
         al_step = _create_al_step(created_steps, steps, f'{feature_type}_concatenated', annotations_step, step_data)
         same_features = sorted(same_features)  # ToDo: order?!
-        seq_files.append(_add_sequences(
-            al_step, 'genes', sequences,
+        seq_files.append(add_sequences(
+            al_step, 'genes',
             [(seq_ident,
               ''.join(parts[(seq_ident, gene)] for gene in same_features),
               _lengths_2_features(((gene, parts[(seq_ident, gene)]) for gene in same_features)))
              for seq_ident in sequences]))
 
 
-def create_alignment_data(step_data, annotations_step, alignments, whole_partition, run, run_module, _instructions):
+def create_alignment_data(step_data, annotations_step, alignments, whole_partition, run, alignment_program):
+    # Check alignments
     alignments = set(alignments)
     assert all(a in ('w', 'gs', 'gc', 'cs', 'cc') for a in alignments)
 
@@ -90,8 +187,8 @@ def create_alignment_data(step_data, annotations_step, alignments, whole_partiti
     if 'w' in alignments:
         al_step = _create_al_step(created_steps, steps, 'whole', annotations_step, step_data)
         # ToDo: kako anotirati cijelu sekvencu? Prema gene, CDS. Treba paziti da su sortirani tako da znamo rupe
-        seq_files.append(_add_sequences(
-            al_step, 'whole', sequences,
+        seq_files.append(add_sequences(
+            al_step, 'whole',
             [(seq_ident, annotations_step.get_sequence(seq_ident), None) for seq_ident in sequences]))
 
         # Store filtered features
@@ -106,24 +203,8 @@ def create_alignment_data(step_data, annotations_step, alignments, whole_partiti
 
     assert created_steps
     base_step = steps or created_steps[0]
-
-    # Store files desc
-    files_to_zip = [d['filename'] for d in seq_files]  # files to zip
-    # Remove step directory from files since run script is called from step directory
-    for d in seq_files:
-        d['filename'] = base_step.strip_step_dir(d['filename'])
-    files_to_zip.append(base_step.step_file('finish.yml'))
-    write_yaml(seq_files, files_to_zip[-1])
-
-    # Stores description.yml
     annotations_step.propagate_step_name_prefix(base_step)
-    base_step.save(completed=run)
-
-    if run:
-        run_module_script(run_module, base_step)
-    else:
-        set_run_instructions(run_module, base_step, files_to_zip, _instructions)
-    #
+    run_alignment_program(alignment_program, base_step, seq_files, run)
     return base_step
 
 

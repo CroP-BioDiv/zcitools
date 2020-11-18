@@ -1,6 +1,5 @@
 from step_project.base_commands import CreateStepFromStepCommand
 from common_utils.exceptions import ZCItoolsValueError
-from common_utils.file_utils import get_settings
 
 
 class ClustalO(CreateStepFromStepCommand):
@@ -13,6 +12,7 @@ class ClustalO(CreateStepFromStepCommand):
                    ('cs', 'CDS single'), ('cc', 'CDS concatenated'))
     _SUPPORTED_ALIGNS = set(a for a, _ in _ALIGNMENTS)
     # Note: no global caching
+    _ALIGN_PROGRAM = 'clustal_omega'
 
     @staticmethod
     def set_arguments(parser):
@@ -24,56 +24,42 @@ class ClustalO(CreateStepFromStepCommand):
             help='For whole alignment which set partition type to use. Values: gene, CDS.')
         parser.add_argument('-r', '--run', action='store_true', help='Run Clustal Omega locale')
 
-    def run(self, step_data):
-        from .clustal_omega import create_clustal_data
+    def run(self, step_data, run_module, instructions):
+        from .common_methods import create_alignment_data
         align_params = [a.lower() for a in self.args.alignments]
-        not_sup_params = [a for a in align_params if a not in self._SUPPORTED_ALIGNS]
-        if not_sup_params:
+        if not_sup_params := [a for a in align_params if a not in self._SUPPORTED_ALIGNS]:
             raise ZCItoolsValueError(f'No valid alignments set ({", ".join(sorted(not_sup_params))}).')
-        return create_clustal_data(
-            step_data, self._input_step(), align_params, self.args.whole_partition, self.args.run)
+        return create_alignment_data(step_data, self._input_step(), align_params, self.args.whole_partition,
+                                     self.args.run, self._ALIGN_PROGRAM)
 
     def finish(self, step_obj):
-        from .clustal_omega import finish_clustal_data
-        finish_clustal_data(step_obj)
+        from .common_methods import finish_alignment_data
+        # Check are needed files in zip, not something strange
+        files = set(d['filename'].replace('sequences.fa', 'alignment.phy')
+                    for d in read_yaml(step_obj.step_file('finish.yml')))
+        finish_alignment_data(step_obj, files)
 
 
 class MAFFT(ClustalO):
     _COMMAND = 'mafft'
     _HELP = "Align sequences using MAFFT"
     _STEP_BASE_NAME = 'MAFFT'
-
-    def run(self, step_data):
-        from .mafft import create_mafft_data
-        align_params = [a.lower() for a in self.args.alignments]
-        not_sup_params = [a for a in align_params if a not in self._SUPPORTED_ALIGNS]
-        if not_sup_params:
-            raise ZCItoolsValueError(f'No valid alignments set ({", ".join(sorted(not_sup_params))}).')
-        return create_mafft_data(step_data, self._input_step(), align_params, self.args.whole_partition, self.args.run)
+    _ALIGN_PROGRAM = 'mafft'
 
     def finish(self, step_obj):
-        from .mafft import finish_mafft_data
-        finish_mafft_data(step_obj)
+        from .common_methods import finish_alignment_data
+        finish_alignment_data(step_obj, None)
 
 
-class MUSCLE(ClustalO):
+class MUSCLE(MAFFT):
     _COMMAND = 'muscle'
     _HELP = "Align sequences using MUSCLE"
     _STEP_BASE_NAME = 'MUSCLE'
-
-    def run(self, step_data):
-        from .muscle import create_muscle_data
-        align_params = [a.lower() for a in self.args.alignments]
-        not_sup_params = [a for a in align_params if a not in self._SUPPORTED_ALIGNS]
-        if not_sup_params:
-            raise ZCItoolsValueError(f'No valid alignments set ({", ".join(sorted(not_sup_params))}).')
-        return create_muscle_data(step_data, self._input_step(), align_params, self.args.whole_partition, self.args.run)
-
-    def finish(self, step_obj):
-        from .muscle import finish_muscle_data
-        finish_muscle_data(step_obj)
+    _ALIGN_PROGRAM = 'muscle'
 
 
+# -------------------------------------------------------------------
+# Not in use!
 class mVISTA(CreateStepFromStepCommand):
     _COMMAND = 'mvista'
     _HELP = "Align sequences with mVISTA programs"
@@ -89,11 +75,11 @@ class mVISTA(CreateStepFromStepCommand):
 
     def run(self, step_data):
         from .mvista import create_mvista_data
-        run = self.args.run
+        from common_utils.file_utils import get_settings
         email = self.args.email or get_settings()['email']
-        if run and not email:
+        if self.args.run and not email:
             raise ZCItoolsValueError('Email address is needed to post mVISTA data!')
-        return create_mvista_data(step_data, self._input_step(), run, email)
+        return create_mvista_data(step_data, self._input_step(), self.args.run, email)
 
     def finish(self, step_obj):
         from .mvista import finish_mvista_data

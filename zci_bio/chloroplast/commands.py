@@ -91,6 +91,31 @@ class ChloroplastAnnotation(ProjectCommand):
             sequences=a.sequences.split(';') if a.sequences else None)
 
 
+class ChloroplastAlign(CreateStepFromStepCommand):
+    _COMMAND = 'align_chloroplast'
+    _HELP = "Align chloroplast genomes"
+    _COMMAND_GROUP = 'Chloroplast'
+    _INPUT_STEP_DATA_TYPE = ('sequences', 'annotations')  # If there are not IRs, at least hwole genomes will be aligned
+
+    @staticmethod
+    def set_arguments(parser):
+        from ..alignments.common_methods import _align_programs
+        CreateStepFromStepCommand.set_arguments(parser)
+        parser.add_argument('sequences', nargs='+', help='Sequence identifiers (at least two)')
+        parser.add_argument('-p', '--program', default='mafft',
+                            help=f'Alignmnet program to use. One of: {", ".join(sorted(_align_programs.keys()))}')
+        parser.add_argument('-r', '--run', action='store_true', help='Run locally')
+
+    def step_base_name(self):
+        return 'AlignChloroplasts_' + '_'.join(sorted(self.args.sequences))
+
+    def run(self, step_data):
+        from .utils import chloroplast_alignment
+        args = self.args
+        return chloroplast_alignment(
+            step_data, self._input_step(no_data_check=True), args.sequences, self.run, args.program)
+
+
 # Old analysis commands
 # Used for preliminary analysition of chloroplast data
 """
