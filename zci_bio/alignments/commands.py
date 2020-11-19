@@ -13,10 +13,10 @@ class AlignGenomes(CreateStepFromStepCommand):
 
     @staticmethod
     def set_arguments(parser):
-        from .common_methods import _align_programs
+        from .common_methods import ALIGN_PROGRAMS
         CreateStepFromStepCommand.set_arguments(parser)
         parser.add_argument('-p', '--alignment_program', default='mafft',
-                            choices=sorted(_align_programs.keys()),
+                            choices=ALIGN_PROGRAMS,
                             help=f"Alignment program to use.")
         parser.add_argument(
             'alignments', nargs='+', help=f"To align: {', '.join(f'{c} ({d})' for c, d in AlignGenomes._ALIGNMENTS)}")

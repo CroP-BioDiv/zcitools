@@ -63,7 +63,39 @@ def find_referent_genome(seq_idents, referent_seq_ident):
 
 
 # -----------------
-def chloroplast_alignment(step_data, annotations_step, sequences, run, alignment_program):
+def rotate_by_offset(seq_rec, offset, keep_offset=None, map_features=False):
+    # Returns None if there is no need for rotation or new SeqRecord
+    l_seq = len(seq_rec.seq)
+    if offset < 0:
+        offset = l_seq + offset
+    assert 0 <= offset < l_seq, (seq_rec.name, offset, l_seq)
+
+    # If there is no nedd
+    if not offset or (keep_offset and min(offset, l_seq - offset) <= keep_offset):
+        return
+
+    # ToDo: map_features
+    new_seq = seq_rec[offset:] + seq_rec[:offset]
+    # Name ...
+    return new_seq
+
+
+def rotate_to_trnH_GUG(seq_rec, keep_offset=None, map_features=False):
+    # Returns None if there is no need for rotation or new SeqRecord
+    trnhs = [f for f in seq_rec.features if f.type == 'gene' and f.qualifiers['gene'][0] == 'trnH-GUG']
+    if not trnhs:
+        print(f'Warning: no trnH-GUG found in sequence {seq_rec.name}!')
+        return
+    if len(trnhs) == 1:
+        trnh = trnhs[0]
+    else:
+        # Take one that is the closest to the origin
+        l_seq = len(seq_rec.seq)
+        trnh = min(trnhs, key=lambda f: min(f.location.start, l_seq - f.location.start))
+    return rotate_by_offset(seq_rec, trnh.location.start, keep_offset=keep_offset, map_features=map_features)
+
+
+def chloroplast_alignment(step_data, annotations_step, sequences, to_align, run, alignment_program):
     from ..alignments.common_methods import AlignmentsStep, add_sequences, run_alignment_program
 
     # Check sequences
@@ -75,22 +107,30 @@ def chloroplast_alignment(step_data, annotations_step, sequences, run, alignment
     annotations_step.propagate_step_name_prefix(steps)
 
     records = [annotations_step.get_sequence_record(seq_ident) for seq_ident in sequences]
-    with_parts = [(seq_ident, rec, parts) for seq_ident, rec in zip(sequences, records)
-                  if (parts := find_chloroplast_partition(rec))]
-    print(with_parts)
 
     seq_files = []
     # Whole
-    seq_files.append(add_sequences(
-        steps.create_substep('whole'), 'whole',
-        [(seq_ident, rec.seq, None) for seq_ident, rec in zip(sequences, records)]))
+    if 'w' in to_align:
+        seq_files.append(add_sequences(
+            steps.create_substep('whole'), 'whole',
+            [(seq_ident, rec.seq, None) for seq_ident, rec in zip(sequences, records)]))
 
     # Parts
-    if len(with_parts) > 1:
-        for part in ('lsc', 'ira', 'ssc'):
-            seq_files.append(add_sequences(
-                steps.create_substep(part), 'gene',
-                [(seq_ident, parts[part].extract(rec).seq, None) for seq_ident, rec, parts in with_parts]))
+    if 'p' in to_align:
+        with_parts = [(seq_ident, rec, parts) for seq_ident, rec in zip(sequences, records)
+                      if (parts := find_chloroplast_partition(rec))]
+        if len(with_parts) > 1:
+            for part in ('lsc', 'ira', 'ssc'):
+                seq_files.append(add_sequences(
+                    steps.create_substep(part), 'gene',
+                    [(seq_ident, parts[part].extract(rec).seq, None) for seq_ident, rec, parts in with_parts]))
+
+    # trnH-GUG
+    if 't' in to_align:
+        seq_files.append(add_sequences(
+            steps.create_substep('trnH-GUG'), 'whole',
+            [(seq_ident, (rotate_to_trnH_GUG(rec) or rec).seq, None)
+             for seq_ident, rec in zip(sequences, records)]))
 
     #
     run_alignment_program(alignment_program, steps, seq_files, run)

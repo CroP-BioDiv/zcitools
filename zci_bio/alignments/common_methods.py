@@ -77,6 +77,7 @@ Notes:
    screen -dm "python3 {script_name}"
 """),
 )
+ALIGN_PROGRAMS = sorted(_align_programs.keys())
 
 
 def run_alignment_program(alignment_program, base_step, seq_files, run):
