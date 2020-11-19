@@ -6,7 +6,6 @@ from common_utils.file_utils import ensure_directory, write_str_in_file, write_f
 from common_utils.properties_db import PropertiesDB
 from common_utils.cache import cache
 from .analyse_step_1 import SequenceDesc
-from .analyse_step_2 import evaluate_credibility
 from .analyse_step_3 import run_align_cmd, find_missing_partitions
 from .utils import find_chloroplast_partition
 from ..utils.features import Feature
@@ -17,9 +16,8 @@ from ..utils.ncbi_taxonomy import get_ncbi_taxonomy
 # Analyse genomes
 # Steps:
 #  1. Collect data from steps (input annotations, previous table)
-#  2. Evaluate credibility of collected data
-#  3. Find missing or more credible data
-#  4. Set table from collected and evaluated data
+#  2. Find missing data
+#  3. Set table from collected and evaluated data
 # ---------------------------------------------------------
 def analyse_genomes(step_data, annotations_step):
     step = TableStep(annotations_step.project, step_data, remove_data=True)
@@ -57,9 +55,6 @@ class AnalyseGenomes:
         data = dict((seq_ident, SequenceDesc(seq_ident, seq, self))
                     for seq_ident, seq in self.annotations_step._iterate_records())
         self.seq_descs = data
-
-        #  2. Evaluate credibility of collected data
-        evaluate_credibility(self.seq_descs)
 
         #  3. Find missing or more credible data
         find_missing_partitions(self.seq_descs)
