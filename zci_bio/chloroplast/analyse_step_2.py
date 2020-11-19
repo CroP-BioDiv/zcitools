@@ -17,12 +17,19 @@ from ..utils.ncbi_taxonomy import get_ncbi_taxonomy
 # that can cause problem only if IRs are wrongly oriented and fixing reverts them
 #
 def evaluate_credibility(seq_descs):
+    far_trnH_GUG = lambda d: abs(d.part_trnH_GUG or 0) > 100
+
+    with_good_structure = set(d.taxid for d in seq_descs.values() if d._parts and not far_trnH_GUG(d))
+    if not with_good_structure:
+        print('Warning: all genomes miss IR parts!!!')
+        return
+
     for seq_ident, d in seq_descs.items():
-        if d._parts and abs(d.part_trnH_GUG or 0) > 100:  # Contains parts and trnH-GUG located far enough
-            if res := find_best_irs_by_similar(seq_descs, seq_ident, d):
+        if d._parts and far_trnH_GUG(d):  # Contains parts and trnH-GUG located far enough
+            if res := find_best_irs_by_similar(seq_descs, seq_ident, d, with_good_structure):
                 # Only LSC is not good for sure.
                 # ToDo: it is even possible to extend SSC part, but it is not important (at all)
-                ira, irb, took_ident = res
+                took_ident, ira, irb = res
                 ssc = d._parts['ssc']
                 ira = (ira[0], ssc.real_start)
                 irb = (ssc.real_end, irb[1])

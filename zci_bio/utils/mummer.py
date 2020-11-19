@@ -3,6 +3,7 @@ from types import SimpleNamespace
 
 class MummerDelta:
     def __init__(self, delta_filename):
+        self.seq_ident = None  # Set from outside
         self._matches = []
 
         with open(delta_filename, 'r') as _in:
@@ -32,6 +33,9 @@ class MummerDelta:
         return len(self._matches)
 
     def aligns(self, s, q):
-        return sorted((m for m in self._matches if (s is None or m.sequence == s) and m.query == q),
-                      key=lambda x: x.positive,
-                      reverse=True)
+        assert s, s
+        return sorted((m for m in self._matches if m.sequence == s and m.query == q),
+                      key=lambda x: x.positive, reverse=True)
+
+    def aligns_qry(self, q):
+        return sorted((m for m in self._matches if m.query == q), key=lambda x: x.positive, reverse=True)

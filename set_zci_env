@@ -31,7 +31,11 @@ _zcit()
 
     # Filename for next arguments
     if [ "${#COMP_WORDS[@]}" != "2" ]; then
-        opts=$(ls ${cur}*)
+        if [ "${cur}" != "" ]; then
+            opts=$(ls . | grep ${cur})
+        else
+            opts=$(ls .)
+        fi
     else
         opts=$(${DOKTORAT_SOURCE}/bin/zcit.py list_commands | grep -v "Warning: module")
     fi
