@@ -95,7 +95,11 @@ def rotate_to_trnH_GUG(seq_rec, keep_offset=None, map_features=False):
     return rotate_by_offset(seq_rec, trnh.location.start, keep_offset=keep_offset, map_features=map_features)
 
 
-def chloroplast_alignment(step_data, annotations_step, sequences, to_align, run, alignment_program):
+def rotate_to_offset(seq_rec, parts, keep_offset=None, map_features=False):
+    return rotate_by_offset(seq_rec, parts['lsc'].real_start, keep_offset=keep_offset, map_features=map_features)
+
+
+def chloroplast_alignment(step_data, annotations_step, sequences, to_align, run, alignment_program, keep_offset):
     from ..alignments.common_methods import AlignmentsStep, add_sequences, run_alignment_program
 
     # Check sequences
@@ -115,21 +119,27 @@ def chloroplast_alignment(step_data, annotations_step, sequences, to_align, run,
             steps.create_substep('whole'), 'whole',
             [(seq_ident, rec.seq, None) for seq_ident, rec in zip(sequences, records)]))
 
-    # Parts
-    if 'p' in to_align:
+    # Parts and offset
+    if 'p' in to_align or 'o' in to_align:
         with_parts = [(seq_ident, rec, parts) for seq_ident, rec in zip(sequences, records)
                       if (parts := find_chloroplast_partition(rec))]
         if len(with_parts) > 1:
-            for part in ('lsc', 'ira', 'ssc'):
+            if 'p' in to_align:
+                for part in ('lsc', 'ira', 'ssc'):
+                    seq_files.append(add_sequences(
+                        steps.create_substep(part), 'gene',
+                        [(seq_ident, parts[part].extract(rec).seq, None) for seq_ident, rec, parts in with_parts]))
+            if 'o' in to_align:
                 seq_files.append(add_sequences(
-                    steps.create_substep(part), 'gene',
-                    [(seq_ident, parts[part].extract(rec).seq, None) for seq_ident, rec, parts in with_parts]))
+                    steps.create_substep('offset'), 'whole',
+                    [(seq_ident, (rotate_to_offset(rec, parts, keep_offset=keep_offset) or rec).seq, None)
+                     for seq_ident, rec, parts in with_parts]))
 
     # trnH-GUG
     if 't' in to_align:
         seq_files.append(add_sequences(
             steps.create_substep('trnH-GUG'), 'whole',
-            [(seq_ident, (rotate_to_trnH_GUG(rec) or rec).seq, None)
+            [(seq_ident, (rotate_to_trnH_GUG(rec, keep_offset=keep_offset) or rec).seq, None)
              for seq_ident, rec in zip(sequences, records)]))
 
     #
