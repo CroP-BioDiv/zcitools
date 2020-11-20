@@ -2,6 +2,7 @@ import os
 import multiprocessing
 from concurrent.futures import ThreadPoolExecutor
 from common_utils.file_utils import ensure_directory, write_fasta
+from .utils import find_chloroplast_irs
 from ..utils.mummer import MummerDelta
 from ..utils.ncbi_taxonomy import get_ncbi_taxonomy
 
@@ -23,7 +24,8 @@ def run_align_cmd(seq_fasta, qry_fasta, out_prefix):
 
 
 def find_missing_partitions(seq_descs):
-    with_irs = set(d.taxid for d in seq_descs.values() if d._parts and not d._took_parts)
+    # Note: it is not pos
+    with_irs = set(d.taxid for d in seq_descs.values() if d._parts)
     if len(with_irs) == len(seq_descs):  # All in
         return
     if not with_irs:
@@ -35,9 +37,18 @@ def find_missing_partitions(seq_descs):
     seq_2_result_object = dict()  # dict seq_ident -> tuple (ira interval, irb interval, matche seq_ident)
     with ThreadPoolExecutor(max_workers=multiprocessing.cpu_count()) as executor:
         for seq_ident, seq_data in seq_descs.items():
-            if seq_data._parts or seq_data._took_parts:
+            if seq_data._parts:
                 continue
 
+            # First check are there IRs in NCBI data
+            if seq_data.sequences_step:
+                if (irs := find_chloroplast_irs(seq_data.sequences_step.get_sequence_record(seq_ident), check_size=False)):
+                    ira, irb = irs
+                    seq_2_result_object[seq_ident] = \
+                        ('NCBI', (int(ira.location.start), int(ira.location.end)), (int(irb.location.start), int(irb.location.end)))
+                    continue
+
+            # Than try to via similar species
             ncbi_2_max_taxid = seq_data._analyse.ncbi_2_max_taxid
             close_taxids = ncbi_tax.find_close_taxids(seq_data.taxid, ncbi_2_max_taxid[seq_ident], with_irs)
             if not close_taxids:

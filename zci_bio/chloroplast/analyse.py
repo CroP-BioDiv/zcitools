@@ -6,7 +6,7 @@ from common_utils.file_utils import ensure_directory, write_str_in_file, write_f
 from common_utils.properties_db import PropertiesDB
 from common_utils.cache import cache
 from .analyse_step_1 import SequenceDesc
-from .analyse_step_3 import run_align_cmd, find_missing_partitions
+from .analyse_step_calc import run_align_cmd, find_missing_partitions
 from .utils import find_chloroplast_partition
 from ..utils.features import Feature
 from ..utils.ncbi_taxonomy import get_ncbi_taxonomy
@@ -16,7 +16,7 @@ from ..utils.ncbi_taxonomy import get_ncbi_taxonomy
 # Analyse genomes
 # Steps:
 #  1. Collect data from steps (input annotations, previous table)
-#  2. Find missing data
+#  2. Calculate 'missing data'
 #  3. Set table from collected and evaluated data
 # ---------------------------------------------------------
 def analyse_genomes(step_data, annotations_step):
@@ -56,14 +56,14 @@ class AnalyseGenomes:
                     for seq_ident, seq in self.annotations_step._iterate_records())
         self.seq_descs = data
 
-        #  3. Find missing or more credible data
+        #  2. Calculate 'missing data'
         find_missing_partitions(self.seq_descs)
 
         # Set partition data
         for seq_ident, d in data.items():
             d.set_parts_data()
 
-        #  4. Set table from collected and evaluated data
+        #  3. Set table from collected and evaluated data
         columns = [
             # tuples (dict's attribute, column name, column type)
             ('seq_ident', 'AccesionNumber', 'seq_ident'),
@@ -74,13 +74,13 @@ class AnalyseGenomes:
             ('length', 'Length', 'int'),
             ('num_genes', 'Genes', 'int'),
             ('num_cds', 'CDS', 'int'),
+            ('irs_took_from', 'IRS took', 'seq_ident'),
             ('part_starts', 'Part starts', 'str'),
             ('part_lengths', 'Part lengths', 'str'),
             ('part_num_genes', 'Part genes', 'str'),
-            ('part_trnH_GUG', 'trnH-GUG', 'int'),
-            ('irs_took_from', 'IRS took', 'seq_ident'),
-            ('took_part_starts', 'Took part starts', 'str'),
             ('part_orientation', 'Orientation', 'str'),
+            ('part_trnH_GUG', 'trnH LSC', 'int'),
+            ('trnH_GUG', 'trnH offset', 'int'),
             ('artcle_title', 'Article', 'str'),
             ('journal', 'Journal', 'str'),
             ('pubmed_id', 'PubMed', 'int'),

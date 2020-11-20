@@ -2,15 +2,20 @@ from common_utils.exceptions import ZCItoolsValueError
 from ..utils.features import Feature, Partition
 
 
-def find_chloroplast_irs(seq):
+def find_chloroplast_irs(seq, check_size=True):
     # Finds the longest pair of inverted repeats
     _ir = ('inverted',)
     rep_regs = [f for f in seq.features
                 if f.type == 'repeat_region' and
                 f.qualifiers.get('rpt_type', _ir)[0] == 'inverted']
-    if rep_regs:
+    if seq.name == 'NC_033344':
+        print(seq.name, rep_regs)
+    if len(rep_regs) >= 2:
         max_len = max(map(len, rep_regs)) - 3  # Some tolerance :-)
         max_regs = [f for f in rep_regs if len(f) >= max_len]
+        if len(max_regs) != 2 and not check_size:
+            # Backup
+            max_regs = sorted(rep_regs, key=len)[-2:]
         if len(max_regs) == 2:
             ira, irb = max_regs
             diff_1 = (irb.location.parts[0].start - ira.location.parts[-1].end) % len(seq)
@@ -65,6 +70,9 @@ def find_referent_genome(seq_idents, referent_seq_ident):
 # -----------------
 def rotate_by_offset(seq_rec, offset, keep_offset=None, map_features=False):
     # Returns None if there is no need for rotation or new SeqRecord
+    if offset is None:
+        return
+
     l_seq = len(seq_rec.seq)
     if offset < 0:
         offset = l_seq + offset
@@ -80,7 +88,7 @@ def rotate_by_offset(seq_rec, offset, keep_offset=None, map_features=False):
     return new_seq
 
 
-def rotate_to_trnH_GUG(seq_rec, keep_offset=None, map_features=False):
+def trnH_GUG_start(seq_rec):
     # Returns None if there is no need for rotation or new SeqRecord
     trnhs = [f for f in seq_rec.features if f.type == 'gene' and f.qualifiers['gene'][0] == 'trnH-GUG']
     if not trnhs:
@@ -92,7 +100,12 @@ def rotate_to_trnH_GUG(seq_rec, keep_offset=None, map_features=False):
         # Take one that is the closest to the origin
         l_seq = len(seq_rec.seq)
         trnh = min(trnhs, key=lambda f: min(f.location.start, l_seq - f.location.start))
-    return rotate_by_offset(seq_rec, trnh.location.start, keep_offset=keep_offset, map_features=map_features)
+    return trnh.location.start
+
+
+def rotate_to_trnH_GUG(seq_rec, keep_offset=None, map_features=False):
+    # Returns None if there is no need for rotation or new SeqRecord
+    return rotate_by_offset(seq_rec, trnH_GUG_start(seq_rec), keep_offset=keep_offset, map_features=map_features)
 
 
 def rotate_to_offset(seq_rec, parts, keep_offset=None, map_features=False):

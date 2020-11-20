@@ -1,7 +1,7 @@
 from collections import defaultdict
 import itertools
 from datetime import datetime
-from .utils import find_chloroplast_partition, create_chloroplast_partition
+from .utils import find_chloroplast_partition, create_chloroplast_partition, trnH_GUG_start
 from ..utils.entrez import Entrez
 from ..utils.helpers import fetch_from_properties_db
 from ..utils.features import Feature
@@ -24,8 +24,6 @@ class SequenceDesc:
         self.credible_whole_sequence = True
         self.credible_irs = True
         # Set in step 3. (Find missing or more credible data)
-        self._took_parts = None
-        self._took_parts_data = None
         self.irs_took_from = None
         self.irs_took_reason = None
         #
@@ -50,11 +48,7 @@ class SequenceDesc:
     part_num_genes = property(lambda self: self._parts_data.num_genes_str() if self._parts_data else None)
     part_offset = property(lambda self: self._parts_data.offset if self._parts_data else None)
     part_trnH_GUG = property(lambda self: self._parts_data.trnH_GUG if self._parts_data else None)
-    took_part_starts = property(lambda self: self._took_parts_data.starts_str() if self._took_parts_data else None)
-    took_part_lengths = property(lambda self: self._took_parts_data.lengths_str() if self._took_parts_data else None)
-    took_part_num_genes = property(lambda self: self._took_parts_data.num_genes_str() if self._took_parts_data else None)
-    took_part_offset = property(lambda self: self._took_parts_data.offset if self._took_parts_data else None)
-    took_part_trnH_GUG = property(lambda self: self._took_parts_data.trnH_GUG if self._took_parts_data else None)
+    trnH_GUG = property(lambda self: trnH_GUG_start(self._seq))
 
     _ncbi_comment_fields = dict(
         (x, None) for x in ('artcle_title', 'journal', 'pubmed_id', 'first_date',
@@ -111,15 +105,16 @@ class SequenceDesc:
 
     #
     def set_parts_data(self):
-        if parts := self._took_parts or self._parts:  # Take better one
+        if self._parts:  # Take better one
             # Part orientation
-            orient = chloroplast_parts_orientation(self._seq, parts, self._genes)
+            orient = chloroplast_parts_orientation(self._seq, self._parts, self._genes)
             if ppp := [p for p in ('lsc', 'ira', 'ssc') if not orient[p]]:
                 self.part_orientation = ','.join(ppp)
 
     def set_took_part(self, ira, irb, transfer_from, reason):
-        self._took_parts = create_chloroplast_partition(self.length, ira, irb, in_interval=True)
-        self._took_parts_data = _PartsDesc(self._took_parts, self._genes, self.length)
+        assert not self._parts, "For now there should not be original IRs!"
+        self._parts = create_chloroplast_partition(self.length, ira, irb, in_interval=True)
+        self._parts_data = _PartsDesc(self._parts, self._genes, self.length)
         self.irs_took_from = transfer_from
         self.irs_took_reason = reason
 
