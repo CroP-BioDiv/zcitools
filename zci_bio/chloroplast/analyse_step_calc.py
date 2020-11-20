@@ -25,7 +25,7 @@ def run_align_cmd(seq_fasta, qry_fasta, out_prefix):
 
 def find_missing_partitions(seq_descs):
     # Note: it is not pos
-    with_irs = set(d.taxid for d in seq_descs.values() if d._parts)
+    with_irs = set(d.taxid for d in seq_descs.values() if d._partition)
     if len(with_irs) == len(seq_descs):  # All in
         return
     if not with_irs:
@@ -37,7 +37,7 @@ def find_missing_partitions(seq_descs):
     seq_2_result_object = dict()  # dict seq_ident -> tuple (ira interval, irb interval, matche seq_ident)
     with ThreadPoolExecutor(max_workers=multiprocessing.cpu_count()) as executor:
         for seq_ident, seq_data in seq_descs.items():
-            if seq_data._parts:
+            if seq_data._partition:
                 continue
 
             # First check are there IRs in NCBI data
@@ -80,7 +80,7 @@ def _run_align(seq_ident, seq_data, close_data, seq_2_result_object, match_lengt
     close_data = sorted(close_data, reverse=True, key=lambda d: d.first_date)
     all_aligns = []
     for d in close_data:
-        ira = d._parts.get_part_by_name('ira')
+        ira = d._partition.get_part_by_name['ira']
         rec = ira.extract(d._seq)
         qry_fasta = os.path.join(f_dir, f"qry_{d.seq_ident}.fa")
         write_fasta(qry_fasta, [('end1', rec.seq[:match_length]), ('end2', rec.seq[-match_length:])])

@@ -68,48 +68,64 @@ def find_referent_genome(seq_idents, referent_seq_ident):
 
 
 # -----------------
-def rotate_by_offset(seq_rec, offset, keep_offset=None, map_features=False):
+def cycle_distance(a, b, cycle_len):
+    d = abs(a - b)
+    return d if d < (cycle_len / 2) else (cycle_len - d)
+
+
+def rotate_by_offset(seq_rec, offset, keep_offset=None, reverse=False):
     # Returns None if there is no need for rotation or new SeqRecord
     if offset is None:
-        return
+        return seq_rec.reverse_complement() if reverse else None
 
-    l_seq = len(seq_rec.seq)
-    if offset < 0:
-        offset = l_seq + offset
-    assert 0 <= offset < l_seq, (seq_rec.name, offset, l_seq)
+    offset %= len(seq_rec.seq)
 
-    # If there is no nedd
-    if not offset or (keep_offset and min(offset, l_seq - offset) <= keep_offset):
-        return
+    # Check if there is need to rotate
+    if not offset or (keep_offset and cycle_distance(0, offset, len(seq_rec.seq)) <= keep_offset):
+        return seq_rec.reverse_complement() if reverse else None
 
-    # ToDo: map_features
     new_seq = seq_rec[offset:] + seq_rec[:offset]
-    # Name ...
-    return new_seq
+    return new_seq.reverse_complement() if reverse else new_seq
 
 
-def trnH_GUG_start(seq_rec):
-    # Returns None if there is no need for rotation or new SeqRecord
+def trnH_GUG_start(seq_rec, partition):
+    # Returns description how to offset sequence to get gene trnH-GUG on it's start, tuple (offset, bool to_reverse)
+    # Returns None if there is no trnH-GUG gene in given record.
     trnhs = [f for f in seq_rec.features if f.type == 'gene' and f.qualifiers['gene'][0] == 'trnH-GUG']
     if not trnhs:
         print(f'Warning: no trnH-GUG found in sequence {seq_rec.name}!')
         return
-    if len(trnhs) == 1:
-        trnh = trnhs[0]
-    else:
-        # Take one that is the closest to the origin
-        l_seq = len(seq_rec.seq)
-        trnh = min(trnhs, key=lambda f: min(f.location.start, l_seq - f.location.start))
-    return trnh.location.start
+
+    l_seq = len(seq_rec.seq)
+
+    if partition and (lsc := partition['lsc']):
+        # Take one that is the closest to some lsc end
+        s, e = lsc.ends()
+        mins = [min(min(cycle_distance(s, p, l_seq), cycle_distance(e, p, l_seq))
+                    for p in (t.location.start, t.location.end)) for t in trnhs]
+        gl_min = min(mins)
+        idx = mins.index(gl_min)
+        trnh = trnhs[idx]
+        # trnH-GUG is located at LSC start. Check on which side it is now
+        reverse = (cycle_distance(e, trnh.location.end, l_seq) == gl_min)
+        offset = trnh.location.start if reverse else trnh.location.end
+        return offset, reverse
+
+    # Take one that is the closest to the origin
+    trnh = min(trnhs, key=lambda f: min(cycle_distance(0, p, l_seq) for p in (f.location.start, f.location.end)))
+    # If genome is good orineted than strand should be -1
+    return (trnh.location.end, True) if trnh.location.strand > 0 else (trnh.location.start, False)
 
 
-def rotate_to_trnH_GUG(seq_rec, keep_offset=None, map_features=False):
+def rotate_to_trnH_GUG(seq_rec, keep_offset=None):
     # Returns None if there is no need for rotation or new SeqRecord
-    return rotate_by_offset(seq_rec, trnH_GUG_start(seq_rec), keep_offset=keep_offset, map_features=map_features)
+    if ret := trnH_GUG_start(seq_rec, find_chloroplast_partition(seq_rec)):
+        offset, reverse = ret
+        return rotate_by_offset(seq_rec, offset, keep_offset=keep_offset, reverse=reverse)
 
 
-def rotate_to_offset(seq_rec, parts, keep_offset=None, map_features=False):
-    return rotate_by_offset(seq_rec, parts['lsc'].real_start, keep_offset=keep_offset, map_features=map_features)
+def rotate_to_offset(seq_rec, parts, keep_offset=None):
+    return rotate_by_offset(seq_rec, parts['lsc'].real_start, keep_offset=keep_offset)
 
 
 def chloroplast_alignment(step_data, annotations_step, sequences, to_align, run, alignment_program, keep_offset):

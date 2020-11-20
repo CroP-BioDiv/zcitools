@@ -1,5 +1,6 @@
 from step_project.base_commands import CreateStepFromStepCommand
 from common_utils.exceptions import ZCItoolsValueError
+from common_utils.file_utils import read_yaml
 
 
 class AlignGenomes(CreateStepFromStepCommand):

@@ -1,4 +1,5 @@
 from step_project.base_commands import ProjectCommand, CreateStepFromStepCommand
+from common_utils.exceptions import ZCItoolsValueError
 
 
 class ChloroplastAnalyse(CreateStepFromStepCommand):
@@ -14,28 +15,47 @@ class ChloroplastAnalyse(CreateStepFromStepCommand):
 
 
 class ChloroplastFixByAnalyse(CreateStepFromStepCommand):
-    _COMMAND = 'fix_by_analyse_parts'
-    _HELP = "Fix chloroplast genome parts by done analyse. Output is a sequences step."
+    _COMMAND = 'fix_by_analyse'
+    _HELP = "Fix chloroplast genome by done analyse. Output is a sequences step."
     _COMMAND_GROUP = 'Chloroplast'
-    _STEP_BASE_NAME = 'FixByParts'
     _INPUT_STEP_DATA_TYPE = 'table'
     _COMMON_DB_IDENT = ('sequences',)
+    _DEFAULT_KEEP_OFFSET = 10
 
     @staticmethod
     def set_arguments(parser):
+        # Note: method than step
+        parser.add_argument('method', help='Fix method. Options: parts, trnH-GUG. Only first character is needed.')
         CreateStepFromStepCommand.set_arguments(parser)
-        parser.add_argument('-o', '--omit-offset', default=10, type=int,
+        parser.add_argument('-o', '--keep-offset', default=ChloroplastFixByAnalyse._DEFAULT_KEEP_OFFSET, type=int,
                             help='Do not rotate genome if offset is less than given value.')
 
     def step_base_name(self):
-        n = super().step_base_name()
-        return f'{n}_{self.args.omit_offset}' if self.args.omit_offset else n
+        m = self.args.method[0].lower()
+        if m == 'p':
+            n = self._format_step_name('FixByParts')
+        elif m == 't':
+            n = self._format_step_name('FixByTrnH-GUG')
+        else:
+            raise ZCItoolsValueError(f'Not known method {self.args.method}!')
+        # Add offset or not?
+        o = self.args.keep_offset
+        return f'{n}_{o}' if o != self._DEFAULT_KEEP_OFFSET else n
 
     def run(self, step_data):
-        from .fix_by_analyse import fix_by_parts
-        return fix_by_parts(
-            step_data, self._input_step(no_data_check=True), self.get_common_db_object(),
-            omit_offset=self.args.omit_offset)
+        m = self.args.method[0].lower()
+        if m == 'p':
+            from .fix_by_analyse import fix_by_parts as fix_method
+        elif m == 't':
+            from .fix_by_analyse import fix_by_trnH_GUG as fix_method
+        else:
+            raise ZCItoolsValueError(f'Not known method {self.args.method}!')
+        #
+        return fix_method(step_data,
+                          (annotations_step := self._input_step(no_data_check=True)),
+                          self.args.keep_offset,
+                          self.get_common_db_object(),
+                          self.get_step_db_object(annotations_step))
 
 
 class ChloroplastAlign(CreateStepFromStepCommand):
@@ -68,7 +88,7 @@ class ChloroplastAlign(CreateStepFromStepCommand):
         args = self.args
         return chloroplast_alignment(
             step_data, self._input_step(no_data_check=True),
-            args.sequences, self._to_align(), self.run, args.alignment_program, args.keep_offset)
+            args.sequences, self._to_align(), args.run, args.alignment_program, args.keep_offset)
 
 
 # Test: not usable.

@@ -24,7 +24,7 @@ def analyse_genomes(step_data, annotations_step):
     annotations_step.propagate_step_name_prefix(step)
     AnalyseGenomes(step, annotations_step).run()
     step.save()
-    step.to_excel('analyse.xls')  # Test
+    step.to_excel('analyse_chloroplast.xls')  # Store data for a check
     return step
 
 
@@ -79,8 +79,7 @@ class AnalyseGenomes:
             ('part_lengths', 'Part lengths', 'str'),
             ('part_num_genes', 'Part genes', 'str'),
             ('part_orientation', 'Orientation', 'str'),
-            ('part_trnH_GUG', 'trnH LSC', 'int'),
-            ('trnH_GUG', 'trnH offset', 'int'),
+            ('trnH_GUG', 'trnH-GUG', 'str'),
             ('artcle_title', 'Article', 'str'),
             ('journal', 'Journal', 'str'),
             ('pubmed_id', 'PubMed', 'int'),
@@ -95,7 +94,7 @@ class AnalyseGenomes:
         # Statistics
         sequences_step = next(iter(data.values())).sequences_step
         sp_stats = self._find_species_stats()
-        num_ge_seq_irs = sum(int(bool(seq_data._parts)) for seq_data in data.values())
+        num_ge_seq_irs = sum(int(bool(seq_data._partition)) for seq_data in data.values())
         num_ncbi_irs = sum(int(bool(find_chloroplast_partition(seq))) for _, seq in sequences_step._iterate_records())
         summary = f"""Statistics:
 
@@ -146,7 +145,7 @@ Number of genomes containing IRS by GeSeq annotation : {num_ge_seq_irs}
         corrs = []
         if num := sum(1 for d in self.seq_descs.values() if d.part_orientation):
             corrs.append(f'Found partitions: {num}')
-        if num := sum(1 for d in self.seq_descs.values() if not d._parts):
+        if num := sum(1 for d in self.seq_descs.values() if not d._partition):
             corrs.append(f'Without partitions: {num}')
         if num := sum(1 for d in self.seq_descs.values() if d.part_orientation):
             corrs.append(f'Wrong partition orientation: {num}')
@@ -157,7 +156,7 @@ Number of genomes containing IRS by GeSeq annotation : {num_ge_seq_irs}
         #
         if num := sum(1 for d in self.seq_descs.values()
                       if d.part_orientation or
-                      not d._parts or
+                      not d._partition or
                       d.part_orientation or
                       abs(d.part_offset or 0) > 50 or
                       abs(d.part_trnH_GUG or 0) > 50):
@@ -170,7 +169,7 @@ Number of genomes containing IRS by GeSeq annotation : {num_ge_seq_irs}
         l_start = '\n - '
         if f_ps := [(s, d.irs_took_from) for s, d in data.items() if d.irs_took_from]:
             errors.append(f'Found partitions for sequences:{l_start}{l_start.join(sorted(f"{s} ({m})" for s, m in f_ps))}')
-        if without_parts := [seq_ident for seq_ident, d in data.items() if not d._parts]:
+        if without_parts := [seq_ident for seq_ident, d in data.items() if not d._partition]:
             errors.append(f"No partitions for sequences:{l_start}{l_start.join(sorted(without_parts))}")
         if wrong_oriented_parts := [seq_ident for seq_ident, d in data.items() if d.part_orientation]:
             errors.append(f"Partitions with wrong orientation in sequences:{l_start}{l_start.join(sorted(wrong_oriented_parts))}")

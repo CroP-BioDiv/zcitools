@@ -67,6 +67,10 @@ class _Command:
     def get_step_db_object(self, step):
         return self._common_db_object(step)
 
+    def get_idents_common_db_object(self, idents):
+        assert (isinstance(idents, tuple) and all(isinstance(i, str) for i in idents)), idents
+        return CommonDB.get_zci_db(idents)
+
     def _common_db_object(self, obj):
         idents = obj.common_db_identifier()
         assert idents is None or (isinstance(idents, tuple) and all(isinstance(i, str) for i in idents)), idents

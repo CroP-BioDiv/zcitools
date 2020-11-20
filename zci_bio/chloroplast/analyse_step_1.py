@@ -18,15 +18,11 @@ class SequenceDesc:
         self.length = len(seq)
         self._genes = find_uniq_features(seq, 'gene')
         self._cds = find_uniq_features(seq, 'CDS')
-        self._parts = find_chloroplast_partition(seq)
-        self._parts_data = _PartsDesc(self._parts, self._genes, self.length) if self._parts else None
-        # Set in step 2. (Evaluate credibility of collected data)
-        self.credible_whole_sequence = True
-        self.credible_irs = True
-        # Set in step 3. (Find missing or more credible data)
+        self._partition = find_chloroplast_partition(seq)
+        self._parts_data = _PartsDesc(self._partition, self._genes, self.length) if self._partition else None
+        # Set in step 2. (Calculate missing data)
         self.irs_took_from = None
         self.irs_took_reason = None
-        #
         self.part_orientation = None
 
         # Extract data from NCBI GenBank files (comments)
@@ -43,12 +39,18 @@ class SequenceDesc:
     taxid = property(lambda self: self._table_data.get_cell(self.seq_ident, 'tax_id'))
     title = property(lambda self: self._table_data.get_cell(self.seq_ident, 'title'))
     created_date = property(lambda self: self._table_data.get_cell(self.seq_ident, 'create_date'))
+    parts_desc = property(lambda self: self._parts_data.desc_str() if self._parts_data else None)
     part_starts = property(lambda self: self._parts_data.starts_str() if self._parts_data else None)
     part_lengths = property(lambda self: self._parts_data.lengths_str() if self._parts_data else None)
     part_num_genes = property(lambda self: self._parts_data.num_genes_str() if self._parts_data else None)
     part_offset = property(lambda self: self._parts_data.offset if self._parts_data else None)
     part_trnH_GUG = property(lambda self: self._parts_data.trnH_GUG if self._parts_data else None)
-    trnH_GUG = property(lambda self: trnH_GUG_start(self._seq))
+
+    @property
+    def trnH_GUG(self):
+        if ret := trnH_GUG_start(self._seq, self._partition):
+            offset, reverse = ret
+            return f'{offset} : rc' if reverse else str(offset)
 
     _ncbi_comment_fields = dict(
         (x, None) for x in ('artcle_title', 'journal', 'pubmed_id', 'first_date',
@@ -105,16 +107,16 @@ class SequenceDesc:
 
     #
     def set_parts_data(self):
-        if self._parts:  # Take better one
+        if self._partition:  # Take better one
             # Part orientation
-            orient = chloroplast_parts_orientation(self._seq, self._parts, self._genes)
+            orient = chloroplast_parts_orientation(self._seq, self._partition, self._genes)
             if ppp := [p for p in ('lsc', 'ira', 'ssc') if not orient[p]]:
                 self.part_orientation = ','.join(ppp)
 
     def set_took_part(self, ira, irb, transfer_from, reason):
-        assert not self._parts, "For now there should not be original IRs!"
-        self._parts = create_chloroplast_partition(self.length, ira, irb, in_interval=True)
-        self._parts_data = _PartsDesc(self._parts, self._genes, self.length)
+        assert not self._partition, "For now there should not be original IRs!"
+        self._partition = create_chloroplast_partition(self.length, ira, irb, in_interval=True)
+        self._parts_data = _PartsDesc(self._partition, self._genes, self.length)
         self.irs_took_from = transfer_from
         self.irs_took_reason = reason
 
@@ -131,10 +133,9 @@ def chloroplast_parts_orientation(seq_rec, partition, genes):
     l_seq = len(seq_rec)
     in_parts = partition.put_features_in_parts(Feature(l_seq, feature=f) for f in genes)
 
-    lsc_count = sum(f.feature.strand if any(x in f.name for x in ('rpl', 'rps')) else 0
-                    for f in in_parts.get('lsc', []))
+    lsc_count = sum(f.feature.strand for f in in_parts.get('lsc', []) if any(x in f.name for x in ('rpl', 'rps')))
     ssc_count = sum(f.feature.strand for f in in_parts.get('ssc', []))
-    ira_count = sum(f.feature.strand if 'rrn' in f.name else 0 for f in in_parts.get('ira', []))
+    ira_count = sum(f.feature.strand for f in in_parts.get('ira', []) if 'rrn' in f.name)
 
     return dict(lsc=(lsc_count <= 0),
                 ssc=(ssc_count <= 0),
