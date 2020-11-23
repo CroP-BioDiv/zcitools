@@ -1,7 +1,8 @@
 from collections import defaultdict
 import itertools
 from datetime import datetime
-from .utils import find_chloroplast_partition, create_chloroplast_partition, trnH_GUG_start
+from .utils import find_chloroplast_partition, create_chloroplast_partition, \
+    chloroplast_parts_orientation, trnH_GUG_start
 from ..utils.entrez import Entrez
 from ..utils.helpers import fetch_from_properties_db
 from ..utils.features import Feature
@@ -49,8 +50,9 @@ class SequenceDesc:
     @property
     def trnH_GUG(self):
         if ret := trnH_GUG_start(self._seq, self._partition):
-            offset, reverse = ret
-            return f'{offset} : rc' if reverse else str(offset)
+            if 'lsc_offset' in ret:
+                return ret['lsc_offset']
+            return f"{ret['zero_offset']} : rc" if ret['reverse'] else str(ret['zero_offset'])
 
     _ncbi_comment_fields = dict(
         (x, None) for x in ('artcle_title', 'journal', 'pubmed_id', 'first_date',
@@ -119,27 +121,6 @@ class SequenceDesc:
         self._parts_data = _PartsDesc(self._partition, self._genes, self.length)
         self.irs_took_from = transfer_from
         self.irs_took_reason = reason
-
-
-def chloroplast_parts_orientation(seq_rec, partition, genes):
-    # Check chloroplast sequence part orientation.
-    # Default orientation is same as one uses in Fast-Plast. Check:
-    #  - source file orientate_plastome_v.2.0.pl
-    #    (https://github.com/mrmckain/Fast-Plast/blob/master/bin/orientate_plastome_v.2.0.pl)
-    #  - explanation https://github.com/mrmckain/Fast-Plast/issues/22
-    # Consitent with Wikipedia image:
-    #  - https://en.wikipedia.org/wiki/Chloroplast_DNA#/media/File:Plastomap_of_Arabidopsis_thaliana.svg
-
-    l_seq = len(seq_rec)
-    in_parts = partition.put_features_in_parts(Feature(l_seq, feature=f) for f in genes)
-
-    lsc_count = sum(f.feature.strand for f in in_parts.get('lsc', []) if any(x in f.name for x in ('rpl', 'rps')))
-    ssc_count = sum(f.feature.strand for f in in_parts.get('ssc', []))
-    ira_count = sum(f.feature.strand for f in in_parts.get('ira', []) if 'rrn' in f.name)
-
-    return dict(lsc=(lsc_count <= 0),
-                ssc=(ssc_count <= 0),
-                ira=(ira_count >= 0))
 
 
 def _parts_desc(parts, genes, length):

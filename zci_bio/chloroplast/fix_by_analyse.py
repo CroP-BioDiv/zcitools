@@ -1,7 +1,7 @@
 import shutil
 import os.path
 from common_utils.file_utils import write_fasta
-from .utils import create_chloroplast_partition_all, rotate_to_trnH_GUG
+from .utils import orient_chloroplast_parts_by_data, orient_by_trnH_GUG_by_data
 from ..utils.import_methods import import_bio_seq_io
 from zci_bio.sequences.steps import SequencesStep
 
@@ -42,21 +42,7 @@ def fix_by_parts(step_data, analyse_step, keep_offset, sequences_db, annotations
 
         seq_rec = annotation_step.get_sequence_record(seq_ident)
         if orientation:  # Orientate parts
-            partition = create_chloroplast_partition_all(len(seq_rec.seq), starts)
-            parts = partition.extract(seq_rec)  # dict name -> Seq object
-            if 'lsc' in orientation:  # LSC
-                parts['lsc'] = parts['lsc'].reverse_complement()
-            if 'ssc' in orientation:  # SSC
-                parts['ssc'] = parts['ssc'].reverse_complement()
-            if 'ira' in orientation:  # IRs
-                parts['ira'] = parts['ira'].reverse_complement()
-                parts['irb'] = parts['irb'].reverse_complement()
-
-            new_seq = parts['lsc'] + parts['ira'] + parts['ssc'] + parts['irb']
-            assert len(seq_rec.seq) == len(new_seq.seq), \
-                (seq_ident, len(seq_rec.seq), len(new_seq.seq), starts,
-                    [(n, len(p)) for n, p in parts.items()],
-                    [(n, len(p)) for n, p in partition.extract(seq_rec).items()])
+            new_seq = orient_chloroplast_parts_by_data(seq_rec, orientation, starts=starts)
 
             # Store fasta file, in step and sequences DB
             fa_filename = step.step_file(f'{new_seq_ident}.fa')
@@ -84,10 +70,21 @@ def fix_by_trnH_GUG(step_data, analyse_step, keep_offset, sequences_db, annotati
 
     for row in analyse_step.rows_as_dicts():
         seq_ident = row['AccesionNumber']
-        if not (trnh_gug := row['trnH-GUG']):
+        if (trnh_gug := row['trnH-GUG']) is None:
             print(f"Warning: sequence {seq_ident} doesn't have trnH-GUG gene!")
-            _copy_from_origin(step, annotation_step, seq_ident)
+            # _copy_from_origin(step, annotation_step, seq_ident)  # ???
             continue
+
+        fields = trnh_gug.split(':')
+        offset = int(fields[0])
+        zero_reverse = (len(fields) > 1)
+        orientation = row['Orientation']
+        if starts := row['Part starts']:
+            starts = [int(f.strip()) for f in starts.split(',')]
+            # Nothing to do!
+            if (starts[0] + offset) <= keep_offset and not orientation:
+                _copy_from_origin(step, annotation_step, seq_ident)
+                continue
 
         # Check is sequence already in the CommonDB
         new_seq_ident = step.seq_ident_of_our_change(seq_ident, 't')
@@ -95,22 +92,9 @@ def fix_by_trnH_GUG(step_data, analyse_step, keep_offset, sequences_db, annotati
             step.add_sequence_file(os.path.basename(f))
             continue
 
-        fields = trnh_gug.split(' : ')
-        offset = int(fields[0])
-        reverse = False
-        if len(fields) == 2:
-            orientation = row['Orientation']
-            reverse = ('lsc' in orientation)  # It is more probable that orientation has good
-
-        if offset <= keep_offset and not reverse:
-            _copy_from_origin(step, annotation_step, seq_ident)
-            continue
-
         seq_rec = annotation_step.get_sequence_record(seq_ident)
-
-        new_seq = seq_rec[offset:] + seq_rec[:offset]  # Note: this keeps features
-        if reverse:
-            new_seq = new_seq.reverse_complement()
+        new_seq = orient_by_trnH_GUG_by_data(
+            seq_rec, offset, zero_reverse, orientation, start=starts, keep_offset=keep_offset)
 
         _store_genbank(step, new_seq_ident, new_seq, seq_rec, sequences_db, annotations_db)
 
