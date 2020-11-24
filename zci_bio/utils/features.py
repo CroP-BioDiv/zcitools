@@ -61,6 +61,8 @@ class Feature:
         self.real_end = intervals[-1].end
         self.simple = len(self._intervals) == 1 or (len(self._intervals) == 2 and self._wraps)
 
+    strand = property(lambda self: self.feature.location.strand)
+
     def __lt__(self, b):
         # Used for sorting
         return self.real_start < b.real_start

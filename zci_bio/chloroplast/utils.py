@@ -8,8 +8,7 @@ def find_chloroplast_irs(seq, check_size=True):
     rep_regs = [f for f in seq.features
                 if f.type == 'repeat_region' and
                 f.qualifiers.get('rpt_type', _ir)[0] == 'inverted']
-    if seq.name == 'NC_033344':
-        print(seq.name, rep_regs)
+
     if len(rep_regs) >= 2:
         max_len = max(map(len, rep_regs)) - 3  # Some tolerance :-)
         max_regs = [f for f in rep_regs if len(f) >= max_len]
@@ -91,9 +90,23 @@ def chloroplast_parts_orientation(seq_rec, partition, genes=None):
 
 
 # -----------------
-def cycle_distance(a, b, cycle_len):
+def cycle_distance_min(a, b, cycle_len):
     d = abs(a - b)
     return d if d < (cycle_len / 2) else (cycle_len - d)
+
+
+def cycle_distance_lt(a, b, cycle_len):
+    # In positive direction. Takes that a <= b in cycle direction.
+    if a <= b:
+        return b - a
+    return ((cycle_len - a) + b) % cycle_len
+
+
+# def cycle_distance_gt(a, b, cycle_len):
+#     # In negative direction. Takes that a >= b in cycle direction.
+#     if a <= b:
+#         return b - a
+#     return (cycle_len - b) + a
 
 
 def rotate_by_offset(seq_rec, offset, keep_offset=None, reverse=False):
@@ -104,7 +117,7 @@ def rotate_by_offset(seq_rec, offset, keep_offset=None, reverse=False):
     offset %= len(seq_rec.seq)
 
     # Check if there is need to rotate
-    if not offset or (keep_offset and cycle_distance(0, offset, len(seq_rec.seq)) <= keep_offset):
+    if not offset or (keep_offset and cycle_distance_min(0, offset, len(seq_rec.seq)) <= keep_offset):
         return seq_rec.reverse_complement() if reverse else None
 
     new_seq = seq_rec[offset:] + seq_rec[:offset]
@@ -114,42 +127,76 @@ def rotate_by_offset(seq_rec, offset, keep_offset=None, reverse=False):
 def trnH_GUG_start(seq_rec, partition):
     # Possibilities and return value:
     #  * no gene at all     : None
-    #  * genome has parts   : dict(lsc_offset=<num>)
+    #  * genome has parts   : dict(lsc_offset=<num>, strategy=<str>)
     #  * doesn't have parts : dict(zero_offset=<num>, reverse=<bool>)
-    trnhs = [f for f in seq_rec.features if f.type == 'gene' and f.qualifiers['gene'][0] == 'trnH-GUG']
-    if not trnhs:
+    l_seq = len(seq_rec.seq)
+    all_trnhs = [Feature(l_seq, feature=f) for f in seq_rec.features
+                 if f.type == 'gene' and f.qualifiers['gene'][0] == 'trnH-GUG']
+    if not all_trnhs:
         print(f'Warning: no trnH-GUG found in sequence {seq_rec.name}!')
         return
 
-    l_seq = len(seq_rec.seq)
-
     if partition and (lsc := partition['lsc']):
-        # Take one that is the closest to some lsc end
+        # Take that orientation of LSC that is calculated on more genes is more reliable then strand of only one gene!
+        orientation = chloroplast_parts_orientation(seq_rec, partition)
+        pos_oriented = orientation['lsc']
+
+        # Feature data really doesn't have to be nice :-/
+        # Here are strategies of finding gene location sorted by priority, with strategy tag:
+        #  - (S) gene is located in LSC, near LSC start or intersects LSC start, and on right strand
+        #  - (B) gene is located in IRb, near LSC start, on right strand
+        #  - (A) gene is located in IRa, near LSC end, on right strand
+        # In E and F cases, we assume that if there is gane in IRa,
+        # there should be gene on IRb on symmetrical location, and we use that location.
+        # If strategy didn't find gene on the right strand,
+        # than opposite strand is also checked and 'O' is appended on strategy tag.
+        # Note: trnH-GUG is short gene ~70b!
+
         s, e = lsc.ends()
-        # Take that orientation of LSC that is calculated on more genes is more reliable then strand on only one gene!
-        good_oriented = chloroplast_parts_orientation(seq_rec, partition)['lsc']
-        p = s if good_oriented else e
-        print(seq_rec.name, (s, e), good_oriented, p)
-        mins = [min(cycle_distance(p, t.location.start, l_seq), cycle_distance(p, t.location.end, l_seq)) for t in trnhs]
+        start_p = s if pos_oriented else e
+        half_len = len(lsc) // 2
+        cdm = cycle_distance_min
+        trnh = None
 
-        print(mins)
-        idx = mins.index(min(mins))
-        loc = trnhs[idx].location
-        # trnH-GUG is located at LSC start. Check on which side it is now
-        return dict(lsc_offset=(loc.start if good_oriented else loc.end))
+        # (S)
+        if trnhs := [t for t in all_trnhs if lsc.intersects(t) and cdm(start_p, t.real_start, l_seq) < half_len]:
+            for strategy, ts in [('S', [t for t in trnhs if (t.strand < 0) == pos_oriented]),
+                                 ('SO', [t for t in trnhs if (t.strand < 0) != pos_oriented])]:
+                if ts:
+                    trnh = min(ts, key=lambda t: cdm(start_p, (t.real_start if pos_oriented else t.real_end), l_seq))
+                    return dict(strategy=strategy,
+                                lsc_offset=cycle_distance_lt(lsc.real_start,
+                                                             trnh.real_start if pos_oriented else trnh.real_end,
+                                                             l_seq))
 
-    # First try with good orientation
-    trnhs_m = [t for t in trnhs if t.location.strand < 0]  # 'Good' orientation
-    trnhs_p = [t for t in trnhs if t.location.strand > 0]  # 'Wrong' orientation
-    assert len(trnhs) == len(trnhs_m) + len(trnhs_p), trnhs
-    for trnhs in (trnhs_m, trnhs_p):
-        if trnhs:
-            # Take one that is the closest to the origin
-            trnh = min(trnhs, key=lambda f: min(cycle_distance(0, p, l_seq)
-                                                for p in (f.location.start, f.location.end)))
-            # If genome is good orineted than strand should be -1
-            reverse = (trnh.location.strand > 0)
-            return dict(zero_offset=(trnh.location.end if reverse else trnh.location.start), reverse=reverse)
+        # (B)
+        ir_oriented = orientation['ira']
+        half_len = len(partition['irb']) // 2
+        if trnhs := [t for t in all_trnhs if cdm(start_p, t.real_start, l_seq) < half_len]:
+            for strategy, ts in [('B', [t for t in trnhs if (t.strand < 0) == ir_oriented]),
+                                 ('BO', [t for t in trnhs if (t.strand < 0) != ir_oriented])]:
+                if ts:
+                    trnh = min(ts, key=lambda t: cdm(start_p, (t.real_start if ir_oriented else t.real_end), l_seq))
+                    return dict(strategy=strategy,
+                                lsc_offset=cycle_distance_lt(lsc.real_start,
+                                                             trnh.real_start if ir_oriented else trnh.real_end,
+                                                             l_seq))
+
+        # (A)
+        end_p = e if pos_oriented else s
+        if trnhs := [t for t in all_trnhs if cdm(end_p, t.real_start, l_seq) < half_len]:
+            # Note: IRa is reverse complement of IRb, so strand is opposite
+            # ?(t.real_start if ir_oriented else t.real_end) or opposite?
+            for strategy, ts in [('A', [t for t in trnhs if (t.strand < 0) != ir_oriented]),
+                                 ('AO', [t for t in trnhs if (t.strand < 0) == ir_oriented])]:
+                if ts:
+                    trnh = min(ts, key=lambda t: cdm(end_p, (t.real_start if ir_oriented else t.real_end), l_seq))
+                    # Map offset from LSC end to LSC start
+                    offset = cycle_distance_lt(lsc.real_end, trnh.real_start if ir_oriented else trnh.real_end, l_seq)
+                    offset = (lsc.real_start - offset) % l_seq
+                    return dict(strategy=strategy, lsc_offset=offset)
+
+        assert False, seq_rec.name
 
 
 def rotate_to_offset(seq_rec, parts, keep_offset=None):
@@ -175,7 +222,7 @@ def orient_chloroplast_parts_by_data(seq_rec, orientation, starts=None, partitio
 
     new_seq = parts['lsc'] + parts['ira'] + parts['ssc'] + parts['irb']
     assert len(seq_rec.seq) == len(new_seq.seq), \
-        (seq_ident, len(seq_rec.seq), len(new_seq.seq), starts,
+        (seq_rec.name, len(seq_rec.seq), len(new_seq.seq), starts,
             [(n, len(p)) for n, p in parts.items()],
             [(n, len(p)) for n, p in partition.extract(seq_rec).items()])
     return new_seq
@@ -188,13 +235,16 @@ def orient_chloroplast_parts(seq_rec):
     return orient_chloroplast_parts_by_data(seq_rec, orientation, partition=partition)
 
 
-def orient_by_trnH_GUG_by_data(seq_rec, offset, reverse, orientation, partition=None, start=None, keep_offset=None):
-    if orientation:
-        if not partition and starts:
+def orient_by_trnH_GUG_by_data(seq_rec, offset, reverse, orientation, partition=None, starts=None, keep_offset=None):
+    lsc_has_offset = (abs(starts[0]) > (keep_offset or 0))
+    if orientation or lsc_has_offset:
+        if not partition:
             partition = create_chloroplast_partition_all(len(seq_rec.seq), starts)
         if partition:
-            seq = orient_chloroplast_parts_by_data(seq_rec, orientation, partition=partition)
-    return rotate_by_offset(seq_rec, offset, keep_offset=keep_offset, reverse=reverse)
+            seq_rec = orient_chloroplast_parts_by_data(seq_rec, orientation, partition=partition)
+        else:
+            print(f"Warning: sequence {seq_rec.name} has LSC offset but doesn't have partitions!")
+    return (rotate_by_offset(seq_rec, offset, keep_offset=keep_offset, reverse=reverse) or seq_rec)
 
 
 def orient_by_trnH_GUG(seq_rec, keep_offset=None):

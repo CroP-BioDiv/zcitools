@@ -51,8 +51,11 @@ class SequenceDesc:
     def trnH_GUG(self):
         if ret := trnH_GUG_start(self._seq, self._partition):
             if 'lsc_offset' in ret:
-                return ret['lsc_offset']
+                return f"{ret['lsc_offset']} : {ret['strategy']}"
             return f"{ret['zero_offset']} : rc" if ret['reverse'] else str(ret['zero_offset'])
+
+    def part_lengths_all(self):
+        return self._parts_data.parts_length() if self._parts_data else None
 
     _ncbi_comment_fields = dict(
         (x, None) for x in ('artcle_title', 'journal', 'pubmed_id', 'first_date',
@@ -174,6 +177,9 @@ class _PartsDesc:
     def num_genes_str(self):
         if self.part_genes:
             return ', '.join(str(len(p)) for p in self.part_genes)
+
+    def parts_length(self):
+        return [len(p) for p in self.oriented]
 
 
 def seq_offset(seq_length, offset):

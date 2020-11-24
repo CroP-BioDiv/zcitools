@@ -93,15 +93,22 @@ class AnalyseGenomes:
 
         # Statistics
         sequences_step = next(iter(data.values())).sequences_step
-        sp_stats = self._find_species_stats()
         num_ge_seq_irs = sum(int(bool(seq_data._partition)) for seq_data in data.values())
         num_ncbi_irs = sum(int(bool(find_chloroplast_partition(seq))) for _, seq in sequences_step._iterate_records())
+        p_lengths = [l for d in data.values() if (l := d.part_lengths_all())]
+
         summary = f"""Statistics:
 
 Minimum sequence length: {min(len(seq) for _, seq in sequences_step._iterate_records())}
 Maximum sequence length: {max(len(seq) for _, seq in sequences_step._iterate_records())}
 Number of genomes containing IRS by NCBI annotation  : {num_ncbi_irs}
 Number of genomes containing IRS by GeSeq annotation : {num_ge_seq_irs}
+
+Range of genome (first) dates: {min(d.first_date for d in data.values())} - {max(d.first_date for d in data.values())}
+Range of part lengths:
+  LSC : {min(l[0] for l in p_lengths)} - {max(l[0] for l in p_lengths)}
+  IRs : {min(l[1] for l in p_lengths)} - {max(l[1] for l in p_lengths)}
+  SSC : {min(l[2] for l in p_lengths)} - {max(l[2] for l in p_lengths)}
 """
         if sp_stats := self._find_species_stats():
             summary += '\nSpecies with more accessions:\n\n' + '\n'.join(sp_stats) + '\n'
