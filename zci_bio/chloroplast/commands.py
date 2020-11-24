@@ -25,7 +25,7 @@ class ChloroplastFixByAnalyse(CreateStepFromStepCommand):
     @staticmethod
     def set_arguments(parser):
         # Note: method than step
-        parser.add_argument('method', help='Fix method. Options: parts, trnH-GUG. Only first character is needed.')
+        parser.add_argument('method', help='Fix method. Options: parts, trnF-GAA. Only first character is needed.')
         CreateStepFromStepCommand.set_arguments(parser)
         parser.add_argument('-o', '--keep-offset', default=ChloroplastFixByAnalyse._DEFAULT_KEEP_OFFSET, type=int,
                             help='Do not rotate genome if offset is less than given value.')
@@ -34,8 +34,10 @@ class ChloroplastFixByAnalyse(CreateStepFromStepCommand):
         m = self.args.method[0].lower()
         if m == 'p':
             n = self._format_step_name('FixByParts')
-        elif m == 't':
-            n = self._format_step_name('FixByTrnH-GUG')
+        # elif m == 'h':
+        #     n = self._format_step_name('FixByTrnH-GUG')
+        elif m == 'f':
+            n = self._format_step_name('FixByTrnF-GAA')
         else:
             raise ZCItoolsValueError(f'Not known method {self.args.method}!')
         # Add offset or not?
@@ -46,8 +48,10 @@ class ChloroplastFixByAnalyse(CreateStepFromStepCommand):
         m = self.args.method[0].lower()
         if m == 'p':
             from .fix_by_analyse import fix_by_parts as fix_method
-        elif m == 't':
-            from .fix_by_analyse import fix_by_trnH_GUG as fix_method
+        # elif m == 'h':
+        #     from .fix_by_analyse import fix_by_trnH_GUG as fix_method
+        elif m == 'f':
+            from .fix_by_analyse import fix_by_trnF_GAA as fix_method
         else:
             raise ZCItoolsValueError(f'Not known method {self.args.method}!')
         #

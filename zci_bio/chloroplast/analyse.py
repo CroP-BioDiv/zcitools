@@ -79,7 +79,8 @@ class AnalyseGenomes:
             ('part_lengths', 'Part lengths', 'str'),
             ('part_num_genes', 'Part genes', 'str'),
             ('part_orientation', 'Orientation', 'str'),
-            ('trnH_GUG', 'trnH-GUG', 'str'),
+            ('trnF_GAA', 'trnF-GAA', 'int'),
+            # ('trnH_GUG', 'trnH-GUG', 'str'),
             ('artcle_title', 'Article', 'str'),
             ('journal', 'Journal', 'str'),
             ('pubmed_id', 'PubMed', 'int'),
@@ -142,13 +143,14 @@ Range of part lengths:
         if not ret:
             ret.append('No species found with more genomes!')
 
-        # Wihtout species
+        # Without species
         if without_sp:
             ret.append("No 'base' species in NCBI taxa database found for:")
             ret.extend(f' - {taxid_2_ident[taxid]} {name} ({taxid}) of rank {rank}' for taxid, name, rank in without_sp)
         return ret
 
     def _find_corrections_stat(self):
+        offset_off = lambda o: (abs(o or 0) > 10)
         corrs = []
         if num := sum(1 for d in self.seq_descs.values() if d.part_orientation):
             corrs.append(f'Found partitions: {num}')
@@ -156,17 +158,17 @@ Range of part lengths:
             corrs.append(f'Without partitions: {num}')
         if num := sum(1 for d in self.seq_descs.values() if d.part_orientation):
             corrs.append(f'Wrong partition orientation: {num}')
-        if num := sum(1 for d in self.seq_descs.values() if abs(d.part_offset or 0) > 50):
+        if num := sum(1 for d in self.seq_descs.values() if offset_off(d.part_offset)):
             corrs.append(f'Wrong LSC offset: {num}')
-        if num := sum(1 for d in self.seq_descs.values() if abs(d.part_trnH_GUG or 0) > 50):
-            corrs.append(f'Wrong trnH-GUG offset: {num}')
+        # if num := sum(1 for d in self.seq_descs.values() if offset_off(d.part_trnH_GUG)):
+        #     corrs.append(f'Wrong trnH-GUG offset: {num}')
+
         #
         if num := sum(1 for d in self.seq_descs.values()
                       if d.part_orientation or
                       not d._partition or
                       d.part_orientation or
-                      abs(d.part_offset or 0) > 50 or
-                      abs(d.part_trnH_GUG or 0) > 50):
+                      offset_off(d.part_offset)):
             corrs.append(f'Fixed: {num}')
         return corrs
 

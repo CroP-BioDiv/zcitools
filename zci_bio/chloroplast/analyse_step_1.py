@@ -2,7 +2,7 @@ from collections import defaultdict
 import itertools
 from datetime import datetime
 from .utils import find_chloroplast_partition, create_chloroplast_partition, \
-    chloroplast_parts_orientation, trnH_GUG_start
+    chloroplast_parts_orientation, trnF_GAA_start  # , trnH_GUG_start
 from ..utils.entrez import Entrez
 from ..utils.helpers import fetch_from_properties_db
 from ..utils.features import Feature
@@ -46,6 +46,11 @@ class SequenceDesc:
     part_num_genes = property(lambda self: self._parts_data.num_genes_str() if self._parts_data else None)
     part_offset = property(lambda self: self._parts_data.offset if self._parts_data else None)
     part_trnH_GUG = property(lambda self: self._parts_data.trnH_GUG if self._parts_data else None)
+
+    @property
+    @cache
+    def trnF_GAA(self):
+        return trnF_GAA_start(self._seq, self._partition)
 
     @property
     def trnH_GUG(self):
