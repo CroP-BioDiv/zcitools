@@ -14,7 +14,6 @@ def find_chloroplast_irs(seq, check_size=True):
     for f in rep_regs:
         if len(f) >= half_length:
             loc = f.location
-            print(len(f))
             f.location = CompoundLocation([FeatureLocation(loc.end, len(seq), strand=1),
                                            FeatureLocation(0, loc.start + 1, strand=1)])
 

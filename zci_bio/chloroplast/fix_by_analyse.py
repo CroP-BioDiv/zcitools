@@ -12,6 +12,10 @@ def _copy_from_origin(step, annotation_step, seq_ident):
     step.add_sequence_file(os.path.basename(an_filename))
 
 
+def _parts_changed(starts, orientation, keep_offset):
+    return orientation or (abs(starts[0]) > (keep_offset or 0))
+
+
 def fix_by_parts(step_data, analyse_step, keep_offset, sequences_db, annotations_db):
     step = SequencesStep(analyse_step.project, step_data, remove_data=True)
     analyse_step.propagate_step_name_prefix(step)
@@ -87,7 +91,7 @@ def fix_by_trnF_GAA(step_data, analyse_step, keep_offset, sequences_db, annotati
                 continue
 
         # Check is sequence already in the CommonDB
-        new_seq_ident = step.seq_ident_of_our_change(seq_ident, 't')
+        new_seq_ident = step.seq_ident_of_our_change(seq_ident, 'f')
         if sequences_db and (f := sequences_db.get_record(new_seq_ident, step.directory, info=True)):
             step.add_sequence_file(os.path.basename(f))
             continue
@@ -95,9 +99,10 @@ def fix_by_trnF_GAA(step_data, analyse_step, keep_offset, sequences_db, annotati
         seq_rec = annotation_step.get_sequence_record(seq_ident)
         new_seq = orient_by_trnF_GAA_by_data(seq_rec, offset, orientation, starts=starts, keep_offset=keep_offset)
 
-        # ODKOMENTIRATI KAD PRORADI!!!
-        # _store_genbank(step, new_seq_ident, new_seq, seq_rec, sequences_db, annotations_db)
-        _store_genbank(step, new_seq_ident, new_seq, seq_rec, None, None)
+        # If parts were oriented, than do not store annotations
+        # If parts were not oriented, than only rotation was done which keeps annotations.
+        _store_genbank(step, new_seq_ident, new_seq, seq_rec, sequences_db,
+                       None if _parts_changed(starts, orientation, keep_offset) else annotations_db)
 
     #
     step.save()
@@ -133,7 +138,7 @@ def fix_by_trnH_GUG(step_data, analyse_step, keep_offset, sequences_db, annotati
             zero_reverse = (len(fields) > 1)
 
         # Check is sequence already in the CommonDB
-        new_seq_ident = step.seq_ident_of_our_change(seq_ident, 't')
+        new_seq_ident = step.seq_ident_of_our_change(seq_ident, 'h')
         if sequences_db and (f := sequences_db.get_record(new_seq_ident, step.directory, info=True)):
             step.add_sequence_file(os.path.basename(f))
             continue
