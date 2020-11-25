@@ -12,11 +12,7 @@ def _copy_from_origin(step, annotation_step, seq_ident):
     step.add_sequence_file(os.path.basename(an_filename))
 
 
-def _parts_changed(starts, orientation, keep_offset):
-    return orientation or (abs(starts[0]) > (keep_offset or 0))
-
-
-def fix_by_parts(step_data, analyse_step, keep_offset, sequences_db, annotations_db):
+def fix_by_parts(step_data, analyse_step, keep_offset, sequences_db):
     step = SequencesStep(analyse_step.project, step_data, remove_data=True)
     analyse_step.propagate_step_name_prefix(step)
     annotation_step = analyse_step.project.find_previous_step_of_type(analyse_step, 'annotations')
@@ -59,15 +55,15 @@ def fix_by_parts(step_data, analyse_step, keep_offset, sequences_db, annotations
             # Note: it is not needed to make offset if orientation was changed,
             # since parts concatenation orients the sequence
             assert abs(lsc_offset) > keep_offset, (lsc_offset, keep_offset)
-            new_seq = seq_rec[lsc_offset:] + seq_rec[:lsc_offset]  # Note: this keeps features
-            _store_genbank(step, new_seq_ident, new_seq, seq_rec, sequences_db, annotations_db)
+            new_seq = seq_rec[lsc_offset:] + seq_rec[:lsc_offset]
+            _store_genbank(step, new_seq_ident, new_seq, seq_rec, sequences_db)
 
     #
     step.save()
     return step
 
 
-def fix_by_trnF_GAA(step_data, analyse_step, keep_offset, sequences_db, annotations_db):
+def fix_by_trnF_GAA(step_data, analyse_step, keep_offset, sequences_db):
     step = SequencesStep(analyse_step.project, step_data, remove_data=True)
     analyse_step.propagate_step_name_prefix(step)
     annotation_step = analyse_step.project.find_previous_step_of_type(analyse_step, 'annotations')
@@ -98,65 +94,61 @@ def fix_by_trnF_GAA(step_data, analyse_step, keep_offset, sequences_db, annotati
 
         seq_rec = annotation_step.get_sequence_record(seq_ident)
         new_seq = orient_by_trnF_GAA_by_data(seq_rec, offset, orientation, starts=starts, keep_offset=keep_offset)
-
-        # If parts were oriented, than do not store annotations
-        # If parts were not oriented, than only rotation was done which keeps annotations.
-        _store_genbank(step, new_seq_ident, new_seq, seq_rec, sequences_db,
-                       None if _parts_changed(starts, orientation, keep_offset) else annotations_db)
+        _store_genbank(step, new_seq_ident, new_seq, seq_rec, sequences_db)
 
     #
     step.save()
     return step
 
 
-def fix_by_trnH_GUG(step_data, analyse_step, keep_offset, sequences_db, annotations_db):
-    step = SequencesStep(analyse_step.project, step_data, remove_data=True)
-    analyse_step.propagate_step_name_prefix(step)
-    annotation_step = analyse_step.project.find_previous_step_of_type(analyse_step, 'annotations')
+# def fix_by_trnH_GUG(step_data, analyse_step, keep_offset, sequences_db, annotations_db):
+#     step = SequencesStep(analyse_step.project, step_data, remove_data=True)
+#     analyse_step.propagate_step_name_prefix(step)
+#     annotation_step = analyse_step.project.find_previous_step_of_type(analyse_step, 'annotations')
 
-    for row in analyse_step.rows_as_dicts():
-        seq_ident = row['AccesionNumber']
-        if (trnh_gug := row['trnH-GUG']) in (None, ''):
-            print(f"Warning: sequence {seq_ident} doesn't have trnH-GUG gene!")
-            # _copy_from_origin(step, annotation_step, seq_ident)  # ???
-            continue
+#     for row in analyse_step.rows_as_dicts():
+#         seq_ident = row['AccesionNumber']
+#         if (trnh_gug := row['trnH-GUG']) in (None, ''):
+#             print(f"Warning: sequence {seq_ident} doesn't have trnH-GUG gene!")
+#             # _copy_from_origin(step, annotation_step, seq_ident)  # ???
+#             continue
 
-        fields = trnh_gug.split(':')
-        offset = int(fields[0])
-        zero_reverse = False
-        orientation = row['Orientation']
-        if starts := row['Part starts']:
-            starts = [int(f.strip()) for f in starts.split(',')]
-            # Nothing to do!
-            if abs(starts[0]) <= keep_offset and \
-               abs(offset) <= keep_offset and \
-               abs(starts[0] + offset) <= keep_offset \
-               and not orientation:
-                _copy_from_origin(step, annotation_step, seq_ident)
-                continue
-        else:
-            zero_reverse = (len(fields) > 1)
+#         fields = trnh_gug.split(':')
+#         offset = int(fields[0])
+#         zero_reverse = False
+#         orientation = row['Orientation']
+#         if starts := row['Part starts']:
+#             starts = [int(f.strip()) for f in starts.split(',')]
+#             # Nothing to do!
+#             if abs(starts[0]) <= keep_offset and \
+#                abs(offset) <= keep_offset and \
+#                abs(starts[0] + offset) <= keep_offset \
+#                and not orientation:
+#                 _copy_from_origin(step, annotation_step, seq_ident)
+#                 continue
+#         else:
+#             zero_reverse = (len(fields) > 1)
 
-        # Check is sequence already in the CommonDB
-        new_seq_ident = step.seq_ident_of_our_change(seq_ident, 'h')
-        if sequences_db and (f := sequences_db.get_record(new_seq_ident, step.directory, info=True)):
-            step.add_sequence_file(os.path.basename(f))
-            continue
+#         # Check is sequence already in the CommonDB
+#         new_seq_ident = step.seq_ident_of_our_change(seq_ident, 'h')
+#         if sequences_db and (f := sequences_db.get_record(new_seq_ident, step.directory, info=True)):
+#             step.add_sequence_file(os.path.basename(f))
+#             continue
 
-        seq_rec = annotation_step.get_sequence_record(seq_ident)
-        new_seq = orient_by_trnH_GUG_by_data(
-            seq_rec, offset, zero_reverse, orientation, starts=starts, keep_offset=keep_offset)
+#         seq_rec = annotation_step.get_sequence_record(seq_ident)
+#         new_seq = orient_by_trnH_GUG_by_data(
+#             seq_rec, offset, zero_reverse, orientation, starts=starts, keep_offset=keep_offset)
 
-        # ODKOMENTIRATI KAD PRORADI!!!
-        # _store_genbank(step, new_seq_ident, new_seq, seq_rec, sequences_db, annotations_db)
-        _store_genbank(step, new_seq_ident, new_seq, seq_rec, None, None)
+#         # ODKOMENTIRATI KAD PRORADI!!!
+#         # _store_genbank(step, new_seq_ident, new_seq, seq_rec, sequences_db, annotations_db)
+#         _store_genbank(step, new_seq_ident, new_seq, seq_rec, None, None)
 
-    #
-    step.save()
-    return step
+#     #
+#     step.save()
+#     return step
 
 
-def _store_genbank(step, new_seq_ident, seq_rec, copy_from_rec, sequences_db, annotations_db):
+def _store_genbank(step, new_seq_ident, seq_rec, copy_from_rec, sequences_db):
     # Store GenBank file, in step and both sequences and annotations DBs
     _copy_sequence_annotations(copy_from_rec, seq_rec)
     # Set step file
@@ -167,8 +159,6 @@ def _store_genbank(step, new_seq_ident, seq_rec, copy_from_rec, sequences_db, an
     # Set common DB files
     if sequences_db:
         sequences_db.set_record(new_seq_ident, gb_filename)
-    if annotations_db:
-        annotations_db.set_record(new_seq_ident, gb_filename)
 
 
 def _copy_sequence_annotations(from_rec, to_seq):

@@ -9,6 +9,7 @@ from common_utils.cache import cache
 from .analyse_step_1 import SequenceDesc
 from .analyse_step_calc import run_align_cmd, find_missing_partitions
 from .utils import find_chloroplast_partition, find_chloroplast_irs
+from .constants import DEFAULT_KEEP_OFFSET
 from ..utils.features import Feature
 from ..utils.ncbi_taxonomy import get_ncbi_taxonomy
 
@@ -101,13 +102,15 @@ class AnalyseGenomes:
                        if find_chloroplast_irs(seq, check_size=True)]
         p_lengths = [l for d in data.values() if (l := d.part_lengths_all())]
         # Corrections
-        offset_off = lambda o: (abs(o or 0) > 10)
+        offset_off = lambda o: (abs(o or 0) > DEFAULT_KEEP_OFFSET)
         parts_orient_count = defaultdict(int)
         for d in self.seq_descs.values():
             if d.part_orientation:
                 for p in d.part_orientation.split(','):
                     parts_orient_count[p] += 1
         parts_orient_count = '; '.join(f'{n} ({p})' for p, n in sorted(parts_orient_count.items()))
+        if parts_orient_count:
+            parts_orient_count = f' ({parts_orient_count})'
 
         summary = f"""Statistics:
 
@@ -127,10 +130,9 @@ Range of part lengths:
   SSC : {min(l[2] for l in p_lengths)} - {max(l[2] for l in p_lengths)}
 
 Corrections by parts:
-  Wrong orientation          : {sum(1 for d in self.seq_descs.values() if d.part_orientation)}
-  Wrong orientation by parts : {parts_orient_count}
-  With offset                : {sum(1 for d in self.seq_descs.values() if offset_off(d.part_offset))}
-  Fixed                      : {sum(1 for d in self.seq_descs.values() if d.part_orientation or offset_off(d.part_offset))}
+  Wrong orientation : {sum(1 for d in self.seq_descs.values() if d.part_orientation)}{parts_orient_count}
+  With offset       : {sum(1 for d in self.seq_descs.values() if offset_off(d.part_offset))}
+  Fixed             : {sum(1 for d in self.seq_descs.values() if d.part_orientation or offset_off(d.part_offset))}
 
 {self._find_species_stats()}
 """
@@ -168,7 +170,7 @@ Corrections by parts:
         return '\n'.join(ret)
 
     def _find_errors(self):
-        offset_off = lambda o: (abs(o or 0) > 10)
+        offset_off = lambda o: (abs(o or 0) > DEFAULT_KEEP_OFFSET)
         data = self.seq_descs
         errors = []
         l_start = '\n - '

@@ -1,5 +1,6 @@
 from step_project.base_commands import ProjectCommand, CreateStepFromStepCommand
 from common_utils.exceptions import ZCItoolsValueError
+from .constants import DEFAULT_KEEP_OFFSET
 
 
 class ChloroplastAnalyse(CreateStepFromStepCommand):
@@ -20,14 +21,13 @@ class ChloroplastFixByAnalyse(CreateStepFromStepCommand):
     _COMMAND_GROUP = 'Chloroplast'
     _INPUT_STEP_DATA_TYPE = 'table'
     _COMMON_DB_IDENT = ('sequences',)
-    _DEFAULT_KEEP_OFFSET = 10
 
     @staticmethod
     def set_arguments(parser):
         # Note: method than step
         parser.add_argument('method', help='Fix method. Options: parts, trnF-GAA. Only first character is needed.')
         CreateStepFromStepCommand.set_arguments(parser)
-        parser.add_argument('-o', '--keep-offset', default=ChloroplastFixByAnalyse._DEFAULT_KEEP_OFFSET, type=int,
+        parser.add_argument('-o', '--keep-offset', default=DEFAULT_KEEP_OFFSET, type=int,
                             help='Do not rotate genome if offset is less than given value.')
 
     def step_base_name(self):
@@ -42,7 +42,7 @@ class ChloroplastFixByAnalyse(CreateStepFromStepCommand):
             raise ZCItoolsValueError(f'Not known method {self.args.method}!')
         # Add offset or not?
         o = self.args.keep_offset
-        return f'{n}_{o}' if o != self._DEFAULT_KEEP_OFFSET else n
+        return f'{n}_{o}' if o != DEFAULT_KEEP_OFFSET else n
 
     def run(self, step_data):
         m = self.args.method[0].lower()
@@ -56,10 +56,9 @@ class ChloroplastFixByAnalyse(CreateStepFromStepCommand):
             raise ZCItoolsValueError(f'Not known method {self.args.method}!')
         #
         return fix_method(step_data,
-                          (annotations_step := self._input_step(no_data_check=True)),
+                          self._input_step(no_data_check=True),
                           self.args.keep_offset,
-                          self.get_common_db_object(),
-                          self.get_step_db_object(annotations_step))
+                          self.get_common_db_object())
 
 
 class ChloroplastAlign(CreateStepFromStepCommand):
