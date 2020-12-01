@@ -30,15 +30,16 @@ Notes:
 """
 
 
-def _copy_alignment_file(align_step, in_step, files_to_proc, set_partitions):
+def _copy_alignment_file(align_step, in_step, files_to_proc, partitions_obj):
     a_f = in_step.step_file('alignment.phy')
     orig_phy = align_step.get_phylip_file()
     alignment = read_alignment(orig_phy)
-    partitions = None
-    #
-    if set_partitions and align_step.is_composite():
-        partitions = in_step.step_file('partitions.ind')
-        align_step.create_raxml_partitions(partitions)
+    partitions = partitions_obj.create_raxml_partitions(align_step, in_step.step_file('partitions.ind'))
+    # partitions = None
+    # #
+    # if partitions_obj.to_make_partitions() and align_step.is_composite():
+    #     partitions = in_step.step_file('partitions.ind')
+    #     align_step.create_raxml_partitions(partitions)
     #
     if max(len(seq_ident) for seq_ident in align_step.all_sequences()) == 10:
         # If max length of ident is 10, than RAxML is confused about real ident length
@@ -56,7 +57,7 @@ def _copy_alignment_file(align_step, in_step, files_to_proc, set_partitions):
         filename=a_f, short=align_step.is_short(), length=len(alignment[0]), partitions=partitions))
 
 
-def create_raxml_data(step_data, alignment_step, set_partitions, run):
+def create_raxml_data(step_data, alignment_step, partitions_obj, run):
     # List of dicts with attrs: filename, short, partitions (filename or None)
     # This data is used to optimize calculation
     files_to_proc = []
@@ -68,14 +69,14 @@ def create_raxml_data(step_data, alignment_step, set_partitions, run):
             substep = step.create_substep(align_step.get_local_name())
             substep.set_sequences(align_step.all_sequences())
             substep.seq_sequence_type(align_step.get_sequence_type())
-            _copy_alignment_file(align_step, substep, files_to_proc, set_partitions)
+            _copy_alignment_file(align_step, substep, files_to_proc, partitions_obj)
             #
             substep.save(completed=False)
     else:
         step = RAxMLStep(alignment_step.project, step_data, remove_data=True)
         step.set_sequences(alignment_step.all_sequences())
         step.seq_sequence_type(alignment_step.get_sequence_type())
-        _copy_alignment_file(alignment_step, step, files_to_proc, set_partitions)
+        _copy_alignment_file(alignment_step, step, files_to_proc, partitions_obj)
 
     # Store files desc
     files_to_zip = [d['filename'] for d in files_to_proc]  # files to zip

@@ -3,6 +3,23 @@ from step_project.common.common_db_commands import CommonDBCommand, CommonDB
 from common_utils.exceptions import ZCItoolsValueError
 
 
+class CheckAnnotations(NonProjectCommand):
+    _COMMAND = 'check_annotations'
+    _HELP = "Checks annotations for problems"
+    _COMMAND_GROUP = 'Bio'
+
+    @staticmethod
+    def set_arguments(parser):
+        parser.add_argument('files', nargs='+', help='Input files or directories')
+        parser.add_argument('-t', '--filter-type', nargs='*', help='Filter by feature type.')
+        parser.add_argument('-o', '--output-filename', help='Output filename')
+
+    def run(self):
+        from ..utils.features import check_annotations
+        a = self.args
+        check_annotations(a.files, a.filter_type, a.output_filename)
+
+
 class FeatureProperties(ProjectCommand):
     _COMMAND = 'feature_properties'
     _HELP = "Displays feature properties"

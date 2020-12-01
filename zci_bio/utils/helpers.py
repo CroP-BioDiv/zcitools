@@ -37,25 +37,33 @@ def feature_location_desc(location):
     assert False, (f'Not supported type {cls_name}!', location)
 
 
-def feature_qualifiers_to_desc(feature):
+def feature_qualifiers_to_desc(feature, do_assert=False):
     # From doc:
     # qualifiers - A dictionary of qualifiers on the feature.
     #   These are analogous to the qualifiers from a GenBank feature table.
     #   The keys of the dictionary are qualifier names, the values are the qualifier values.
     #   As of Biopython 1.69 this is an ordered dictionary.
+    # Note: this is heuristics based on data I worked with: NCBI, GeSeq.
+
+    if feature.type in ('gene', 'CDS', 'tRNA', 'rRNA'):
+        tags = ('gene', 'locus_tag')
+    elif feature.type in ('exon', 'intron'):
+        tags = ('gene', 'locus_tag', 'number')
+    elif feature.type in ('repeat_region', 'misc_feature'):
+        tags = ('rpt_type', 'note')
+    else:
+        assert feature.type in ('source', ), feature.type
+        tags = ('organism', 'note')
 
     qualifiers = feature.qualifiers
-    if feature.type in ('gene', 'CDS'):
-        genes = qualifiers['gene']
-        assert len(genes) == 1, genes
-        return genes[0]
+    for tag in tags:
+        if tag in qualifiers:
+            q = qualifiers[tag]
+            assert len(q) == 1, q
+            return q[0]
 
-    if feature.type == 'repeat_region':
-        r_type = qualifiers['rpt_type']
-        assert len(r_type) == 1, r_type
-        return r_type[0]
-
-    return str(qualifiers)  # ToDo: For now
+    # For testing!
+    assert (not do_assert) or feature.type in ('repeat_region', 'misc_feature'), (feature.type, feature, qualifiers)
 
 
 # Sequences

@@ -206,3 +206,13 @@ def filetype_from_ext(filename):
 
 def basename_no_ext(filename):
     return os.path.splitext(os.path.basename(filename))[0]
+
+
+def files_from_args(files_or_dirs, extension):
+    for fd in files_or_dirs:
+        if os.path.isfile(fd) and fd.endswith(extension):
+            yield fd
+        elif os.path.isdir(fd):
+            for f in os.listdir(fd):
+                if f.endswith(extension) and os.path.isfile(f := os.path.join(fd, f)):
+                    yield f

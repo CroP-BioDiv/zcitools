@@ -1,11 +1,9 @@
-from collections import defaultdict
-import itertools
 from datetime import datetime
 from .utils import find_chloroplast_partition, create_chloroplast_partition, \
     chloroplast_parts_orientation, trnF_GAA_start  # , trnH_GUG_start
 from ..utils.entrez import Entrez
 from ..utils.helpers import fetch_from_properties_db
-from ..utils.features import Feature
+from ..utils.features import Feature, find_uniq_features, find_features_stat
 from common_utils.cache import cache
 
 
@@ -18,7 +16,9 @@ class SequenceDesc:
         #
         self.length = len(seq)
         self._genes = find_uniq_features(seq, 'gene')
-        self._cds = find_uniq_features(seq, 'CDS')
+        self._genes_stat = find_features_stat(seq, 'gene')
+        # self._cds = find_uniq_features(seq, 'CDS')
+
         self._partition = find_chloroplast_partition(seq)
         self._parts_data = _PartsDesc(self._partition, self._genes, self.length) if self._partition else None
         # Set in step 2. (Calculate missing data)
@@ -36,7 +36,9 @@ class SequenceDesc:
     table_step = property(lambda self: self._analyse.table_step)
     #
     num_genes = property(lambda self: len(self._genes))
-    num_cds = property(lambda self: len(self._cds))
+    num_genes_stat = property(
+        lambda self: ', '.join(str(self._genes_stat[x]) for x in ('annotated', 'disjunct', 'name_strand', 'name')))
+    # num_cds = property(lambda self: len(self._cds))
     taxid = property(lambda self: self._table_data.get_cell(self.seq_ident, 'tax_id'))
     title = property(lambda self: self._table_data.get_cell(self.seq_ident, 'title'))
     created_date = property(lambda self: self._table_data.get_cell(self.seq_ident, 'create_date'))
@@ -58,6 +60,7 @@ class SequenceDesc:
             if 'lsc_offset' in ret:
                 return f"{ret['lsc_offset']} : {ret['strategy']}"
             return f"{ret['zero_offset']} : rc" if ret['reverse'] else str(ret['zero_offset'])
+
 
     def part_lengths_all(self):
         return self._parts_data.parts_length() if self._parts_data else None
@@ -197,14 +200,3 @@ def trnH_GUG_offset(seq_length, lsc_start, genes):
     if features:
         rel_to_lsc = [((f.location.start - lsc_start) % seq_length) for f in features]
         return min(seq_offset(seq_length, d) for d in rel_to_lsc)
-
-
-def find_uniq_features(seq, _type):
-    fs = defaultdict(list)
-    for idx, f in enumerate(seq.features):
-        if f.type == _type:
-            name = f.qualifiers['gene'][0]
-            if not fs[name] or \
-               ((s_f := set(f.location)) and not any(set(x.location).intersection(s_f) for _, x in fs[name])):
-                fs[name].append((idx, f))
-    return [y[1] for y in sorted(itertools.chain(*fs.values()))]

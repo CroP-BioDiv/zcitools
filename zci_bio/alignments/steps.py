@@ -78,13 +78,6 @@ Data is stored:
     def is_short(self):
         return self._seq_type == 'gene'
 
-    def is_composite(self):  # Contains more genes
-        # Check are all parts/feature files presented
-        if self._seq_type == 'genes':
-            return all(os.path.isfile(self.step_file(f'{seq_ident}._parts')) for seq_ident in self._sequences)
-        if self._seq_type == 'whole':
-            return all(os.path.isfile(self.step_file(f'{seq_ident}.gb')) for seq_ident in self._sequences)
-
     def get_alignment_obj(self):
         for f, t in (('alignment.phy', 'phylip'), ('alignment.fa', 'fasta')):
             f = self.step_file(f)
@@ -109,36 +102,21 @@ Data is stored:
             return f
 
     # Partitions (used for phylogeny analysis)
-    def iterate_partitions(self):
-        for seq_ident in self._sequences:
-            if p := self.get_partitions(seq_ident):
-                yield seq_ident, p
-
-    def get_partitions(self, seq_ident):
+    def get_partition_from_file(self, seq_ident):
         # Returns None or list of integers
-        f = self.step_file(f'{seq_ident}._parts')
-        if os.path.isfile(f):
+        try:
             ret = []
-            with open(f, 'r') as r:
+            with open(self.step_file(f'{seq_ident}._parts'), 'r') as r:
                 for line in r.readlines():
                     n, d = line.strip().split(' ', maxsplit=1)
                     ret.append((int(n), d))
             return ret
+        except OSError:
+            return
 
     def get_alignment_map_indices(self):
         from .alignment_map_indices import AlignmentMapIndices
         return AlignmentMapIndices(filename=self.step_file('alignment.phy'))
-
-    def create_raxml_partitions(self, partitions_filename):
-        ami = self.get_alignment_map_indices()
-        if self._seq_type == 'whole':
-            SeqIO = import_bio_seq_io()
-            ami.create_raxml_partitions_from_features(
-                ((seq_ident, SeqIO.read(self.step_file(f'{seq_ident}.gb'), 'genbank'))
-                 for seq_ident in self._sequences),
-                partitions_filename)
-        else:
-            ami.create_raxml_partitions_from_parts(self.iterate_partitions(), partitions_filename)
 
     # Show data
     def show_data(self, params=None):

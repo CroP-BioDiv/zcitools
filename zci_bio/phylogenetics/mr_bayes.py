@@ -47,7 +47,7 @@ def _copy_alignment_file(align_step, in_step, files_to_proc, ngen, burnin):
     files_to_proc.append(dict(filename=a_f, short=align_step.is_short()))
 
 
-def create_mr_bayes_data(step_data, alignment_step, ngen, burnin, run):
+def create_mr_bayes_data(step_data, alignment_step, ngen, burnin, partitions_desc, run):
     # List of dicts with attrs: filename, short
     # This data is used to optimize calculation
     # ToDo: almost the same as raxml.py. Differs in class types, _copy_alignment_file() and file formats

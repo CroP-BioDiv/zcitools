@@ -25,6 +25,14 @@ class AlignmentMapIndices:
         self.alignment = alignment or read_alignment(filename)
         self.seq_indices = dict((seq.name, IndexInAlignment(seq)) for seq in self.alignment)
 
+    def map_partitions(self, data):
+        num_ps = len(next(iter(orig_parts.values())))
+        # All have to have same number of parts
+        assert all(len(p) == num_ps for p in data.values()), [(s, len(p)) for s, p in data.items()]
+        # All have to be indexed
+        assert not (not_in := [s for s in data.keys() if s not in self.seq_indices]), not_in
+
+
     def create_raxml_partitions_from_parts(self, orig_parts, partitions_filename):
         # orig_parts is iterable of tuples (seq_ident, partitions)
         orig_parts = dict(orig_parts)  # seq_ident -> list of tuples (index, description)

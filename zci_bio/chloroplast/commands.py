@@ -16,7 +16,7 @@ class ChloroplastAnalyse(CreateStepFromStepCommand):
 
 
 class ChloroplastFixByAnalyse(CreateStepFromStepCommand):
-    _COMMAND = 'fix_by_analyse'
+    _COMMAND = 'fix_by_analysis'
     _HELP = "Fix chloroplast genome by done analyse. Output is a sequences step."
     _COMMAND_GROUP = 'Chloroplast'
     _INPUT_STEP_DATA_TYPE = 'table'
@@ -47,11 +47,11 @@ class ChloroplastFixByAnalyse(CreateStepFromStepCommand):
     def run(self, step_data):
         m = self.args.method[0].lower()
         if m == 'p':
-            from .fix_by_analyse import fix_by_parts as fix_method
+            from .fix_by_analysis import fix_by_parts as fix_method
         # elif m == 'h':
-        #     from .fix_by_analyse import fix_by_trnH_GUG as fix_method
+        #     from .fix_by_analysis import fix_by_trnH_GUG as fix_method
         elif m == 'f':
-            from .fix_by_analyse import fix_by_trnF_GAA as fix_method
+            from .fix_by_analysis import fix_by_trnF_GAA as fix_method
         else:
             raise ZCItoolsValueError(f'Not known method {self.args.method}!')
         #

@@ -1,5 +1,6 @@
 import os.path
 from collections import defaultdict
+from functools import reduce
 # import multiprocessing
 # from concurrent.futures import ThreadPoolExecutor
 from step_project.common.table.steps import TableStep
@@ -26,7 +27,7 @@ def analyse_genomes(step_data, annotations_step):
     annotations_step.propagate_step_name_prefix(step)
     AnalyseGenomes(step, annotations_step).run()
     step.save()
-    step.to_excel('analyse_chloroplast.xls')  # Store data for a check
+    step.to_excel('chloroplast_analysis.xls')  # Store data for a check
     return step
 
 
@@ -74,8 +75,9 @@ class AnalyseGenomes:
             ('created_date', 'Date', 'date'),
             ('first_date', 'First date', 'date'),
             ('length', 'Length', 'int'),
-            ('num_genes', 'Genes', 'int'),
-            ('num_cds', 'CDS', 'int'),
+            # ('num_genes', 'Genes', 'int'),
+            ('num_genes_stat', 'Genes', 'str'),
+            # ('num_cds', 'CDS', 'int'),
             ('irs_took_from', 'IRS took', 'seq_ident'),
             ('part_starts', 'Part starts', 'str'),
             ('part_lengths', 'Part lengths', 'str'),
@@ -95,12 +97,18 @@ class AnalyseGenomes:
             [(n, t) for _, n, t in columns])
 
         # Statistics
-        sequences_step = next(iter(data.values())).sequences_step
+        some_data = next(iter(data.values()))
+        sequences_step = some_data.sequences_step
         ncbi_with = [seq_ident for seq_ident, seq in sequences_step._iterate_records()
                      if find_chloroplast_irs(seq, check_size=False)]  # Note: MCBI IRs are used without length check!
         ge_seq_with = [seq_ident for seq_ident, seq in self.annotations_step._iterate_records()
                        if find_chloroplast_irs(seq, check_size=True)]
         p_lengths = [l for d in data.values() if (l := d.part_lengths_all())]
+        #
+        gks = list(some_data._genes_stat.keys())
+        min_genes = reduce(lambda x, y: dict((k, min(x[k], y[k])) for k in gks), (d._genes_stat for d in data.values()))
+        max_genes = reduce(lambda x, y: dict((k, max(x[k], y[k])) for k in gks), (d._genes_stat for d in data.values()))
+
         # Corrections
         offset_off = lambda o: (abs(o or 0) > DEFAULT_KEEP_OFFSET)
         parts_orient_count = defaultdict(int)
@@ -123,6 +131,12 @@ Number of genomes without IRS                        : {len(data) - len(set(ge_s
 Range of dates:
   First date     : {min(d.first_date for d in data.values())} - {max(d.first_date for d in data.values())}
   Published date : {min(d.created_date for d in data.values())} - {max(d.created_date for d in data.values())}
+
+Range of number of genes:
+  Annotated   : {min_genes['annotated']} - {max_genes['annotated']}
+  Disjunct    : {min_genes['disjunct']} - {max_genes['disjunct']}
+  Name/strand : {min_genes['name_strand']} - {max_genes['name_strand']}
+  Name        : {min_genes['name']} - {max_genes['name']}
 
 Range of part lengths:
   LSC : {min(l[0] for l in p_lengths)} - {max(l[0] for l in p_lengths)}
