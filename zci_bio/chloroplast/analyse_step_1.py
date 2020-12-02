@@ -3,7 +3,7 @@ from .utils import find_chloroplast_partition, create_chloroplast_partition, \
     chloroplast_parts_orientation, trnF_GAA_start  # , trnH_GUG_start
 from ..utils.entrez import Entrez
 from ..utils.helpers import fetch_from_properties_db
-from ..utils.features import Feature, find_uniq_features, find_features_stat
+from ..utils.features import Feature, find_disjunct_features_of_type, find_features_stat
 from common_utils.cache import cache
 
 
@@ -15,9 +15,9 @@ class SequenceDesc:
         self._table_data = analyse.table_data
         #
         self.length = len(seq)
-        self._genes = find_uniq_features(seq, 'gene')
+        self._genes = [f.feature for f in find_disjunct_features_of_type(seq, 'gene')]
         self._genes_stat = find_features_stat(seq, 'gene')
-        # self._cds = find_uniq_features(seq, 'CDS')
+        # self._cds = [f.feature for f in find_disjunct_features_of_type(seq, 'CDS')]
 
         self._partition = find_chloroplast_partition(seq)
         self._parts_data = _PartsDesc(self._partition, self._genes, self.length) if self._partition else None
@@ -37,7 +37,8 @@ class SequenceDesc:
     #
     num_genes = property(lambda self: len(self._genes))
     num_genes_stat = property(
-        lambda self: ', '.join(str(self._genes_stat[x]) for x in ('annotated', 'disjunct', 'name_strand', 'name')))
+        lambda self: ', '.join(str(self._genes_stat[x]) for x in ('annotated', 'disjunct', 'name_strand', 'names',
+                                                                  'without_location', 'without_name')))
     # num_cds = property(lambda self: len(self._cds))
     taxid = property(lambda self: self._table_data.get_cell(self.seq_ident, 'tax_id'))
     title = property(lambda self: self._table_data.get_cell(self.seq_ident, 'title'))

@@ -213,6 +213,6 @@ def files_from_args(files_or_dirs, extension):
         if os.path.isfile(fd) and fd.endswith(extension):
             yield fd
         elif os.path.isdir(fd):
-            for f in os.listdir(fd):
+            for f in sorted(os.listdir(fd)):
                 if f.endswith(extension) and os.path.isfile(f := os.path.join(fd, f)):
                     yield f

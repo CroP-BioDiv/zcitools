@@ -133,10 +133,12 @@ Range of dates:
   Published date : {min(d.created_date for d in data.values())} - {max(d.created_date for d in data.values())}
 
 Range of number of genes:
-  Annotated   : {min_genes['annotated']} - {max_genes['annotated']}
-  Disjunct    : {min_genes['disjunct']} - {max_genes['disjunct']}
-  Name/strand : {min_genes['name_strand']} - {max_genes['name_strand']}
-  Name        : {min_genes['name']} - {max_genes['name']}
+  Annotated        : {min_genes['annotated']} - {max_genes['annotated']}
+  Disjunct         : {min_genes['disjunct']} - {max_genes['disjunct']}
+  Name/strand      : {min_genes['name_strand']} - {max_genes['name_strand']}
+  Name             : {min_genes['names']} - {max_genes['names']}
+  Without location : {min_genes['without_location']} - {max_genes['without_location']}
+  Without name     : {min_genes['without_name']} - {max_genes['without_name']}
 
 Range of part lengths:
   LSC : {min(l[0] for l in p_lengths)} - {max(l[0] for l in p_lengths)}

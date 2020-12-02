@@ -24,7 +24,7 @@ class Feature:
         self.seq_length = seq_length
         self.name = name
         if not name and feature:
-            self.name = feature.qualifiers['gene'][0]  # For now
+            self.name = feature_qualifiers_to_desc(feature)
         self.feature = feature
 
         # Chec
@@ -147,60 +147,91 @@ class Partition:
 
 
 # Helper methods
-def find_features_stat(seq, _type):
+def find_features_stat(seq_rec, _type):
     # Returns dict with attrs:
+    #  - without_location : number of features without location
     #  - annotated   : number of annotated features
+    #  - without_name     : number of features without name (from annotated features)
     #  - disjunct    : number of disjunct features
     #  - name_strand : number different combinations of (name, strand) in disjunct features
     #  - name        : number different combinations names in disjunct features
-    annotated = [f for f in seq.features if f.type == _type and f.location]
-    disjunct = extract_disjunct_features(len(seq), annotated)
+    _fs = [f for f in seq_rec.features if f.type == _type]
+    annotated = [f for f in _fs if f.location]
+    disjunct = find_disjunct_features(len(seq_rec), annotated)
     name_strand = set((f.name, f.strand) for f in disjunct)
-    name = set(f[0] for f in name_strand)
-    return dict(annotated=len(annotated), disjunct=len(disjunct), name_strand=len(name_strand), name=len(name))
+    names = set(f[0] for f in name_strand)
+    return dict(
+        without_location=len(_fs) - len(annotated),
+        annotated=len(annotated),
+        without_name=sum(1 for f in annotated if not feature_qualifiers_to_desc(f, do_assert=True)),
+        disjunct=len(disjunct),
+        name_strand=len(name_strand),
+        names=len(names))
 
 
-def _split_features_in_uniq(features):
-    # Split features in two dicts(name -> list of featues).
-    # First contains non overlapping features, second features that overlap with features from the first one.
-    uniq = defaultdict(list)  # name -> list
-    duplicated = defaultdict(list)  # name -> list
-    for idx, f in enumerate(features):
-        name = feature_qualifiers_to_desc(f)
-        if not uniq[name] or \
-           ((s_f := set(f.location)) and not any(set(x.location).intersection(s_f) for _, x in uniq[name])):
-            uniq[name].append((idx, f))
+def _find_disjunct_features(seq_len, features):
+    # Return list of features that do not overlap.
+    # Assumes that features should not overlap. They can overlap because:
+    #  - genes annotated with more tools (GeSeq)
+    #  - wrongly annotated genes (GeSeq, rps12)
+
+    disjunct = []
+    grouped = defaultdict(list)
+    for g in sorted((Feature(seq_len, feature=f) for f in features), key=lambda x: x.real_start):
+        if not disjunct:
+            disjunct.append(g)
+        elif not disjunct[-1].intersects(g):
+            if g.real_start < g.real_end or not disjunct[0].intersects(g):
+                disjunct.append(g)
         else:
-            duplicated[name].append((idx, f))
-    return uniq, duplicated
+            # We assume that features do not overlap!
+            if g.name != disjunct[-1].name:
+                rem_f = disjunct.pop()
+                # Find a substitute for feature we removed
+                for ss in grouped[g.name]:
+                    if ss.intersects(rem_f) and \
+                       not ss.intersects(g) and \
+                       all(not x.intersects(ss) for x in disjunct):
+                        pass
+                disjunct.append(g)
+
+        grouped[g.name].append(g)
+    return disjunct, grouped
 
 
-def find_uniq_features(seq, _type, duplicates=False):
+def find_disjunct_features(seq_len, features):
+    # Return list of features that do not overlap.
+    return _find_disjunct_features(seq_len, features)[0]
+
+
+def find_disjunct_features_of_type(seq_rec, _type):
     # Return list of features, so that features with same name are disjunct.
     # Note: features with different name can overlap!
-    fs, _ = _split_features_in_uniq(f for f in seq.features if f.type == _type)
-    return [y[1] for y in sorted(itertools.chain(*fs.values()))]
+    return find_disjunct_features(len(seq_rec), (f for f in seq_rec.features if f.type == _type and f.location))
 
 
-def extract_disjunct_genes(seq_rec):
-    return extract_disjunct_features(len(seq_rec), (f for f in seq_rec.features if f.type == 'gene' and f.location))
+def find_disjunct_genes(seq_rec):
+    return find_disjunct_features_of_type(seq_rec, 'gene')
 
 
-def extract_disjunct_features(seq_len, features):
-    # Return list of genes that do not overlap.
-    # Note: that will remove same genes annotated with more tools (GeSeq)
-    genes = []
-    for g in sorted((Feature(seq_len, feature=f) for f in features), key=lambda x: x.real_start):
-        # It is better not to use genes that wraps
-        if g.real_start > g.real_end:
-            continue
-        if not genes or (not genes[-1].intersects(g)):
-            genes.append(g)
-    return genes
+#
+def split_features_in_uniq_dupl(seq_len, features):
+    # Split features in two dicts(name -> list of Feature objects).
+    # First contains non overlapping features, second features that overlap with features from the first one.
+    _disjunct, grouped = _find_disjunct_features(seq_len, features)
+    disjunct = defaultdict(list)
+    for f in _disjunct:
+        disjunct[f.name].append(f)
+    #
+    uniq = dict()
+    duplicated = dict()
+    for name, fs in grouped.items():
+        if (un := disjunct.get(name, [])):
+            uniq[name] = un
+        if fs and (dup := [f for f in fs if f not in un]):
+            duplicated[name] = dup
 
-
-# def extract_disjunct_parts(seq_rec):
-#     return [(f.name, f.real_start, f.real_end) for f in extract_disjunct_genes(seq_rec)]
+    return uniq, duplicated
 
 
 def check_annotations(files_or_dirs, filter_type, output_filename):
@@ -211,7 +242,7 @@ def check_annotations(files_or_dirs, filter_type, output_filename):
 
     checks = []
     for f_name in files_from_args(files_or_dirs, '.gb'):
-        print('-' * 30, f_name)
+        print(f'Processing file: {f_name}')
         seq_rec = read_sequence(f_name)
 
         # Extract features
@@ -221,12 +252,12 @@ def check_annotations(files_or_dirs, filter_type, output_filename):
         else:
             features = seq_rec.features
 
-        # Find without location
+        #
         without_location = [f for f in features if not f.location]
         if without_location:  # Fix if needed
             features = [f for f in features if f.location]
         without_name = [f for f in features if not feature_qualifiers_to_desc(f, do_assert=True)]
-        uniq, duplicated = _split_features_in_uniq(features)
+        uniq, duplicated = split_features_in_uniq_dupl(len(seq_rec), features)
 
         checks.append(dict(
             filename=f_name,
