@@ -18,8 +18,12 @@ class RAxML(CreateStepFromStepCommand):
     def _partitions(self):
         from .partitions import Partitions
         a = self.args
-        annotations_step = self.project.read_step(a.annotations_step, check_data_type='annotations', no_check=True) \
-            if a.annotations_step else None
+        if a.no_partitions:
+            annotations_step = None
+        elif a.annotations_step:
+            annotations_step = self.project.read_step(a.annotations_step, check_data_type='annotations', no_check=True)
+        else:
+            annotations_step = self.project.find_previous_step_of_type(self._input_step(), 'annotations')
         return Partitions(make_partitions=not a.no_partitions, annotations_step=annotations_step)
 
     def run(self, step_data):
