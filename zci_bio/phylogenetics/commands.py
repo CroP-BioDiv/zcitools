@@ -6,6 +6,7 @@ class RAxML(CreateStepFromStepCommand):
     _COMMAND = 'raxml'
     _HELP = "Run RAxML on alignment(s)"
     _STEP_BASE_NAME = 'RAxML'
+    _INPUT_STEP_DATA_TYPE = ('alignment', 'alignments')
 
     @staticmethod
     def set_arguments(parser):

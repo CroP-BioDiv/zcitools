@@ -114,9 +114,9 @@ Data is stored:
         except OSError:
             return
 
-    def get_alignment_map_indices(self):
+    def get_alignment_map_indices(self, with_reverse=False):
         from .alignment_map_indices import AlignmentMapIndices
-        return AlignmentMapIndices(filename=self.step_file('alignment.phy'))
+        return AlignmentMapIndices(filename=self.step_file('alignment.phy'), with_reverse=with_reverse)
 
     # Show data
     def show_data(self, params=None):
