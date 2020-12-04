@@ -17,10 +17,8 @@ _OUTPUT_FILES = (
     'RAxML_bipartitions.raxml_output',
     'RAxML_bootstrap.raxml_output',
     'RAxML_info.raxml_output')
-_stat_cmd = "-n raxml_output -m GTRGAMMA -f a -# 1000 -x 12345 -p 12345"
-_stat_args = _stat_cmd.split()
-_ps_cmd = "'q partitions.ind"
-_ps_args = _ps_cmd.split()
+_stat_args = ['-n', 'raxml_output', '-m', 'GTRGAMMA', '-f', 'a', '-N', '1000']
+_ps_args = ['-q', 'partitions.ind']
 
 
 # Calculation strategy:
@@ -50,11 +48,16 @@ def _find_exe(default_exe, env_var):
     return exe
 
 
-def _run(exe, run_dir, input_file, threads):
+def _run(exe, run_dir, input_file, seed, threads):
     _ps = os.path.isfile(os.path.join(run_dir, 'partitions.ind'))
-    print(f"Cmd: cd {run_dir}; {exe} -s {input_file} -T {threads} {_ps_cmd if _ps else ''} {_stat_cmd}")
-    cmd = [exe, '-s', input_file, '-T', str(threads)] + (_ps_args if _ps else []) + _stat_args
+    cmd = [exe, '-s', input_file, '-T', str(threads), '-x', seed, '-p', seed] + (_ps_args if _ps else []) + _stat_args
+    print(f"Cmd: cd {run_dir}; {' '.join(cmd)}")
     subprocess.run(cmd, cwd=run_dir)  # , stdout=subprocess.DEVNULL)
+
+
+def _get_seed(_dir):
+    with open(os.path.join(_dir, 'seed.txt'), 'r') as _in:
+        return _in.read().strip()
 
 
 def run(locale=True, threads=None):
@@ -71,12 +74,12 @@ def run(locale=True, threads=None):
         with ThreadPoolExecutor(max_workers=threads) as executor:
             for d in short_files:
                 _dir, f = os.path.split(d['filename'])
-                executor.submit(_run, raxml_exe, os.path.abspath(_dir), f, 1)
+                executor.submit(_run, raxml_exe, os.path.abspath(_dir), f, _get_seed(_dir), 1)
 
     if long_files:
         for d in long_files:
             _dir, f = os.path.split(d['filename'])
-            _run(raxml_exe, os.path.abspath(_dir), f, threads)
+            _run(raxml_exe, os.path.abspath(_dir), f, _get_seed(_dir), threads)
 
     # Zip files
     if not locale:

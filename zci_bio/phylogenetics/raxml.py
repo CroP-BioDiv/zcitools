@@ -1,9 +1,10 @@
 import re
 import os
+import random
 from . import run_raxml
 from zci_bio.phylogenetics.steps import RAxMLStep, RAxMLSteps
 from common_utils.file_utils import copy_file, unzip_file, list_zip_files, write_yaml, read_yaml, \
-    run_module_script, set_run_instructions
+    write_str_in_file, run_module_script, set_run_instructions
 from common_utils.exceptions import ZCItoolsValueError
 from ..utils.helpers import read_alignment
 
@@ -35,11 +36,8 @@ def _copy_alignment_file(align_step, in_step, files_to_proc, partitions_obj):
     orig_phy = align_step.get_phylip_file()
     alignment = read_alignment(orig_phy)
     partitions = partitions_obj.create_raxml_partitions(align_step, in_step.step_file('partitions.ind'))
-    # partitions = None
-    # #
-    # if partitions_obj.to_make_partitions() and align_step.is_composite():
-    #     partitions = in_step.step_file('partitions.ind')
-    #     align_step.create_raxml_partitions(partitions)
+    seed = in_step.step_file('seed.txt')
+    write_str_in_file(seed, str(random.randint(1000, 10000000)))
     #
     if max(len(seq_ident) for seq_ident in align_step.all_sequences()) == 10:
         # If max length of ident is 10, than RAxML is confused about real ident length
@@ -54,7 +52,8 @@ def _copy_alignment_file(align_step, in_step, files_to_proc, partitions_obj):
 
     #
     files_to_proc.append(dict(
-        filename=a_f, short=align_step.is_short(), length=len(alignment[0]), partitions=partitions))
+        filename=a_f, short=align_step.is_short(), length=len(alignment[0]),
+        partitions=partitions, seed=seed))
 
 
 def create_raxml_data(step_data, alignment_step, partitions_obj, run):
@@ -81,6 +80,7 @@ def create_raxml_data(step_data, alignment_step, partitions_obj, run):
     # Store files desc
     files_to_zip = [d['filename'] for d in files_to_proc]  # files to zip
     files_to_zip.extend(filter(None, (d['partitions'] for d in files_to_proc)))
+    files_to_zip.extend(d['seed'] for d in files_to_proc)
 
     # Remove step directory from files since run script is called from step directory
     for d in files_to_proc:

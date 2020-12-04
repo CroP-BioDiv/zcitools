@@ -162,12 +162,13 @@ class Partitions:
                 output.write('\n'.join(f'DNA, {g} = {", ".join(f"{s}-{e}" for s, e in idxs)}' for g, idxs in partition))
             return partitions_filename
 
-    def create_mrbayes_partitions(self, align_step):
+    def create_mrbayes_partitions(self, align_step, ident='    '):
         if self.make_partitions and (partition := self.create_partitions(align_step)):
-            p = '\n'.join(f'charset {g} = {", ".join(f"{s}-{e}" for s, e in idxs)};' for g, idxs in partition)
-            return f"""{p}
-partition partition_1 = {len(partition)}: {",".join(g for g, _ in partition)};
-set partition = partition_1"""
+            p = '\n'.join(f'{ident}charset {g} = {", ".join(f"{s}-{e}" for s, e in idxs)};' for g, idxs in partition)
+            return f"""
+{p}
+{ident}partition partition_1 = {len(partition)}: {",".join(g for g, _ in partition)};
+{ident}set partition = partition_1"""
         return ''
 
 

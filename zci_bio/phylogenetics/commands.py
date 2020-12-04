@@ -46,13 +46,16 @@ class MrBayes(RAxML):
     @staticmethod
     def set_arguments(parser):
         RAxML.set_arguments(parser)
-        parser.add_argument('--ngen', default=10000000, type=int, help='ngen parameter')
-        parser.add_argument('--burnin', default=2500, type=int, help='burnin parameter')
+        parser.add_argument('--ngen', default=1000000, type=int, help='ngen parameter')
+        parser.add_argument('--samplefreq', default=1000, type=int, help='samplefreq parameter')
+        parser.add_argument('--burnin', type=int, help='burnin parameter')
+        parser.add_argument('--burninfrac', type=float, help='burninfrac parameter')
+        parser.add_argument('--nchains', default=4, type=int, help='nchains parameter')
 
     def run(self, step_data):
         from .mr_bayes import create_mr_bayes_data
         a = self.args
-        return create_mr_bayes_data(step_data, self._input_step(), a.ngen, a.burnin, self._partitions(), a.run)
+        return create_mr_bayes_data(step_data, self._input_step(), a, self._partitions(), a.run)
 
     def finish(self, step_obj):
         from .mr_bayes import finish_mr_bayes_data

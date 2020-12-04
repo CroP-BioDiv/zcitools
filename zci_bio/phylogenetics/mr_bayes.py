@@ -9,10 +9,10 @@ _NEXUS_DATA = """
 begin mrbayes;
     set autoclose=yes nowarn=yes autoreplace=no;
     lset Nst=6 Rates=gamma;
-    mcmcp ngen={ngen} printfreq=1000 samplefreq=1000 nchains=4
+    mcmcp ngen={ngen} printfreq={printfreq} samplefreq={samplefreq} nchains={nchains}
     savebrlens=yes filename=alignment;
     mcmc;
-    sumt filename=alignment burnin={burnin} contype=halfcompat;
+    sumt filename=alignment {burnin} contype=halfcompat;{partitions}
 end;
 
 """
@@ -36,18 +36,35 @@ Notes:
 """
 
 
-def _copy_alignment_file(align_step, in_step, files_to_proc, ngen, burnin):
+def _copy_alignment_file(align_step, in_step, files_to_proc, args, partitions_obj):
     # ToDo: Nexus i dodati nes na kraj!
     a_f = in_step.step_file('alignment.nex')
     copy_file(align_step.get_nexus_file(), a_f)
     # Add MrBayes data
     with open(a_f, 'a') as output:
-        output.write(_NEXUS_DATA.format(ngen=ngen, burnin=burnin))
+        # Printing
+        n = args.ngen
+        printfreq = str((n // 10000) if n > 1000000 else (n // 1000))  # Of type str
+        printfreq = printfreq[0] + ('0' * (len(printfreq) - 1))        # Round it
+        # Burnin
+        if args.burnin:
+            brn = f'relburnin=no burnin={args.burnin}'
+        elif (f := args.burninfrac) and 0 <= f < 1:
+            brn = f'relburnin=yes burninfrac={f}'
+        else:
+            brn = ''
+        # ToDo: Check or set samplefreq?
+        output.write(_NEXUS_DATA.format(partitions=partitions_obj.create_mrbayes_partitions(align_step),
+                                        ngen=n,
+                                        printfreq=printfreq,
+                                        samplefreq=args.samplefreq,
+                                        nchains=args.nchains,
+                                        burnin=brn))
     #
     files_to_proc.append(dict(filename=a_f, short=align_step.is_short()))
 
 
-def create_mr_bayes_data(step_data, alignment_step, ngen, burnin, partitions_desc, run):
+def create_mr_bayes_data(step_data, alignment_step, args, partitions_obj, run):  # ngen, burnin
     # List of dicts with attrs: filename, short
     # This data is used to optimize calculation
     # ToDo: almost the same as raxml.py. Differs in class types, _copy_alignment_file() and file formats
@@ -59,14 +76,14 @@ def create_mr_bayes_data(step_data, alignment_step, ngen, burnin, partitions_des
             substep = step.create_substep(align_step.get_local_name())
             substep.set_sequences(align_step.all_sequences())
             substep.seq_sequence_type(align_step.get_sequence_type())
-            _copy_alignment_file(align_step, substep, files_to_proc, ngen, burnin)
+            _copy_alignment_file(align_step, substep, files_to_proc, args, partitions_obj)
             #
             substep.save(completed=False)
     else:
         step = MrBayesStep(alignment_step.project, step_data, remove_data=True)
         step.set_sequences(alignment_step.all_sequences())
         step.seq_sequence_type(alignment_step.get_sequence_type())
-        _copy_alignment_file(alignment_step, step, files_to_proc, ngen, burnin)
+        _copy_alignment_file(alignment_step, step, files_to_proc, args, partitions_obj)
 
     # Store files desc
     files_to_zip = [d['filename'] for d in files_to_proc]  # files to zip

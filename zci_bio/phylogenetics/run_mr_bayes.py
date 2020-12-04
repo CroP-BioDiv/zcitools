@@ -46,13 +46,15 @@ def _find_exe(default_exe, env_var, to_raise=True):
 
 
 def _run_mr_bayes(exe, run_dir, f):
-    print(f"Cmd: cd {run_dir}; {exe} {f} > /dev/null")
-    subprocess.run([exe, f], cwd=run_dir)  # , stdout=subprocess.DEVNULL)
+    cmd = [exe, f]
+    print(f"Cmd: cd {run_dir}; {' '.join(cmd)}")
+    subprocess.run(cmd, cwd=run_dir)  # , stdout=subprocess.DEVNULL)
 
 
 def _run_mr_bayes_mpi(exe, run_dir, f, threads):
-    print(f"Cmd: cd {run_dir}; mpirun -np {threads} {exe} {f} > /dev/null")
-    subprocess.run(['mpirun', '-np', str(threads), exe, f], cwd=run_dir)  # , stdout=subprocess.DEVNULL)
+    cmd = ['mpirun', '--use-hwthread-cpus', '-np', str(threads), exe, f]
+    print(f"Cmd: cd {run_dir}; {' '.join(cmd)}")
+    subprocess.run(cmd, cwd=run_dir)  # , stdout=subprocess.DEVNULL)
 
 
 def run(locale=True, threads=None):
