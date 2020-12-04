@@ -17,6 +17,10 @@ _OUTPUT_FILES = (
     'RAxML_bipartitions.raxml_output',
     'RAxML_bootstrap.raxml_output',
     'RAxML_info.raxml_output')
+_stat_cmd = "-n raxml_output -m GTRGAMMA -f a -# 1000 -x 12345 -p 12345"
+_stat_args = _stat_cmd.split()
+_ps_cmd = "'q partitions.ind"
+_ps_args = _ps_cmd.split()
 
 
 # Calculation strategy:
@@ -46,25 +50,11 @@ def _find_exe(default_exe, env_var):
     return exe
 
 
-_stat_cmd = "-n raxml_output -m GTRGAMMA -f a -# 1000 -x 12345 -p 12345 > /dev/null"
-_stat_args = [
-    '-n', 'raxml_output',
-    '-m', 'GTRGAMMA',
-    '-f', 'a',
-    '-#', '1000',
-    '-x', '12345',
-    '-p', '12345']
-
-
-def _run(raxml_exe, run_dir, input_file, threads):
-    if os.path.isfile(os.path.join(run_dir, 'partitions.ind')):
-        print(f"Command: cd {run_dir}; {raxml_exe} -s {input_file} -T {threads} -q partitions.ind {_stat_cmd}")
-        subprocess.run([raxml_exe, '-s', input_file, '-T', str(threads), '-q', 'partitions.ind'] + _stat_args,
-                       cwd=run_dir, stdout=subprocess.DEVNULL)
-    else:
-        print(f"Command: cd {run_dir}; {raxml_exe} -s {input_file} -T {threads} {_stat_cmd}")
-        subprocess.run([raxml_exe, '-s', input_file, '-T', str(threads)] + _stat_args,
-                       cwd=run_dir, stdout=subprocess.DEVNULL)
+def _run(exe, run_dir, input_file, threads):
+    _ps = os.path.isfile(os.path.join(run_dir, 'partitions.ind'))
+    print(f"Cmd: cd {run_dir}; {exe} -s {input_file} -T {threads} {_ps_cmd if _ps else ''} {_stat_cmd}")
+    cmd = [exe, '-s', input_file, '-T', str(threads)] + (_ps_args if _ps else []) + _stat_args
+    subprocess.run(cmd, cwd=run_dir)  # , stdout=subprocess.DEVNULL)
 
 
 def run(locale=True, threads=None):

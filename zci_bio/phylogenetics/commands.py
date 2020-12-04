@@ -15,6 +15,9 @@ class RAxML(CreateStepFromStepCommand):
         parser.add_argument('-p', '--no-partitions', action='store_true', help='Do not set partitions')
         parser.add_argument('-r', '--run', action='store_true', help='Run RAxML locale')
 
+    def step_base_name(self):
+        return self._format_step_name(f"{self._STEP_BASE_NAME}_{'N' if self.args.no_partitions else 'P'}")
+
     def _partitions(self):
         from .partitions import Partitions
         a = self.args

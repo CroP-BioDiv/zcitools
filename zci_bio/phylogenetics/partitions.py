@@ -51,7 +51,7 @@ class Partitions:
                 raise ValueError(parts[i][1])
         return partition
 
-    def _partition_from_part_annotations(self, align_step):
+    def _partition_from_part_annotations(self, align_step, min_nc_length=6):
         if not (annotations := self.annotations_step):
             raise ZCItoolsValueError('Annotations step is not specified!')
 
@@ -64,17 +64,17 @@ class Partitions:
 
         #
         ami = align_step.get_alignment_map_indices(with_reverse=True)
+        if not_in := [s for s in ami.all_sequences() if s not in sequences]:
+            raise ZCItoolsValueError(f'Not all aligned sequences have index: {", ".join(sorted(not_in))}')
+
         seq_recs = dict((seq_ident, annotations.get_sequence_record(seq_ident)) for seq_ident in sequences)
         data = [(seq_ident, find_disjunct_genes_fix_name(seq_rec), ami.get_alignment(seq_ident))
                 for seq_ident, seq_rec in seq_recs.items()]
         # Take (some) sequence with the most genes
         max_ident, max_seq, max_align = max(data, key=lambda x: len(x[1]))
-        partition = []
+        nc_parts = []    # Non gene partition. List of tuple (start_idx, end_idx).
+        gene_parts = []  # Gene partiotions. List of tuples (name, start_idx, end_idx)
         name_counter = defaultdict(int)
-
-        def _add_p(name, end_idx):
-            partition.append((f'{name}_{name_counter[name]}', end_idx))
-            name_counter[name] += 1
 
         for max_gene in max_seq:
             # Naci mu range u alignmentu
@@ -112,40 +112,63 @@ class Partitions:
                     # print(max_gene.name, len(max_gene), c_length, [(s, align.reverse_length(start, end)) for s, align in not_in_seqs])
                     continue
 
-            if (not partition and start > 0) or (partition and partition[-1][-1] < start):
-                _add_p('nc', start)
-            _add_p(max_gene.name[0], end)
+            # Check for minimal non coding length
+            last_end = gene_parts[-1][-1] if gene_parts else 0
+            if start < last_end + min_nc_length:
+                start = last_end
+            else:
+                nc_parts.append((last_end, start))
 
-        if partition and partition[-1][-1] < ami.alignment_length:
-            _add_p('nc', ami.alignment_length)
+            name = max_gene.name[0]
+            gene_parts.append((f'{name}_{name_counter[name]}', start, end))
+            name_counter[name] += 1
 
-        return partition
+        if not gene_parts:  # No partitions at all
+            return
 
-    def create_partitions(self, align_step):
+        last_end = gene_parts[-1][-1]
+        if ami.alignment_length < last_end + min_nc_length:
+            gene_parts[-1] = (gene_parts[0], gene_parts[1], ami.alignment_length)
+        else:
+            nc_parts.append((last_end, ami.alignment_length))
+
+        return [(n, [(s, e)])for n, s, e in gene_parts] + [('nc', nc_parts)]
+
+    def create_partitions(self, align_step, from_one=True):
+        # Returns list of tuples (name, list of pairs of indices [from index, to index])
         if (st := align_step.get_sequence_type()) == 'genes':
-            return self._partition_from_part_files(align_step)
-        if st == 'whole':
-            return self._partition_from_part_annotations(align_step)
-        assert st == 'gene', f'Wrong alignment sequence type: {st}'
+            partition = self._partition_from_part_files(align_step)
+        elif st == 'whole':
+            partition = self._partition_from_part_annotations(align_step)
+        else:
+            assert st == 'gene', f'Wrong alignment sequence type: {st}'
+            return
+        # Check partition
+        assert all(isinstance(x[0], str) for x in partition), partition
+        assert all(isinstance(x[1], (list, tuple)) and bool(x) for x in partition), partition
+        assert all(all(isinstance(y, (list, tuple)) and len(y) == 2 for y in x[1]) for x in partition), partition
+
+        # Reindex
+        if from_one:
+            partition = [[x, [(s + 1, e) for s, e in indices]] for x, indices in partition]
+        else:
+            partition = [[x, [(s, e - 1) for s, e in indices]] for x, indices in partition]
+        return partition
 
     def create_raxml_partitions(self, align_step, partitions_filename):
         if self.make_partitions and (partition := self.create_partitions(align_step)):
             with open(partitions_filename, 'w') as output:
-                output.write('\n'.join(f'DNA, {g} = {f}-{t}' for g, f, t in self._from_to_1(align_step, partition)))
+                # Note: RAxML doesn't like partitions of length 1 like: "DNA, gene = n-n"
+                output.write('\n'.join(f'DNA, {g} = {", ".join(f"{s}-{e}" for s, e in idxs)}' for g, idxs in partition))
             return partitions_filename
 
     def create_mrbayes_partitions(self, align_step):
         if self.make_partitions and (partition := self.create_partitions(align_step)):
-            p = '\n'.join(f'charset {g} = {f}-{t};' for g, f, t in self._from_to_1(align_step, partition))
-            return f'{p}\npartition partition_1 = {len(partition)}: {", ".join(g for g, _ in partition)};'
+            p = '\n'.join(f'charset {g} = {", ".join(f"{s}-{e}" for s, e in idxs)};' for g, idxs in partition)
+            return f"""{p}
+partition partition_1 = {len(partition)}: {",".join(g for g, _ in partition)};
+set partition = partition_1"""
         return ''
-
-    #
-    def _from_to_1(self, align_step, partition):
-        last_start = 1
-        for name, end in partition:
-            yield name, last_start, end
-            last_start = end + 1
 
 
 # In some helper file?
