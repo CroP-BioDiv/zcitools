@@ -50,14 +50,11 @@ def _find_exe(default_exe, env_var):
 
 def _run(exe, run_dir, input_file, seed, threads):
     _ps = os.path.isfile(os.path.join(run_dir, 'partitions.ind'))
-    cmd = [exe, '-s', input_file, '-T', str(threads), '-x', seed, '-p', seed] + (_ps_args if _ps else []) + _stat_args
+    cmd = [exe, '-s', input_file, '-T', str(threads), '-x', str(seed), '-p', str(seed)] + \
+        (_ps_args if _ps else []) + \
+        _stat_args
     print(f"Cmd: cd {run_dir}; {' '.join(cmd)}")
     subprocess.run(cmd, cwd=run_dir)  # , stdout=subprocess.DEVNULL)
-
-
-def _get_seed(_dir):
-    with open(os.path.join(_dir, 'seed.txt'), 'r') as _in:
-        return _in.read().strip()
 
 
 def run(locale=True, threads=None):
@@ -74,12 +71,12 @@ def run(locale=True, threads=None):
         with ThreadPoolExecutor(max_workers=threads) as executor:
             for d in short_files:
                 _dir, f = os.path.split(d['filename'])
-                executor.submit(_run, raxml_exe, os.path.abspath(_dir), f, _get_seed(_dir), 1)
+                executor.submit(_run, raxml_exe, os.path.abspath(_dir), f, d['seed'], 1)
 
     if long_files:
         for d in long_files:
             _dir, f = os.path.split(d['filename'])
-            _run(raxml_exe, os.path.abspath(_dir), f, _get_seed(_dir), threads)
+            _run(raxml_exe, os.path.abspath(_dir), f, d['seed'], threads)
 
     # Zip files
     if not locale:

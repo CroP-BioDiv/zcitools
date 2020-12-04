@@ -43,8 +43,8 @@ def _copy_alignment_file(align_step, in_step, files_to_proc, args, partitions_ob
     # Add MrBayes data
     with open(a_f, 'a') as output:
         # Printing
-        n = args.ngen
-        printfreq = str((n // 10000) if n > 1000000 else (n // 1000))  # Of type str
+        ngen = args.ngen
+        printfreq = str((ngen // 10000) if ngen > 1000000 else (ngen // 1000))  # Of type str
         printfreq = printfreq[0] + ('0' * (len(printfreq) - 1))        # Round it
         # Burnin
         if args.burnin:
@@ -55,13 +55,13 @@ def _copy_alignment_file(align_step, in_step, files_to_proc, args, partitions_ob
             brn = ''
         # ToDo: Check or set samplefreq?
         output.write(_NEXUS_DATA.format(partitions=partitions_obj.create_mrbayes_partitions(align_step),
-                                        ngen=n,
+                                        ngen=ngen,
                                         printfreq=printfreq,
                                         samplefreq=args.samplefreq,
                                         nchains=args.nchains,
                                         burnin=brn))
     #
-    files_to_proc.append(dict(filename=a_f, short=align_step.is_short()))
+    files_to_proc.append(dict(filename=a_f, short=align_step.is_short(), nchains=args.nchains))
 
 
 def create_mr_bayes_data(step_data, alignment_step, args, partitions_obj, run):  # ngen, burnin
