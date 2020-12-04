@@ -79,11 +79,24 @@ def create_mr_bayes_data(step_data, alignment_step, args, partitions_obj, run): 
             _copy_alignment_file(align_step, substep, files_to_proc, args, partitions_obj)
             #
             substep.save(completed=False)
+        if args.num_runs and args.num_runs > 1:
+            print('Warning: number of runs for collection of alignments is not supported.')
     else:
-        step = MrBayesStep(alignment_step.project, step_data, remove_data=True)
-        step.set_sequences(alignment_step.all_sequences())
-        step.seq_sequence_type(alignment_step.get_sequence_type())
-        _copy_alignment_file(alignment_step, step, files_to_proc, args, partitions_obj)
+        if args.num_runs and args.num_runs > 1:
+            step = MrBayesSteps(alignment_step.project, step_data, remove_data=True)
+            for run_idx in range(args.num_runs):
+                substep = step.create_substep(f'run_{run_idx + 1}')
+                substep.set_sequences(alignment_step.all_sequences())
+                substep.seq_sequence_type(alignment_step.get_sequence_type())
+                # ToDo: make symbolic links?
+                _copy_alignment_file(alignment_step, substep, files_to_proc, args, partitions_obj)
+                #
+                substep.save(completed=False)
+        else:
+            step = MrBayesStep(alignment_step.project, step_data, remove_data=True)
+            step.set_sequences(alignment_step.all_sequences())
+            step.seq_sequence_type(alignment_step.get_sequence_type())
+            _copy_alignment_file(alignment_step, step, files_to_proc, args, partitions_obj)
 
     # Store files desc
     files_to_zip = [d['filename'] for d in files_to_proc]  # files to zip

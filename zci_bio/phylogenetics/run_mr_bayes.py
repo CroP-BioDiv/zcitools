@@ -3,8 +3,10 @@
 import os
 import yaml
 import shutil
-import multiprocessing
+# import multiprocessing
+import psutil
 import subprocess
+import itertools
 from concurrent.futures import ThreadPoolExecutor
 from zipfile import ZipFile
 
@@ -16,13 +18,13 @@ _ENV_VAR_MPI = 'MR_BAYES_MPI_EXE'
 # Short files :-)
 _OUTPUT_EXTENSIONS = ('.ckp', '.con.tre', '.parts', '.tstat', '.vstat')
 
-
-# MrBayes (base version) is not multiprocessing!
-# To make is multiprocessing compiling with MPI is needed
-#   https://github.com/NBISweden/MrBayes/blob/develop/INSTALL
+# Calculation strategy for MrBayes multithread executable:
+#  - Sort jobs descending by nchains.
+#  - Find how large force pool can be.
+#  - Run jobs in upper order
 #
-# Calculation strategy:
-#  - Just run calculations in a pool. Fist long than short.
+# Calculation strategy for MrBayes single processor executable:
+#  - First execute long jobs, than short
 
 _install_instructions = """
 MrBayes is not installed!
@@ -51,39 +53,61 @@ def _run_mr_bayes(exe, run_dir, f):
     subprocess.run(cmd, cwd=run_dir)  # , stdout=subprocess.DEVNULL)
 
 
-def _run_mr_bayes_mpi(exe, run_dir, f, nchains, threads):
+def _run_mr_bayes_mpi(exe, run_dir, f, nchains, threads, job_idx):
     # There must be at least as many chains as MPI processors
     # Chain consists of two chains :-)
     threads = min(threads, nchains * 2)
-    cmd = ['mpirun', '--use-hwthread-cpus', '-np', str(threads), exe, f]
-    print(f"Cmd: cd {run_dir}; {' '.join(cmd)}")
+    cmd = ['mpirun', '-np', str(threads), exe, f]
+    # Use logical cores if needed
+    if threads > psutil.cpu_count(logical=False):
+        cmd.insert(1, '--use-hwthread-cpus')
+    # if job_idx:
+    #     cmd.insert(1, '--tag-output')
     subprocess.run(cmd, cwd=run_dir)  # , stdout=subprocess.DEVNULL)
 
 
 def run(locale=True, threads=None):
-    threads = threads or multiprocessing.cpu_count()
+    # threads = threads or multiprocessing.cpu_count()
+    threads = threads or psutil.cpu_count(logical=True)
     mr_bayes_mpi_exe = _find_exe(_DEFAULT_EXE_NAME_MPI, _ENV_VAR_MPI, to_raise=False) if threads > 1 else None
     mr_bayes_exe = _find_exe(_DEFAULT_EXE_NAME, _ENV_VAR)
+    step_dir = os.path.abspath(os.getcwd())  # Store current directory, for zipping after processing is done
 
     # Files to run
     with open('finish.yml', 'r') as r:
         data_files = yaml.load(r, Loader=yaml.CLoader)  # dict with attrs: filename, short
-    data_files = [d for d in data_files if not d['short']] + [d for d in data_files if d['short']]
 
-    # Find absoulte paths so that threads can set it's own working dir safe
-    dir_data = []  # Tuples: filename, relative dir, absolute dir, nchains
-    for d in data_files:
-        _dir, f = os.path.split(d['filename'])
-        dir_data.append((f, _dir, os.path.abspath(_dir), d['nchains']))
-
-    step_dir = os.path.abspath(os.getcwd())
     if mr_bayes_mpi_exe:
-        for f, _, abs_dir, nchains in dir_data:
-            _run_mr_bayes_mpi(mr_bayes_mpi_exe, abs_dir, f, nchains, threads)
+        if len(data_files) == 1:
+            d = data_files[0]
+            _dir, f = os.path.split(d['filename'])
+            _run_mr_bayes_mpi(mr_bayes_mpi_exe, os.path.abspath(_dir), f, d['nchains'], threads, None)
+        else:
+            data_files = sorted(data_files, key=lambda d: (-d['nchains'], d['short']))
+
+            # Find how large thread pool can be
+            cum_sum = list(itertools.accumulate(2 * d['nchains'] for d in data_files))
+            for max_workers, sum_cs in enumerate(cum_sum):
+                if sum_cs > threads:
+                    break
+            if max_workers == 0:
+                max_workers = 1
+            elif max_workers == len(data_files) - 1 and cum_sum[-1] <= threads:
+                max_workers = len(data_files)
+
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                for job_idx, d in enumerate(data_files):
+                    _dir, f = os.path.split(d['filename'])
+                    executor.submit(_run_mr_bayes_mpi, mr_bayes_mpi_exe,
+                                    os.path.abspath(_dir), f, d['nchains'], threads, job_idx + 1)
+
     else:
+        data_files = [d for d in data_files if not d['short']] + [d for d in data_files if d['short']]
         with ThreadPoolExecutor(max_workers=threads) as executor:
-            for f, _, abs_dir, nchains in dir_data:
-                executor.submit(_run_mr_bayes, mr_bayes_exe, abs_dir, f)
+            for d in data_files:
+                # Find absolute paths so that threads can set it's own working dir safe
+                _dir, f = os.path.split(d['filename'])
+                executor.submit(_run_mr_bayes, mr_bayes_exe, os.path.abspath(_dir), f)
 
     # Zip files
     if not locale:
