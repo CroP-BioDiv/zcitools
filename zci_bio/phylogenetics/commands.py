@@ -53,6 +53,10 @@ class MrBayes(RAxML):
         parser.add_argument('--burninfrac', type=float, help='Parameter: burninfrac')
         parser.add_argument('--nchains', default=4, type=int, help='Parameter: nchains')
 
+    def step_base_name(self):
+        n = f'_R{nr}' if (nr := self.args.num_runs) and nr > 1 else ''
+        return self._format_step_name(f"{self._STEP_BASE_NAME}_{'N' if self.args.no_partitions else 'P'}{n}")
+
     def run(self, step_data):
         from .mr_bayes import create_mr_bayes_data
         a = self.args
