@@ -54,7 +54,7 @@ def _copy_alignment_file(align_step, in_step, files_to_proc, partitions_obj):
         partitions=partitions, seed=str(random.randint(1000, 10000000))))
 
 
-def create_raxml_data(step_data, alignment_step, partitions_obj, run):
+def create_raxml_data(step_data, alignment_step, partitions_obj, run_threads):
     # List of dicts with attrs: filename, short, partitions (filename or None)
     # This data is used to optimize calculation
     files_to_proc = []
@@ -86,10 +86,10 @@ def create_raxml_data(step_data, alignment_step, partitions_obj, run):
     write_yaml(files_to_proc, finish_f)
 
     # Stores description.yml
-    step.save(completed=run)
+    step.save(completed=bool(run_threads))
 
-    if run:
-        run_module_script(run_raxml, step)
+    if run_threads:
+        run_module_script(run_raxml, step, threads=run_threads)
     else:
         files_to_zip.append(finish_f)
         set_run_instructions(run_raxml, step, files_to_zip, _instructions)

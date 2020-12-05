@@ -77,6 +77,15 @@ class _Command:
         if idents:
             return CommonDB.get_zci_db(idents)
 
+    # helpers
+    def _run_threads(self):
+        r = self.args.run
+        if r is not None:
+            if r > 0:
+                return r
+            import multiprocessing
+            return multiprocessing.cpu_count()
+
 
 #
 class ProjectCommand(_Command):

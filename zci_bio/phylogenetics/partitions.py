@@ -168,7 +168,8 @@ class Partitions:
             return f"""
 {p}
 {ident}partition partition_1 = {len(partition)}: {",".join(g for g, _ in partition)};
-{ident}set partition = partition_1"""
+{ident}set partition = partition_1
+"""
         return ''
 
 

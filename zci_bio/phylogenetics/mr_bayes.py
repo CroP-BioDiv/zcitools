@@ -7,12 +7,12 @@ from common_utils.exceptions import ZCItoolsValueError
 
 _NEXUS_DATA = """
 begin mrbayes;
-    set autoclose=yes nowarn=yes autoreplace=no;
+    set autoclose=yes nowarn=yes autoreplace=no;{partitions}
     lset Nst=6 Rates=gamma;
     mcmcp ngen={ngen} printfreq={printfreq} samplefreq={samplefreq} nchains={nchains}
     savebrlens=yes filename=alignment;
     mcmc;
-    sumt filename=alignment {burnin} contype=halfcompat;{partitions}
+    sumt filename=alignment {burnin} contype=halfcompat;
 end;
 
 """
@@ -64,7 +64,7 @@ def _copy_alignment_file(align_step, in_step, files_to_proc, args, partitions_ob
     files_to_proc.append(dict(filename=a_f, short=align_step.is_short(), nchains=args.nchains))
 
 
-def create_mr_bayes_data(step_data, alignment_step, args, partitions_obj, run):  # ngen, burnin
+def create_mr_bayes_data(step_data, alignment_step, args, partitions_obj, run_threads):
     # List of dicts with attrs: filename, short
     # This data is used to optimize calculation
     # ToDo: almost the same as raxml.py. Differs in class types, _copy_alignment_file() and file formats
@@ -107,10 +107,10 @@ def create_mr_bayes_data(step_data, alignment_step, args, partitions_obj, run): 
     write_yaml(files_to_proc, finish_f)
 
     # Stores description.yml
-    step.save(completed=run)
+    step.save(completed=bool(run_threads))
 
-    if run:
-        run_module_script(run_mr_bayes, step)
+    if run_threads:
+        run_module_script(run_mr_bayes, step, threads=run_threads)
     else:
         files_to_zip.append(finish_f)
         set_run_instructions(run_mr_bayes, step, files_to_zip, _instructions)

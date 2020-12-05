@@ -13,7 +13,9 @@ class RAxML(CreateStepFromStepCommand):
         CreateStepFromStepCommand.set_arguments(parser)
         parser.add_argument('-a', '--annotations-step', help='Annotations step to use for partitions')
         parser.add_argument('-p', '--no-partitions', action='store_true', help='Do not set partitions')
-        parser.add_argument('-r', '--run', action='store_true', help='Run RAxML locale')
+        parser.add_argument(
+            '-r', '--run', const=-1, nargs='?', type=int,
+            help=f'Run {RAxML._STEP_BASE_NAME} locale. Number of threads to use can be specified.')
 
     def step_base_name(self):
         return self._format_step_name(f"{self._STEP_BASE_NAME}_{'N' if self.args.no_partitions else 'P'}")
@@ -31,7 +33,7 @@ class RAxML(CreateStepFromStepCommand):
 
     def run(self, step_data):
         from .raxml import create_raxml_data
-        return create_raxml_data(step_data, self._input_step(), self._partitions(), self.args.run)
+        return create_raxml_data(step_data, self._input_step(), self._partitions(), self._run_threads())
 
     def finish(self, step_obj):
         from .raxml import finish_raxml_data
@@ -59,8 +61,7 @@ class MrBayes(RAxML):
 
     def run(self, step_data):
         from .mr_bayes import create_mr_bayes_data
-        a = self.args
-        return create_mr_bayes_data(step_data, self._input_step(), a, self._partitions(), a.run)
+        return create_mr_bayes_data(step_data, self._input_step(), self.args, self._partitions(), self._run_threads())
 
     def finish(self, step_obj):
         from .mr_bayes import finish_mr_bayes_data
