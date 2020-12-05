@@ -7,7 +7,7 @@ from common_utils.exceptions import ZCItoolsValueError
 
 _NEXUS_DATA = """
 begin mrbayes;
-    set autoclose=yes nowarn=yes autoreplace=no;{partitions}
+    set autoclose=yes nowarn=yes autoreplace=no;
     lset Nst=6 Rates=gamma;
     mcmcp ngen={ngen} printfreq={printfreq} samplefreq={samplefreq} nchains={nchains}
     savebrlens=yes filename=alignment;
@@ -16,6 +16,23 @@ begin mrbayes;
 end;
 
 """
+
+_NEXUS_DATA_PARTS = """
+begin mrbayes;
+    set autoclose=yes nowarn=yes autoreplace=no;
+{partitions}
+    lset applyto=(all) Nst=6 Rates=gamma;
+    unlink statefreq=(all) revmat=(all) shape=(all) pinvar=(all);
+    prset applyto=(all) ratepr=variable;
+    prset applyto=(all) statefreqpr=dirichlet(1,1,1,1);
+    mcmcp ngen={ngen} printfreq={printfreq} samplefreq={samplefreq} nchains={nchains}
+    savebrlens=yes filename=alignment;
+    mcmc;
+    sumt filename=alignment {burnin} contype=halfcompat;
+end;
+
+"""
+
 
 _instructions = """
 Steps:
@@ -54,13 +71,11 @@ def _copy_alignment_file(align_step, in_step, files_to_proc, args, partitions_ob
         else:
             brn = ''
         # ToDo: Check or set samplefreq?
-        output.write(_NEXUS_DATA.format(partitions=partitions_obj.create_mrbayes_partitions(align_step),
-                                        ngen=ngen,
-                                        printfreq=printfreq,
-                                        samplefreq=args.samplefreq,
-                                        nchains=args.nchains,
-                                        burnin=brn))
-    #
+        params = dict(ngen=ngen, printfreq=printfreq, samplefreq=args.samplefreq, nchains=args.nchains, burnin=brn)
+        if (partitions := partitions_obj.create_mrbayes_partitions(align_step)):
+            output.write(_NEXUS_DATA_PARTS.format(partitions=partitions, **params))
+        else:
+            output.write(_NEXUS_DATA.format(**params))
     files_to_proc.append(dict(filename=a_f, short=align_step.is_short(), nchains=args.nchains))
 
 

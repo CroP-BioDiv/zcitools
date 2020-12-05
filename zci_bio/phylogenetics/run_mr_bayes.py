@@ -16,7 +16,8 @@ _ENV_VAR = 'MR_BAYES_EXE'
 _DEFAULT_EXE_NAME_MPI = 'mr_bayes_mpi'
 _ENV_VAR_MPI = 'MR_BAYES_MPI_EXE'
 # Short files :-)
-_OUTPUT_EXTENSIONS = ('.ckp', '.con.tre', '.parts', '.tstat', '.vstat')
+# '.mcmc', '.trprobs'
+_OUTPUT_EXTENSIONS = ('.ckp', '.con.tre', '.parts', '.run1.p', '.run1.t', '.run2.p', '.run2.t', '.tstat', '.vstat')
 
 # Calculation strategy for MrBayes multithread executable:
 #  - Sort jobs descending by nchains.
@@ -113,10 +114,11 @@ def run(locale=True, threads=None):
     if not locale:
         os.chdir(step_dir)
         with ZipFile('output.zip', 'w') as output:
-            for f, loc_dir, _, _ in dir_data:
-                f = f.replace('.nex', '')
+            for d in data_files:
+                f = d['filename'].replace('.nex', '')
                 for ext in _OUTPUT_EXTENSIONS:
-                    output.write(os.path.join(loc_dir, f + ext))
+                    if os.path.isfile(f + ext):
+                        output.write(f + ext)
 
 
 if __name__ == '__main__':
