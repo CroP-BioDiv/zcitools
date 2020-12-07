@@ -51,7 +51,7 @@ class Partitions:
                 raise ValueError(parts[i][1])
         return partition
 
-    def _partition_from_part_annotations(self, align_step, min_nc_length=6):
+    def _partition_from_part_annotations(self, align_step, min_nc_length=30):
         if not (annotations := self.annotations_step):
             raise ZCItoolsValueError('Annotations step is not specified!')
 
@@ -134,12 +134,12 @@ class Partitions:
 
         return [(n, [(s, e)])for n, s, e in gene_parts] + [('nc', nc_parts)]
 
-    def create_partitions(self, align_step, from_one=True):
+    def create_partitions(self, align_step, from_one=True, min_nc_length=30):
         # Returns list of tuples (name, list of pairs of indices [from index, to index])
         if (st := align_step.get_sequence_type()) == 'genes':
             partition = self._partition_from_part_files(align_step)
         elif st == 'whole':
-            partition = self._partition_from_part_annotations(align_step)
+            partition = self._partition_from_part_annotations(align_step, min_nc_length=min_nc_length)
         else:
             assert st == 'gene', f'Wrong alignment sequence type: {st}'
             return
@@ -162,12 +162,58 @@ class Partitions:
                 output.write('\n'.join(f'DNA, {g} = {", ".join(f"{s}-{e}" for s, e in idxs)}' for g, idxs in partition))
             return partitions_filename
 
-    def create_mrbayes_partitions(self, align_step, ident='    '):
-        if self.make_partitions and (partition := self.create_partitions(align_step)):
-            p = '\n'.join(f'{ident}charset {g} = {" ".join(f"{s}-{e}" for s, e in idxs)};' for g, idxs in partition)
+    def create_mrbayes_partitions(self, align_step, nexus_file, ident='    '):
+
+        if self.make_partitions and (partition := self.create_partitions(align_step, min_nc_length=80)):
+            def _fix_n(n):
+                n = n.replace('.', '_')
+                n = n.replace('-', '_')
+                return n
+
+            partition = [(_fix_n(g), idxs) for g, idxs in partition]
+            names = [g for g, _ in partition]
+
+            # Note: MrBayes doesn't like partition with more parts
+            # It starts calculation but can hangs after some time :-/
+            # Because of that alignment is repartioned.
+            if all(len(idxs) == 1 for g, idxs in partition):
+                p = '\n'.join(f'{ident}charset {g} = {" ".join(f"{s}-{e}" for s, e in idxs)};' for g, idxs in partition)
+            else:
+                # Open nexus_file
+                from ..utils.import_methods import import_bio_align_io
+                AlignIO = import_bio_align_io()
+                alignment = AlignIO.read(nexus_file, 'nexus')
+
+                s, e = partition[0][1][0]
+                new_a = alignment[:, s:e]
+                for s, e in partition[0][1][1:]:
+                    new_a += alignment[:, s:e]
+                lengths = [sum((e - s) for s, e in partition[0][1])]
+                # Repartition
+                for g, idxs in partition[1:]:
+                    for s, e in idxs:
+                        new_a += alignment[:, s:e]
+                    lengths.append(sum((e - s) for s, e in idxs))
+
+                # Save
+                with open(nexus_file, "w") as handle:
+                    # Check Bio/AlignIO/NexusIO.py, method _classify_mol_type_for_nexus()
+                    # ToDo: how to know what type to set?
+                    for x in new_a:
+                        if 'molecule_type' is not in x.annotations:
+                            x.annotations['molecule_type'] = 'DNA'
+                    AlignIO.write(new_a, handle, 'nexus')
+
+                #
+                p = ''
+                last_end = 1
+                for g, _l in zip(names, lengths):
+                    p += f'{ident}charset {g} = {last_end}-{last_end + _l - 1};\n'
+                    last_end += _l
+
             return f"""
 {p}
-{ident}partition partition_1 = {len(partition)}: {",".join(g for g, _ in partition)};
+{ident}partition partition_1 = {len(names)}: {",".join(names)};
 {ident}set partition = partition_1;
 """
         return ''

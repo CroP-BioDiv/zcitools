@@ -1,4 +1,5 @@
 import os
+import random
 from . import run_mr_bayes
 from zci_bio.phylogenetics.steps import MrBayesStep, MrBayesSteps
 from common_utils.file_utils import copy_file, unzip_file, list_zip_files, write_yaml, read_yaml, \
@@ -8,9 +9,10 @@ from common_utils.exceptions import ZCItoolsValueError
 _NEXUS_DATA = """
 begin mrbayes;
     set autoclose=yes nowarn=yes autoreplace=no;
-    lset Nst=6 Rates=gamma;
+    lset nst=6 rates=gamma;
     mcmcp ngen={ngen} printfreq={printfreq} samplefreq={samplefreq} nchains={nchains}
-    savebrlens=yes filename=alignment;
+          savebrlens=yes filename=alignment;
+    set seed={seed} swapseed={swapseed};
     mcmc;
     sumt filename=alignment {burnin} contype=halfcompat;
 end;
@@ -21,12 +23,13 @@ _NEXUS_DATA_PARTS = """
 begin mrbayes;
     set autoclose=yes nowarn=yes autoreplace=no;
 {partitions}
-    lset applyto=(all) Nst=6 Rates=gamma;
+    lset applyto=(all) nst=6 rates=gamma;
     unlink statefreq=(all) revmat=(all) shape=(all) pinvar=(all);
     prset applyto=(all) ratepr=variable;
     prset applyto=(all) statefreqpr=dirichlet(1,1,1,1);
     mcmcp ngen={ngen} printfreq={printfreq} samplefreq={samplefreq} nchains={nchains}
-    savebrlens=yes filename=alignment;
+          savebrlens=yes filename=alignment;
+    set seed={seed} swapseed={swapseed};
     mcmc;
     sumt filename=alignment {burnin} contype=halfcompat;
 end;
@@ -71,8 +74,9 @@ def _copy_alignment_file(align_step, in_step, files_to_proc, args, partitions_ob
         else:
             brn = ''
         # ToDo: Check or set samplefreq?
-        params = dict(ngen=ngen, printfreq=printfreq, samplefreq=args.samplefreq, nchains=args.nchains, burnin=brn)
-        if (partitions := partitions_obj.create_mrbayes_partitions(align_step)):
+        params = dict(ngen=ngen, printfreq=printfreq, samplefreq=args.samplefreq, nchains=args.nchains, burnin=brn,
+                      seed=random.randint(1000, 10000000), swapseed=random.randint(1000, 10000000))
+        if (partitions := partitions_obj.create_mrbayes_partitions(align_step, a_f)):
             output.write(_NEXUS_DATA_PARTS.format(partitions=partitions, **params))
         else:
             output.write(_NEXUS_DATA.format(**params))

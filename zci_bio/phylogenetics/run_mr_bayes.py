@@ -67,10 +67,11 @@ def _run_mr_bayes_mpi(exe, run_dir, f, nchains, threads, job_idx):
     subprocess.run(cmd, cwd=run_dir)  # , stdout=subprocess.DEVNULL)
 
 
-def run(locale=True, threads=None):
+def run(locale=True, threads=None, use_mpi=True):
     # threads = threads or multiprocessing.cpu_count()
     threads = threads or psutil.cpu_count(logical=True)
-    mr_bayes_mpi_exe = _find_exe(_DEFAULT_EXE_NAME_MPI, _ENV_VAR_MPI, to_raise=False) if threads > 1 else None
+    mr_bayes_mpi_exe = _find_exe(_DEFAULT_EXE_NAME_MPI, _ENV_VAR_MPI, to_raise=False) \
+        if (use_mpi and threads > 1) else None
     mr_bayes_exe = _find_exe(_DEFAULT_EXE_NAME, _ENV_VAR)
     step_dir = os.path.abspath(os.getcwd())  # Store current directory, for zipping after processing is done
 
@@ -123,4 +124,6 @@ def run(locale=True, threads=None):
 
 if __name__ == '__main__':
     import sys
-    run(locale=False, threads=int(sys.argv[1]) if len(sys.argv) > 1 else None)
+    threads = int(sys.argv[1]) if len(sys.argv) > 1 else None
+    use_mpi = (len(sys.argv) <= 2)
+    run(locale=False, threads=threads, use_mpi=use_mpi)
