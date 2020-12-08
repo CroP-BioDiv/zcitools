@@ -44,7 +44,8 @@ def _copy_alignment_file(align_step, in_step, files_to_proc, partitions_obj):
             seq.id += ' '
         from ..utils.import_methods import import_bio_align_io
         with open(a_f, "w") as handle:
-            count = import_bio_align_io().write(alignment, handle, 'phylip')
+            p_format = 'phylip-relaxed' if any(len(s) > 10 for s in alignment) else 'phylip'
+            count = import_bio_align_io().write(alignment, handle, p_format)
     else:
         copy_file(orig_phy, a_f)
 

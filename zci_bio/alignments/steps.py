@@ -79,7 +79,7 @@ Data is stored:
         return self._seq_type == 'gene'
 
     def get_alignment_obj(self):
-        for f, t in (('alignment.phy', 'phylip'), ('alignment.fa', 'fasta')):
+        for f, t in (('alignment.phy', 'phylip-relaxed'), ('alignment.fa', 'fasta')):
             f = self.step_file(f)
             if os.path.isfile(f):
                 with open(f) as in_f:
@@ -90,7 +90,8 @@ Data is stored:
         if not os.path.isfile(f):
             fa_f = self.step_file('alignment.fa')
             AlignIO = import_bio_align_io()
-            AlignIO.convert(fa_f, 'fasta', f, 'phylip')
+            p_format = 'phylip-relaxed' if any(len(s) > 10 for s in all_sequences) else 'phylip'
+            AlignIO.convert(fa_f, 'fasta', f, p_format)
         return f
 
     def get_nexus_file(self):
@@ -98,7 +99,7 @@ Data is stored:
         if os.path.isfile(f):
             return f
         if p_f := self.get_phylip_file():
-            import_bio_align_io().convert(p_f, 'phylip', f, 'nexus', molecule_type='DNA')
+            import_bio_align_io().convert(p_f, 'phylip-relaxed', f, 'nexus', molecule_type='DNA')
             return f
 
     # Partitions (used for phylogeny analysis)

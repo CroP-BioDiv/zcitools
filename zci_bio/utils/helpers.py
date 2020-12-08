@@ -14,9 +14,9 @@ ext_2_bio_io_type = dict(
 )
 _bio_ext_2_type = dict(('.' + e, t) for e, t in ext_2_bio_io_type.items())
 
-align_io_known_formats = frozenset(['phylip'])
+align_io_known_formats = frozenset(['phylip', 'phylip-relaxed'])
 ext_2_align_io_type = dict(
-    phy='phylip',
+    phy='phylip-relaxed',
 )
 
 
