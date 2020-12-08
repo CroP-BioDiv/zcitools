@@ -48,6 +48,7 @@ class MrBayes(RAxML):
     @staticmethod
     def set_arguments(parser):
         RAxML.set_arguments(parser)
+        parser.add_argument('--no-mpi', action='store_true', help='Do not use MPI version')
         parser.add_argument('-R', '--num-runs', type=int, help='Number of runs to perform.')
         parser.add_argument('--ngen', default=1000000, type=int, help='Parameter: ngen')
         parser.add_argument('--samplefreq', default=1000, type=int, help='Parameter: samplefreq')

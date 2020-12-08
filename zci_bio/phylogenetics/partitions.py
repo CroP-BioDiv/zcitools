@@ -51,7 +51,7 @@ class Partitions:
                 raise ValueError(parts[i][1])
         return partition
 
-    def _partition_from_part_annotations(self, align_step, min_nc_length=30):
+    def _partition_from_part_annotations(self, align_step, min_nc_length=10):
         if not (annotations := self.annotations_step):
             raise ZCItoolsValueError('Annotations step is not specified!')
 
@@ -134,7 +134,7 @@ class Partitions:
 
         return [(n, [(s, e)])for n, s, e in gene_parts] + [('nc', nc_parts)]
 
-    def create_partitions(self, align_step, from_one=True, min_nc_length=30):
+    def create_partitions(self, align_step, from_one=True, min_nc_length=10):
         # Returns list of tuples (name, list of pairs of indices [from index, to index])
         if (st := align_step.get_sequence_type()) == 'genes':
             partition = self._partition_from_part_files(align_step)
@@ -163,8 +163,7 @@ class Partitions:
             return partitions_filename
 
     def create_mrbayes_partitions(self, align_step, nexus_file, ident='    '):
-
-        if self.make_partitions and (partition := self.create_partitions(align_step, min_nc_length=80)):
+        if self.make_partitions and (partition := self.create_partitions(align_step, min_nc_length=10)):
             def _fix_n(n):
                 n = n.replace('.', '_')
                 n = n.replace('-', '_')
@@ -176,7 +175,7 @@ class Partitions:
             # Note: MrBayes doesn't like partition with more parts
             # It starts calculation but can hangs after some time :-/
             # Because of that alignment is repartioned.
-            if all(len(idxs) == 1 for g, idxs in partition):
+            if True:  # all(len(idxs) == 1 for g, idxs in partition):
                 p = '\n'.join(f'{ident}charset {g} = {" ".join(f"{s}-{e}" for s, e in idxs)};' for g, idxs in partition)
             else:
                 # Open nexus_file
@@ -200,7 +199,7 @@ class Partitions:
                     # Check Bio/AlignIO/NexusIO.py, method _classify_mol_type_for_nexus()
                     # ToDo: how to know what type to set?
                     for x in new_a:
-                        if 'molecule_type' is not in x.annotations:
+                        if 'molecule_type' not in x.annotations:
                             x.annotations['molecule_type'] = 'DNA'
                     AlignIO.write(new_a, handle, 'nexus')
 

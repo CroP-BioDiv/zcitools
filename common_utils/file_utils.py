@@ -165,10 +165,10 @@ def read_fasta_identifiers(filename):
 
 
 # Run script in step directory
-def run_module_script(module, step, threads=None):
+def run_module_script(module, step, threads=None, **kwargs):
     project_dir = os.getcwd()
     os.chdir(step.directory)
-    module.run(locale=True, threads=threads)
+    module.run(locale=True, threads=threads, **kwargs)
     os.chdir(project_dir)
 
 

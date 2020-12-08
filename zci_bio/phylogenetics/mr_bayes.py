@@ -2,9 +2,15 @@ import os
 import random
 from . import run_mr_bayes
 from zci_bio.phylogenetics.steps import MrBayesStep, MrBayesSteps
-from common_utils.file_utils import copy_file, unzip_file, list_zip_files, write_yaml, read_yaml, \
+from common_utils.file_utils import unzip_file, list_zip_files, write_yaml, read_yaml, \
     run_module_script, set_run_instructions
 from common_utils.exceptions import ZCItoolsValueError
+
+_SEED_DATA = """begin mrbayes;
+    set seed={seed} swapseed={swapseed};
+end;
+
+"""
 
 _NEXUS_DATA = """
 begin mrbayes;
@@ -12,7 +18,6 @@ begin mrbayes;
     lset nst=6 rates=gamma;
     mcmcp ngen={ngen} printfreq={printfreq} samplefreq={samplefreq} nchains={nchains}
           savebrlens=yes filename=alignment;
-    set seed={seed} swapseed={swapseed};
     mcmc;
     sumt filename=alignment {burnin} contype=halfcompat;
 end;
@@ -29,7 +34,6 @@ begin mrbayes;
     prset applyto=(all) statefreqpr=dirichlet(1,1,1,1);
     mcmcp ngen={ngen} printfreq={printfreq} samplefreq={samplefreq} nchains={nchains}
           savebrlens=yes filename=alignment;
-    set seed={seed} swapseed={swapseed};
     mcmc;
     sumt filename=alignment {burnin} contype=halfcompat;
 end;
@@ -59,9 +63,19 @@ Notes:
 def _copy_alignment_file(align_step, in_step, files_to_proc, args, partitions_obj):
     # ToDo: Nexus i dodati nes na kraj!
     a_f = in_step.step_file('alignment.nex')
-    copy_file(align_step.get_nexus_file(), a_f)
-    # Add MrBayes data
     with open(a_f, 'a') as output:
+        read_nexus = False
+        with open(align_step.get_nexus_file(), 'r') as r:
+            # Write header
+            line = r.readline()
+            assert line.startswith('#NEXUS')
+            output.write(line)
+            # Seed description
+            output.write(_SEED_DATA.format(seed=random.randint(1000, 10000000), swapseed=random.randint(1000, 10000000)))
+            # Nexus file content
+            output.write(r.read())
+
+        # Add MrBayes data
         # Printing
         ngen = args.ngen
         printfreq = str((ngen // 10000) if ngen > 1000000 else (ngen // 1000))  # Of type str
@@ -74,12 +88,12 @@ def _copy_alignment_file(align_step, in_step, files_to_proc, args, partitions_ob
         else:
             brn = ''
         # ToDo: Check or set samplefreq?
-        params = dict(ngen=ngen, printfreq=printfreq, samplefreq=args.samplefreq, nchains=args.nchains, burnin=brn,
-                      seed=random.randint(1000, 10000000), swapseed=random.randint(1000, 10000000))
+        params = dict(ngen=ngen, printfreq=printfreq, samplefreq=args.samplefreq, nchains=args.nchains, burnin=brn)
         if (partitions := partitions_obj.create_mrbayes_partitions(align_step, a_f)):
             output.write(_NEXUS_DATA_PARTS.format(partitions=partitions, **params))
         else:
             output.write(_NEXUS_DATA.format(**params))
+
     files_to_proc.append(dict(filename=a_f, short=align_step.is_short(), nchains=args.nchains))
 
 
@@ -104,7 +118,7 @@ def create_mr_bayes_data(step_data, alignment_step, args, partitions_obj, run_th
         if args.num_runs and args.num_runs > 1:
             step = MrBayesSteps(alignment_step.project, step_data, remove_data=True)
             for run_idx in range(args.num_runs):
-                substep = step.create_substep(f'run_{run_idx + 1}')
+                substep = step.create_substep(f'RUN_{run_idx + 1}')
                 substep.set_sequences(alignment_step.all_sequences())
                 substep.seq_sequence_type(alignment_step.get_sequence_type())
                 # ToDo: make symbolic links?
@@ -129,7 +143,7 @@ def create_mr_bayes_data(step_data, alignment_step, args, partitions_obj, run_th
     step.save(completed=bool(run_threads))
 
     if run_threads:
-        run_module_script(run_mr_bayes, step, threads=run_threads)
+        run_module_script(run_mr_bayes, step, threads=run_threads, use_mpi=(not args.no_mpi))
     else:
         files_to_zip.append(finish_f)
         set_run_instructions(run_mr_bayes, step, files_to_zip, _instructions)
