@@ -7,6 +7,7 @@ import shutil
 import psutil
 import subprocess
 import itertools
+import time
 from concurrent.futures import ThreadPoolExecutor
 from zipfile import ZipFile
 
@@ -68,6 +69,7 @@ def _run_mr_bayes_mpi(exe, run_dir, f, nchains, threads, job_idx):
 
 
 def run(locale=True, threads=None, use_mpi=True):
+    started = time.time()
     # threads = threads or multiprocessing.cpu_count()
     threads = threads or psutil.cpu_count(logical=True)
     mr_bayes_mpi_exe = _find_exe(_DEFAULT_EXE_NAME_MPI, _ENV_VAR_MPI, to_raise=False) \
@@ -120,6 +122,18 @@ def run(locale=True, threads=None, use_mpi=True):
                 for ext in _OUTPUT_EXTENSIONS:
                     if os.path.isfile(f + ext):
                         output.write(f + ext)
+
+    #
+    lasted = int(time.time() - started)  # Just seconds
+    days = lasted // (24 * 60 * 60)
+    desc = f'{days}d:' if days else ''
+    hours = (rest := (lasted - days * 24 * 60 * 60)) // (60 * 60)
+    desc += f'{hours:02}h:' if desc or hours else ''
+    mins = (rest := (rest - hours * 60 * 60)) // 60
+    desc += f'{mins:02}m:' if desc or mins else ''
+    secs = rest - mins * 60
+    desc += f'{secs:02}s'
+    print(f'Calculation lasted: {desc} ({lasted}s)')
 
 
 if __name__ == '__main__':
