@@ -32,6 +32,10 @@ Notes:
 
 
 def _copy_alignment_file(align_step, in_step, files_to_proc, partitions_obj):
+    # Note: RAxML supports relaxed PHYLIP format
+    # From manual:
+    #   The input alignment format of RAxML is relaxed interleaved or sequential PHYLIP or
+    #   FASTA. Relaxed means that sequence names can be of variable length between 1 up to 256 characters
     a_f = in_step.step_file('alignment.phy')
     orig_phy = align_step.get_phylip_file()
     alignment = read_alignment(orig_phy)

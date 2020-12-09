@@ -6,6 +6,8 @@ class IndexInAlignment:
     # Maps original index into alined
     # Note: indices are zero indexed!
     def __init__(self, seq, with_reverse=False):
+        self.seq_name = seq.name
+        self.seq_length = len(seq)
         self.indices = [i for i, c in enumerate(seq.seq) if c != '-']
         if with_reverse:
             self.reverse_indices = []
@@ -14,6 +16,7 @@ class IndexInAlignment:
                 self.reverse_indices.append(idx)
                 if c != '-':
                     idx += 1
+            self.reverse_indices.append(self.seq_length)  # For end+
 
     def __getitem__(self, i):
         return self.indices[i]

@@ -60,7 +60,7 @@ class Partitions:
             if len(not_in) == len(sequences):
                 raise ZCItoolsValueError('None of aligned sequences are present in annotations step!')
             else:
-                raise ZCItoolsValueError(f"Sequence(s) not present in annotations step! {', '.join(sorte(not_in))}")
+                raise ZCItoolsValueError(f"Sequence(s) not present in annotations step! {', '.join(sorted(not_in))}")
 
         #
         ami = align_step.get_alignment_map_indices(with_reverse=True)
@@ -126,9 +126,10 @@ class Partitions:
         if not gene_parts:  # No partitions at all
             return
 
-        last_end = gene_parts[-1][-1]
+        last_part = gene_parts[-1]
+        last_end = last_part[-1]
         if ami.alignment_length < last_end + min_nc_length:
-            gene_parts[-1] = (gene_parts[0], gene_parts[1], ami.alignment_length)
+            gene_parts[-1] = (last_part[0], last_part[1], ami.alignment_length)
         else:
             nc_parts.append((last_end, ami.alignment_length))
 
@@ -144,8 +145,8 @@ class Partitions:
             assert st == 'gene', f'Wrong alignment sequence type: {st}'
             return
         # Check partition
-        assert all(isinstance(x[0], str) for x in partition), partition
-        assert all(isinstance(x[1], (list, tuple)) and bool(x) for x in partition), partition
+        assert all(isinstance(x[0], str) for x in partition), [x for x in partition if not isinstance(x[0], str)]
+        assert all(isinstance(x[1], (list, tuple)) and bool(x) for x in partition), [x for x in partition if not (isinstance(x[1], (list, tuple)) and bool(x))]
         assert all(all(isinstance(y, (list, tuple)) and len(y) == 2 for y in x[1]) for x in partition), partition
 
         # Reindex
