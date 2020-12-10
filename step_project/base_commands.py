@@ -137,7 +137,7 @@ class CreateStepFromStepCommand(CreateStepCommand):
 
     @staticmethod
     def set_arguments(parser):
-        parser.add_argument('step', help='Input sequences step')
+        parser.add_argument('step', help='Input step')
         parser.add_argument('-A', '--append-input-step-name', action='store_true',
                             help='Append input sequence step name')
 

@@ -1,4 +1,4 @@
-from step_project.base_commands import CreateStepFromStepCommand
+from step_project.base_commands import ProjectCommand, CreateStepFromStepCommand
 from common_utils.exceptions import ZCItoolsValueError
 
 
@@ -67,3 +67,18 @@ class MrBayes(RAxML):
     def finish(self, step_obj):
         from .mr_bayes import finish_mr_bayes_data
         finish_mr_bayes_data(step_obj)
+
+
+class RunTracer(ProjectCommand):
+    _COMMAND = 'tracer'
+    _HELP = "Run tracer on MrBayes step with more runs"
+
+    @staticmethod
+    def set_arguments(parser):
+        parser.add_argument('step', help='Input MrBayes step')
+        parser.add_argument('-e', '--exe-location', help='Location of tracer executable. Dirname or filename')
+
+    def run(self):
+        from .mr_bayes import run_tracer
+        run_tracer(self.project.read_step(self.args.step, check_data_type='mr_bayes_s', update_mode=False, no_check=True),
+                   self.args.exe_location)

@@ -216,3 +216,18 @@ def files_from_args(files_or_dirs, extension):
             for f in sorted(os.listdir(fd)):
                 if f.endswith(extension) and os.path.isfile(f := os.path.join(fd, f)):
                     yield f
+
+
+def find_executable(exe, dir_or_filename=None):
+    if dir_or_filename:
+        if os.path.isdir(dir_or_filename):
+            exe = os.path.join(dir_or_filename, exe)
+            if not os.path.isfile(exe):
+                raise ValueError(f"File {exe} doesn't exist!")
+            return exe
+        if os.path.isfile(dir_or_filename):
+            return dir_or_filename
+        raise ValueError(f"Directory or filename {dir_or_filename} doesn't exist!")
+    if not shutil.which(exe):
+        raise ValueError(f'No executable {exe}!')
+    return exe

@@ -3,8 +3,10 @@ import random
 from . import run_mr_bayes
 from zci_bio.phylogenetics.steps import MrBayesStep, MrBayesSteps
 from common_utils.file_utils import unzip_file, list_zip_files, write_yaml, read_yaml, \
-    run_module_script, set_run_instructions
+    run_module_script, set_run_instructions, find_executable
 from common_utils.exceptions import ZCItoolsValueError
+
+_RESULT_PREFIX = 'alignment'
 
 _SEED_DATA = """begin mrbayes;
     set seed={seed} swapseed={swapseed};
@@ -17,9 +19,9 @@ begin mrbayes;
     set autoclose=yes nowarn=yes autoreplace=no;
     lset nst=6 rates=gamma;
     mcmcp ngen={ngen} printfreq={printfreq} samplefreq={samplefreq} nchains={nchains}
-          savebrlens=yes filename=alignment;
+          savebrlens=yes filename={filename_prefix};
     mcmc;
-    sumt filename=alignment {burnin} contype=halfcompat;
+    sumt filename={filename_prefix} {burnin} contype=halfcompat;
 end;
 
 """
@@ -33,9 +35,9 @@ begin mrbayes;
     prset applyto=(all) ratepr=variable;
     prset applyto=(all) statefreqpr=dirichlet(1,1,1,1);
     mcmcp ngen={ngen} printfreq={printfreq} samplefreq={samplefreq} nchains={nchains}
-          savebrlens=yes filename=alignment;
+          savebrlens=yes filename={filename_prefix};
     mcmc;
-    sumt filename=alignment {burnin} contype=halfcompat;
+    sumt filename={filename_prefix} {burnin} contype=halfcompat;
 end;
 
 """
@@ -88,7 +90,8 @@ def _copy_alignment_file(align_step, in_step, files_to_proc, args, partitions_ob
         else:
             brn = ''
         # ToDo: Check or set samplefreq?
-        params = dict(ngen=ngen, printfreq=printfreq, samplefreq=args.samplefreq, nchains=args.nchains, burnin=brn)
+        params = dict(ngen=ngen, printfreq=printfreq, samplefreq=args.samplefreq, nchains=args.nchains, burnin=brn,
+                      filename_prefix=_RESULT_PREFIX)
         if (partitions := partitions_obj.create_mrbayes_partitions(align_step, a_f)):
             output.write(_NEXUS_DATA_PARTS.format(partitions=partitions, **params))
         else:
@@ -156,7 +159,8 @@ def finish_mr_bayes_data(step_obj):
     if not os.path.isfile(output_f):
         raise ZCItoolsValueError('No calculation output file output.zip!')
 
-    allowed_files = ('alignment.ckp', 'alignment.con.tre', 'alignment.parts', 'alignment.tstat', 'alignment.vstat')
+    allowed_files = set(_RESULT_PREFIX + ext for ext in (
+        '.ckp', '.con.tre', '.parts', '.run1.p', '.run1.t', '.run2.p', '.run2.t', '.tstat', '.vstat'))
 
     # Check are all file MrBayes outputs
     dirs = set(os.path.dirname(d['filename']) for d in read_yaml(step_obj.step_file('finish.yml')))
@@ -167,10 +171,22 @@ def finish_mr_bayes_data(step_obj):
             raise ZCItoolsValueError(f'Output contains file(s) in not step directory ({_dir})!')
 
         if parts[-1] not in allowed_files:
-            raise ZCItoolsValueError(f'Not RAxML output file(s)found in the output ({parts[-1]})!')
+            raise ZCItoolsValueError(f'Not MrBayes output file(s)found in the output ({parts[-1]})!')
 
     # Unzip data
     unzip_file(output_f, step_obj.directory)
 
     step_obj._check_data()
     step_obj.save(create=False)
+
+
+def run_tracer(step, exe_location):
+    exe = find_executable('tracer', exe_location)  # First check is there exe
+    dirs = [d for d in step.step_subdirectories()
+            if all(step.step_file(d, _RESULT_PREFIX + ext) for ext in ('.run1.p', '.run2.p'))]
+    if len(dirs) != 2:
+        raise ZCItoolsValueError(f'Step has to have 2 runs! {dirs}')
+
+    p_files = [step.step_file(dirs[0], _RESULT_PREFIX + ext) for ext in ('.run1.p', '.run2.p')] + \
+        [step.step_file(dirs[1], _RESULT_PREFIX + ext) for ext in ('.run1.p', '.run2.p')]
+    os.system(f"{exe} {' '.join(p_files)}")
