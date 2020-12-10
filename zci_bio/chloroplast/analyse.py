@@ -9,7 +9,7 @@ from common_utils.properties_db import PropertiesDB
 from common_utils.cache import cache
 from .analyse_step_1 import SequenceDesc
 from .analyse_step_calc import run_align_cmd, find_missing_partitions
-from .utils import find_chloroplast_partition, find_chloroplast_irs
+from .utils import find_chloroplast_irs
 from .constants import DEFAULT_KEEP_OFFSET
 from ..utils.features import Feature
 from ..utils.ncbi_taxonomy import get_ncbi_taxonomy
@@ -100,9 +100,9 @@ class AnalyseGenomes:
         some_data = next(iter(data.values()))
         sequences_step = some_data.sequences_step
         ncbi_with = [seq_ident for seq_ident, seq in sequences_step._iterate_records()
-                     if find_chloroplast_irs(seq, check_size=False)]  # Note: MCBI IRs are used without length check!
+                     if find_chloroplast_irs(seq, check_length=False)]
         ge_seq_with = [seq_ident for seq_ident, seq in self.annotations_step._iterate_records()
-                       if find_chloroplast_irs(seq, check_size=True)]
+                       if find_chloroplast_irs(seq, check_length=False)]
         p_lengths = [l for d in data.values() if (l := d.part_lengths_all())]
         #
         gks = list(some_data._genes_stat.keys())

@@ -3,7 +3,7 @@ from common_utils.exceptions import ZCItoolsValueError
 from ..utils.features import Feature, Partition
 
 
-def find_chloroplast_irs(seq, check_size=True):
+def find_chloroplast_irs(seq, check_length=True):
     # Finds the longest pair of inverted repeats
     _ir = ('inverted',)
     rep_regs = [f for f in seq.features
@@ -18,11 +18,13 @@ def find_chloroplast_irs(seq, check_size=True):
                                            FeatureLocation(0, loc.start + 1, strand=1)])
 
     if len(rep_regs) >= 2:
-        max_len = max(map(len, rep_regs)) - 5  # Some tolerance :-)
+        max_len = max(map(len, rep_regs)) - 10  # Some tolerance :-)
         max_regs = [f for f in rep_regs if len(f) >= max_len]
-        if len(max_regs) != 2 and not check_size:
+        if len(max_regs) != 2 and not check_length:
             # Backup
             max_regs = sorted(rep_regs, key=len)[-2:]
+            if len(max_regs[0]) - len(max_regs[1]) > 1000:  # This is too much of difference
+                return None
         if len(max_regs) == 2:
             ira, irb = max_regs
             diff_1 = (irb.location.parts[0].start - ira.location.parts[-1].end) % len(seq)
@@ -34,9 +36,9 @@ def irb_start(irb):
     return int(irb.location.parts[0].start)
 
 
-def find_chloroplast_partition(seq):
+def find_chloroplast_partition(seq, check_length=True):
     # Returns None or Partition object with parts named: lsc, ira, ssc, irb.
-    irs = find_chloroplast_irs(seq)
+    irs = find_chloroplast_irs(seq, check_length=check_length)
     if irs:
         ira, irb = irs
         return create_chloroplast_partition(len(seq), ira, irb)

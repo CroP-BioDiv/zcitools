@@ -40,14 +40,6 @@ def find_missing_partitions(seq_descs):
             if seq_data._partition:
                 continue
 
-            # First check are there IRs in NCBI data
-            if seq_data.sequences_step:
-                if (irs := find_chloroplast_irs(seq_data.sequences_step.get_sequence_record(seq_ident), check_size=False)):
-                    ira, irb = irs
-                    seq_2_result_object[seq_ident] = \
-                        ('NCBI', (int(ira.location.start), int(ira.location.end)), (int(irb.location.start), int(irb.location.end)))
-                    continue
-
             # Than try to via similar species
             ncbi_2_max_taxid = seq_data._analyse.ncbi_2_max_taxid
             close_taxids = ncbi_tax.find_close_taxids(seq_data.taxid, ncbi_2_max_taxid[seq_ident], with_irs)
@@ -63,7 +55,7 @@ def find_missing_partitions(seq_descs):
 
     #
     for seq_ident, (transfer_from, ira, irb) in seq_2_result_object.items():
-        seq_descs[seq_ident].set_took_part(ira, irb, transfer_from, 'missing')
+        seq_descs[seq_ident].set_took_part(ira, irb, transfer_from, 'missing', True)
 
     return seq_2_result_object
 

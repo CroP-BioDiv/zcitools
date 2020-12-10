@@ -1,6 +1,6 @@
 from datetime import datetime
-from .utils import find_chloroplast_partition, create_chloroplast_partition, \
-    chloroplast_parts_orientation, trnF_GAA_start  # , trnH_GUG_start
+from .utils import find_chloroplast_irs, create_chloroplast_partition, cycle_distance_min, \
+    chloroplast_parts_orientation, trnF_GAA_start, trnH_GUG_start
 from ..utils.entrez import Entrez
 from ..utils.helpers import fetch_from_properties_db
 from ..utils.features import Feature, find_disjunct_features_of_type, find_features_stat
@@ -19,11 +19,12 @@ class SequenceDesc:
         self._genes_stat = find_features_stat(seq, 'gene')
         # self._cds = [f.feature for f in find_disjunct_features_of_type(seq, 'CDS')]
 
-        self._partition = find_chloroplast_partition(seq)
-        self._parts_data = _PartsDesc(self._partition, self._genes, self.length) if self._partition else None
+        self._partition = None
+        self._parts_data = None
         # Set in step 2. (Calculate missing data)
         self.irs_took_from = None
         self.irs_took_reason = None
+        self._find_partitions(seq_ident, seq)
         self.part_orientation = None
 
         # Extract data from NCBI GenBank files (comments)
@@ -61,7 +62,6 @@ class SequenceDesc:
             if 'lsc_offset' in ret:
                 return f"{ret['lsc_offset']} : {ret['strategy']}"
             return f"{ret['zero_offset']} : rc" if ret['reverse'] else str(ret['zero_offset'])
-
 
     def part_lengths_all(self):
         return self._parts_data.parts_length() if self._parts_data else None
@@ -127,12 +127,35 @@ class SequenceDesc:
             if ppp := [p for p in ('lsc', 'ira', 'ssc') if not orient[p]]:
                 self.part_orientation = ','.join(ppp)
 
-    def set_took_part(self, ira, irb, transfer_from, reason):
+    def set_took_part(self, ira, irb, transfer_from, reason, in_interval):
         assert not self._partition, "For now there should not be original IRs!"
-        self._partition = create_chloroplast_partition(self.length, ira, irb, in_interval=True)
+        self._partition = create_chloroplast_partition(self.length, ira, irb, in_interval=in_interval)
         self._parts_data = _PartsDesc(self._partition, self._genes, self.length)
         self.irs_took_from = transfer_from
         self.irs_took_reason = reason
+
+    def _find_partitions(self, seq_ident, seq):
+        # IRS data is taken by priority:
+        #  * sequence annoration (GeSeq) if the everything is OK
+        #  * sequence annoration or NCBI annoration, which one is closer to sequence start
+        #    Idea is that closer one is maybe repaired by the hand.
+        if (irs := find_chloroplast_irs(seq, check_length=True)):
+            return self.set_took_part(*irs, None, None, False)
+
+        ncbi_irs = find_chloroplast_irs(self.sequences_step.get_sequence_record(seq_ident), check_length=False) \
+            if self.sequences_step else None
+        if (seq_irs := find_chloroplast_irs(seq, check_length=False)):
+            if ncbi_irs:
+                if self._irs_from_start(*seq_irs) <= self._irs_from_start(*ncbi_irs):
+                    return self.set_took_part(*seq_irs, 'same', 'Not nice', False)
+                return self.set_took_part(*ncbi_irs, 'NCBI', 'Not nice', False)
+            return self.set_took_part(*seq_irs, 'same', 'Not nice', False)
+        elif ncbi_irs:
+            return self.set_took_part(*ncbi_irs, 'NCBI', 'Not nice', False)
+
+    def _irs_from_start(self, ira, irb):
+        return min(cycle_distance_min(0, p, self.length)
+                   for p in (ira.location.start, ira.location.end, irb.location.start, irb.location.end))
 
 
 def _parts_desc(parts, genes, length):
