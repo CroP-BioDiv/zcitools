@@ -6,9 +6,9 @@ import itertools
 import time
 from concurrent.futures import ThreadPoolExecutor
 try:                 # Run locally, with whole project
-    import common_utils.run_utils as run_utils
+    import common_utils.calc_utils as calc_utils
 except ImportError:  # Run standalone, on server
-    import run_utils
+    import calc_utils
 
 _DEFAULT_EXE_NAME = 'mr_bayes'
 _ENV_VAR = 'MR_BAYES_EXE'
@@ -37,7 +37,7 @@ There are two ways for this script to locate executable to run:
 
 
 def _run_mr_bayes(exe, run_dir, f):
-    run_utils.run_cmd([exe, f], cwd=run_dir)
+    calc_utils.run_cmd([exe, f], cwd=run_dir)
 
 
 def _run_mr_bayes_mpi(exe, run_dir, f, nchains, threads, job_idx):
@@ -46,26 +46,26 @@ def _run_mr_bayes_mpi(exe, run_dir, f, nchains, threads, job_idx):
     threads = min(threads, nchains * 2)
     cmd = ['mpirun', '-np', threads, exe, f]
     # Use logical cores if needed
-    if threads > run_utils.get_num_threads():
+    if threads > calc_utils.get_num_threads():
         cmd.insert(1, '--use-hwthread-cpus')
     # if job_idx:
     #     cmd.insert(1, '--tag-output')
-    run_utils.run_cmd(cmd, cwd=run_dir)
+    calc_utils.run_cmd(cmd, cwd=run_dir)
 
 
 def run(locale=True, threads=None, use_mpi=True):
-    threads = threads or run_utils.get_num_logical_threads()
+    threads = threads or calc_utils.get_num_logical_threads()
     # find_exe(default_exe, env_var, install_instructions, raise_desc)
-    mr_bayes_mpi_exe = run_utils.find_exe(_DEFAULT_EXE_NAME_MPI, _ENV_VAR_MPI, _install_instructions, None) \
+    mr_bayes_mpi_exe = calc_utils.find_exe(_DEFAULT_EXE_NAME_MPI, _ENV_VAR_MPI, _install_instructions, None) \
         if (use_mpi and threads > 1) else None
-    mr_bayes_exe = run_utils.find_exe(_DEFAULT_EXE_NAME, _ENV_VAR, _install_instructions, 'MrBayes')
+    mr_bayes_exe = calc_utils.find_exe(_DEFAULT_EXE_NAME, _ENV_VAR, _install_instructions, 'MrBayes')
     step_dir = os.path.abspath(os.getcwd())  # Store current directory, for zipping after processing is done
 
-    log_run = run_utils.LogRun(
+    log_run = calc_utils.LogRun(
         threads=threads, use_mpi=use_mpi, mr_bayes_exe=mr_bayes_exe, mr_bayes_mpi_exe=mr_bayes_mpi_exe)
 
     # Files to run
-    data_files = run_utils.load_finish_yml()  # dict with attrs: filename, short
+    data_files = calc_utils.load_finish_yml()  # dict with attrs: filename, short
 
     if mr_bayes_mpi_exe:
         if len(data_files) == 1:
@@ -102,8 +102,8 @@ def run(locale=True, threads=None, use_mpi=True):
     # Zip files
     if not locale:
         base_names = [d['result_prefix'] for d in data_files]
-        run_utils.zip_files([f + ext for f, ext in itertools.product(base_names, _OUTPUT_EXTENSIONS)],
-                            cwd=step_dir, skip_missing=True)
+        calc_utils.zip_files([f + ext for f, ext in itertools.product(base_names, _OUTPUT_EXTENSIONS)],
+                             cwd=step_dir, skip_missing=True)
 
     #
     log_run.finish()

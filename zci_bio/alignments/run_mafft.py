@@ -3,9 +3,9 @@
 import os.path
 from concurrent.futures import ThreadPoolExecutor
 try:                 # Run locally, with whole project
-    import common_utils.run_utils as run_utils
+    import common_utils.calc_utils as calc_utils
 except ImportError:  # Run standalone, on server
-    import run_utils
+    import calc_utils
 
 _DEFAULT_EXE_NAME = 'mafft'
 _ENV_VAR = 'MAFFT_EXE'
@@ -31,19 +31,19 @@ def _alignment_file(f):
 
 
 def _run_single(mafft_exe, filename, namelength, output_file, threads):
-    run_utils.run_cmd([mafft_exe, '--maxiterate', 10, '--phylipout', '--namelength', max(10, namelength),
-                       '--thread', threads, filename], output_file=output_file)
+    calc_utils.run_cmd([mafft_exe, '--maxiterate', 10, '--phylipout', '--namelength', max(10, namelength),
+                        '--thread', threads, filename], output_file=output_file)
 
 
 def run(locale=True, threads=None):
     # Note: run from step's directory!!!
-    mafft_exe = run_utils.find_exe(_DEFAULT_EXE_NAME, _ENV_VAR, _install_instructions, 'MAFFT')
-    threads = threads or run_utils.get_num_threads()
-    log_run = run_utils.LogRun(threads=threads)
+    mafft_exe = calc_utils.find_exe(_DEFAULT_EXE_NAME, _ENV_VAR, _install_instructions, 'MAFFT')
+    threads = threads or calc_utils.get_num_threads()
+    log_run = calc_utils.LogRun(threads=threads)
     outputs = []
 
     # Files to run
-    seq_files = run_utils.load_finish_yml()  # dict with attrs: filename, short, max_seq_length
+    seq_files = calc_utils.load_finish_yml()  # dict with attrs: filename, short, max_seq_length
     short_files = sorted((d for d in seq_files if d['short']), key=lambda x: -x['max_seq_length'])
     long_files = sorted((d for d in seq_files if not d['short']), key=lambda x: x['max_seq_length'])
 
@@ -59,7 +59,7 @@ def run(locale=True, threads=None):
 
     # Zip files
     if not locale:
-        run_utils.zip_files(outputs)
+        calc_utils.zip_files(outputs)
 
     #
     log_run.finish()
