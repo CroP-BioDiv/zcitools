@@ -182,8 +182,16 @@ def set_run_instructions(module, step, files_to_zip, instructions):
     inst_f = step.step_file('INSTRUCTIONS.txt')
     write_str_in_file(inst_f, instructions.format(step_name=step.directory, script_name=script_name))
 
+    more_to_zip = [inst_f, run_f]
+
+    # Copy run_utils script
+    if run_module := getattr(module, 'run_utils', None):
+        utils_f = step.step_file(os.path.basename(run_module.__file__))
+        copy_file(run_module.__file__, utils_f)
+        more_to_zip.append(utils_f)
+
     # Zip needed files
-    zip_files(step.step_file('calculate.zip'), files_to_zip + [inst_f, run_f])
+    zip_files(step.step_file('calculate.zip'), files_to_zip + more_to_zip)
 
 
 #

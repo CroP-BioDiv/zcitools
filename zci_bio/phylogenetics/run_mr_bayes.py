@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 
 import os
-import yaml
 import shutil
 # import multiprocessing
 import psutil
@@ -9,8 +8,10 @@ import subprocess
 import itertools
 import time
 from concurrent.futures import ThreadPoolExecutor
-from zipfile import ZipFile
-
+try:                 # Run locally, with whole project
+    import common_utils.run_utils as run_utils
+except ImportError:  # Run standalone, on server
+    import run_utils
 
 _DEFAULT_EXE_NAME = 'mr_bayes'
 _ENV_VAR = 'MR_BAYES_EXE'
@@ -38,17 +39,6 @@ There are two ways for this script to locate executable to run:
 """
 
 
-# Note: it would be good that all scripts accept same format envs
-def _find_exe(default_exe, env_var, to_raise=True):
-    exe = os.getenv(env_var, default_exe)
-    if not shutil.which(exe):
-        print(_install_instructions.format(exe=default_exe, env_var=env_var))
-        if to_raise:
-            raise ValueError(f'No MrBayes installed! Tried {exe}')
-        return
-    return exe
-
-
 def _run_mr_bayes(exe, run_dir, f):
     cmd = [exe, f]
     print(f"Cmd: cd {run_dir}; {' '.join(cmd)}")
@@ -69,17 +59,19 @@ def _run_mr_bayes_mpi(exe, run_dir, f, nchains, threads, job_idx):
 
 
 def run(locale=True, threads=None, use_mpi=True):
-    started = time.time()
     # threads = threads or multiprocessing.cpu_count()
     threads = threads or psutil.cpu_count(logical=True)
-    mr_bayes_mpi_exe = _find_exe(_DEFAULT_EXE_NAME_MPI, _ENV_VAR_MPI, to_raise=False) \
+    # find_exe(default_exe, env_var, install_instructions, raise_desc)
+    mr_bayes_mpi_exe = run_utils.find_exe(_DEFAULT_EXE_NAME_MPI, _ENV_VAR_MPI, _install_instructions, None) \
         if (use_mpi and threads > 1) else None
-    mr_bayes_exe = _find_exe(_DEFAULT_EXE_NAME, _ENV_VAR)
+    mr_bayes_exe = run_utils.find_exe(_DEFAULT_EXE_NAME, _ENV_VAR, _install_instructions, 'MrBayes')
     step_dir = os.path.abspath(os.getcwd())  # Store current directory, for zipping after processing is done
 
+    log_run = run_utils.LogRun(
+        threads=threads, use_mpi=use_mpi, mr_bayes_exe=mr_bayes_exe, mr_bayes_mpi_exe=mr_bayes_mpi_exe)
+
     # Files to run
-    with open('finish.yml', 'r') as r:
-        data_files = yaml.load(r, Loader=yaml.CLoader)  # dict with attrs: filename, short
+    data_files = run_utils.load_finish_yml()  # dict with attrs: filename, short
 
     if mr_bayes_mpi_exe:
         if len(data_files) == 1:
@@ -115,25 +107,12 @@ def run(locale=True, threads=None, use_mpi=True):
 
     # Zip files
     if not locale:
-        os.chdir(step_dir)
-        with ZipFile('output.zip', 'w') as output:
-            for d in data_files:
-                f = d['filename'].replace('.nex', '')
-                for ext in _OUTPUT_EXTENSIONS:
-                    if os.path.isfile(f + ext):
-                        output.write(f + ext)
+        base_names = [d['filename'].replace('.nex', '') for d in data_files]
+        run_utils.zip_files([f + ext for f, ext in itertools.product(base_names, _OUTPUT_EXTENSIONS)],
+                            cwd=step_dir, skip_missing=True)
 
     #
-    lasted = int(time.time() - started)  # Just seconds
-    days = lasted // (24 * 60 * 60)
-    desc = f'{days}d:' if days else ''
-    hours = (rest := (lasted - days * 24 * 60 * 60)) // (60 * 60)
-    desc += f'{hours:02}h:' if desc or hours else ''
-    mins = (rest := (rest - hours * 60 * 60)) // 60
-    desc += f'{mins:02}m:' if desc or mins else ''
-    secs = rest - mins * 60
-    desc += f'{secs:02}s'
-    print(f'Calculation lasted: {desc} ({lasted}s)')
+    log_run.finish()
 
 
 if __name__ == '__main__':

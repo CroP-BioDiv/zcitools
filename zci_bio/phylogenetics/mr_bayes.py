@@ -79,8 +79,8 @@ def _copy_alignment_file(align_step, in_step, files_to_proc, args, partitions_ob
         # Add MrBayes data
         # Printing
         ngen = args.ngen
-        printfreq = str((ngen // 10000) if ngen > 1000000 else (ngen // 1000))  # Of type str
-        printfreq = printfreq[0] + ('0' * (len(printfreq) - 1))        # Round it
+        printfreq = str(max(1, ((ngen // 10000) if ngen > 1000000 else (ngen // 1000))))  # Of type str
+        printfreq = int(printfreq[0] + ('0' * (len(printfreq) - 1)))                      # Round it
         # Burnin
         if args.burnin:
             brn = f'relburnin=no burnin={args.burnin}'
