@@ -1,5 +1,4 @@
 import os
-import re
 import random
 from . import run_mr_bayes
 from zci_bio.phylogenetics.steps import MrBayesStep, MrBayesSteps
@@ -187,6 +186,9 @@ def run_tracer(step, exe_location):
 
 
 def run_consense(step, exe_location):
+    from subprocess import Popen, PIPE
+    from .utils import read_tree, read_trees
+
     exe = find_executable('consense', exe_location)  # First check is there exe
 
     # Find burnin values. Check _copy_alignment_file() method.
@@ -201,17 +203,19 @@ def run_consense(step, exe_location):
         _take_m = lambda _l: _l[int(len(_l) * burninfrac) + 1:]
 
     # Extract trees
-    t_re = re.compile(r'^ *tree gen\.[0-9]')
-    c_input = step.step_file('consense_input.tre')
-    with open(c_input, 'w') as _c_out:
-        for t_file in step.get_t_files():
-            with open(t_file, 'r') as _t:
-                l_trees = [line for line in _t if t_re.search(line)]
-                for line in _take_m(l_trees):
-                    _c_out.write(line)
+    trees = []
+    for t_file in step.get_t_files():
+        print(f'Reading file {t_file}')
+        trees += _take_m(read_trees(t_file, format='nexus'))
 
-    from subprocess import Popen, PIPE
-    # If presented consense will ask for more things :-/
+    o_f = step.step_file('consense_input.tre')
+    print(f'Writting file {o_f}')
+    with open(o_f, 'w') as _c_out:
+        for t in trees:
+            _c_out.write(t.format('newick'))
+
+    # Run consense
+    # Note: If presented consense will ask for more things :-/
     silent_remove_file(outfile := step.step_file('outfile'))
     silent_remove_file(outtree := step.step_file('outtree'))
     p = Popen(exe, stdin=PIPE, stdout=PIPE, close_fds=True, cwd=os.path.abspath(step.directory))
@@ -221,7 +225,7 @@ def run_consense(step, exe_location):
     p.stdin.flush()
     p.communicate()
 
-    # Move file
+    # Move consense output files
     if os.path.isfile(outfile):
         os.rename(outfile, step.step_file('consense_outfile'))
     if os.path.isfile(outtree):
