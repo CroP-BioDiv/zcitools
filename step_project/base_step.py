@@ -172,7 +172,7 @@ class Step:
         return os.path.abspath(self.directory)
 
     def step_file(self, *f):
-        return os.path.join(*self._step_name_list, *f)
+        return os.path.join(self.directory, *f)
 
     def is_file(self, *f):
         return os.path.isfile(self.step_file(*f))
@@ -200,7 +200,7 @@ class Step:
         if matches:
             pattern = re.compile(matches)
             files = [f for f in files if pattern.search(f)]
-        return files
+        return sorted(files)
 
     def step_dir_files(self, *dirs):
         d = self.step_file(*dirs)
@@ -209,7 +209,7 @@ class Step:
         return []
 
     def step_subdirectories(self):
-        return [f for f in os.listdir(self.directory) if os.path.isdir(os.path.join(self.directory, f))]
+        return sorted(f for f in os.listdir(self.directory) if os.path.isdir(os.path.join(self.directory, f)))
 
     def remove_cache_files(self):
         for f in self.step_files():

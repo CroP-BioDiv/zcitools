@@ -1,4 +1,5 @@
 import os.path
+import itertools
 from step_project.base_step import Step, StepCollection
 from common_utils.exceptions import ZCItoolsValueError
 
@@ -57,12 +58,23 @@ class RAxMLSteps(StepCollection):
 
 #
 class MrBayesStep(RAxMLStep):
-    """
-Stores an MrBayes calculation from alignment.
-"""
+    "Stores an MrBayes calculation on alignment."
     _STEP_TYPE = 'mr_bayes'
+
+    def get_p_files(self):
+        return [self.step_file(f) for f in self.step_files(matches=r'.*\.run[12]\.p')]
+
+    def get_t_files(self):
+        return [self.step_file(f) for f in self.step_files(matches=r'.*\.run[12]\.t')]
 
 
 class MrBayesSteps(StepCollection):
+    "Stores more MrBayes calculations on one or more alignments."
     _STEP_TYPE = 'mr_bayes_s'
     _SUBSTEP_CLASS = MrBayesStep
+
+    def get_p_files(self):
+        return list(itertools.chain.from_iterable(s.get_p_files() for s in self.step_objects()))
+
+    def get_t_files(self):
+        return list(itertools.chain.from_iterable(s.get_t_files() for s in self.step_objects()))

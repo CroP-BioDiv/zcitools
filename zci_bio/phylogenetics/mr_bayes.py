@@ -1,12 +1,13 @@
 import os
+import re
 import random
 from . import run_mr_bayes
 from zci_bio.phylogenetics.steps import MrBayesStep, MrBayesSteps
 from common_utils.file_utils import unzip_file, list_zip_files, write_yaml, read_yaml, \
-    run_module_script, set_run_instructions, find_executable
+    run_module_script, set_run_instructions, find_executable, silent_remove_file
 from common_utils.exceptions import ZCItoolsValueError
 
-_RESULT_PREFIX = 'alignment'
+_RESULT_PREFIX = 'result'
 
 _SEED_DATA = """begin mrbayes;
     set seed={seed} swapseed={swapseed};
@@ -41,7 +42,6 @@ begin mrbayes;
 end;
 
 """
-
 
 _instructions = """
 Steps:
@@ -88,7 +88,7 @@ def _copy_alignment_file(align_step, in_step, files_to_proc, args, partitions_ob
         elif (f := args.burninfrac) and 0 <= f < 1:
             brn = f'relburnin=yes burninfrac={f}'
         else:
-            brn = ''
+            brn = ''  # Default is burninfrac=0.25
         # ToDo: Check or set samplefreq?
         params = dict(ngen=ngen, printfreq=printfreq, samplefreq=args.samplefreq, nchains=args.nchains, burnin=brn,
                       filename_prefix=_RESULT_PREFIX)
@@ -180,13 +180,49 @@ def finish_mr_bayes_data(step_obj):
     step_obj.save(create=False)
 
 
+# Helper methods
 def run_tracer(step, exe_location):
     exe = find_executable('tracer', exe_location)  # First check is there exe
-    dirs = [d for d in step.step_subdirectories()
-            if all(step.step_file(d, _RESULT_PREFIX + ext) for ext in ('.run1.p', '.run2.p'))]
-    if len(dirs) != 2:
-        raise ZCItoolsValueError(f'Step has to have 2 runs! {dirs}')
+    os.system(f"{exe} {' '.join(step.get_p_files())}")
 
-    p_files = [step.step_file(dirs[0], _RESULT_PREFIX + ext) for ext in ('.run1.p', '.run2.p')] + \
-        [step.step_file(dirs[1], _RESULT_PREFIX + ext) for ext in ('.run1.p', '.run2.p')]
-    os.system(f"{exe} {' '.join(p_files)}")
+
+def run_consense(step, exe_location):
+    exe = find_executable('consense', exe_location)  # First check is there exe
+
+    # Find burnin values. Check _copy_alignment_file() method.
+    # Note: MrBayes exports also tree on gen 0. That is why index+1 is used.
+    args = step.get_command_args()
+    if (burnin := args['burnin']):
+        _take_m = lambda _l: _l[burnin + 1:]
+    else:
+        burninfrac = args['burninfrac']
+        if burninfrac is None:
+            burninfrac = 0.25  # Default is burninfrac=0.25
+        _take_m = lambda _l: _l[int(len(_l) * burninfrac) + 1:]
+
+    # Extract trees
+    t_re = re.compile(r'^ *tree gen\.[0-9]')
+    c_input = step.step_file('consense_input.tre')
+    with open(c_input, 'w') as _c_out:
+        for t_file in step.get_t_files():
+            with open(t_file, 'r') as _t:
+                l_trees = [line for line in _t if t_re.search(line)]
+                for line in _take_m(l_trees):
+                    _c_out.write(line)
+
+    from subprocess import Popen, PIPE
+    # If presented consense will ask for more things :-/
+    silent_remove_file(outfile := step.step_file('outfile'))
+    silent_remove_file(outtree := step.step_file('outtree'))
+    p = Popen(exe, stdin=PIPE, stdout=PIPE, close_fds=True, cwd=os.path.abspath(step.directory))
+    p.stdin.write(b'consense_input.tre\n')
+    p.stdin.flush()
+    p.stdin.write(b'Y\n')  # sends Enter into process
+    p.stdin.flush()
+    p.communicate()
+
+    # Move file
+    if os.path.isfile(outfile):
+        os.rename(outfile, step.step_file('consense_outfile'))
+    if os.path.isfile(outtree):
+        os.rename(outtree, step.step_file('consense_output.tre'))

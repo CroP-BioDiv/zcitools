@@ -5,6 +5,7 @@ from common_utils.exceptions import ZCItoolsValueError
 class RAxML(CreateStepFromStepCommand):
     _COMMAND = 'raxml'
     _HELP = "Run RAxML on alignment(s)"
+    _COMMAND_GROUP = 'Phylogenetics'
     _STEP_BASE_NAME = 'RAxML'
     _INPUT_STEP_DATA_TYPE = ('alignment', 'alignments')
 
@@ -43,6 +44,7 @@ class RAxML(CreateStepFromStepCommand):
 class MrBayes(RAxML):
     _COMMAND = 'mr_bayes'
     _HELP = "Run MrBayes on alignment(s)"
+    _COMMAND_GROUP = 'Phylogenetics'
     _STEP_BASE_NAME = 'MrBayes'
 
     @staticmethod
@@ -69,16 +71,31 @@ class MrBayes(RAxML):
         finish_mr_bayes_data(step_obj)
 
 
-class RunTracer(ProjectCommand):
-    _COMMAND = 'tracer'
-    _HELP = "Run tracer on MrBayes step with more runs"
+# Helper commands
+class _RunOnMrBayes(ProjectCommand):
+    _COMMAND_GROUP = 'Phylogenetics'
 
     @staticmethod
     def set_arguments(parser):
         parser.add_argument('step', help='Input MrBayes step')
-        parser.add_argument('-e', '--exe-location', help='Location of tracer executable. Dirname or filename')
+        parser.add_argument('-e', '--exe-location', help='Location of executable. Dirname or filename')
+
+
+class RunTracer(_RunOnMrBayes):
+    _COMMAND = 'tracer'
+    _HELP = "Run tracer on MrBayes step"
 
     def run(self):
         from .mr_bayes import run_tracer
-        run_tracer(self.project.read_step(self.args.step, check_data_type='mr_bayes_s', update_mode=False, no_check=True),
+        run_tracer(self.project.read_step(self.args.step, check_data_type=('mr_bayes', 'mr_bayes_s'), no_check=True),
                    self.args.exe_location)
+
+
+class RunConsense(_RunOnMrBayes):
+    _COMMAND = 'consense'
+    _HELP = "Run consense on MrBayes step"
+
+    def run(self):
+        from .mr_bayes import run_consense
+        run_consense(self.project.read_step(self.args.step, check_data_type=('mr_bayes', 'mr_bayes_s'), no_check=True),
+                     self.args.exe_location)
