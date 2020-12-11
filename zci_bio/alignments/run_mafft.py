@@ -1,11 +1,11 @@
 #!/usr/bin/python3
 
-import os
-import yaml
-import shutil
+import os.path
 from concurrent.futures import ThreadPoolExecutor
-import multiprocessing
-from zipfile import ZipFile
+try:                 # Run locally, with whole project
+    import common_utils.run_utils as run_utils
+except ImportError:  # Run standalone, on server
+    import run_utils
 
 _DEFAULT_EXE_NAME = 'mafft'
 _ENV_VAR = 'MAFFT_EXE'
@@ -26,35 +26,24 @@ There are two ways for this script to locate executable to run:
 """
 
 
-# Note: it would be good that all scripts accept same format envs
-def _find_exe(default_exe, env_var):
-    exe = os.getenv(env_var, default_exe)
-    if not shutil.which(exe):
-        print(_install_instructions.format(exe=default_exe, env_var=env_var))
-        raise ValueError(f'No MAFFT installed! Tried {exe}')
-    return exe
-
-
 def _alignment_file(f):
     return os.path.join(os.path.dirname(f), 'alignment.phy')
 
 
 def _run_single(mafft_exe, filename, namelength, output_file, threads):
-    cmd = f"{mafft_exe} --maxiterate 10 --phylipout --namelength {max(10, namelength)} " + \
-        f"--thread {threads} {filename} > {output_file}"
-    print(f"Command: {cmd}")
-    os.system(cmd)
+    run_utils.run_cmd([mafft_exe, '--maxiterate', 10, '--phylipout', '--namelength', max(10, namelength),
+                       '--thread', threads, filename], output_file=output_file)
 
 
 def run(locale=True, threads=None):
     # Note: run from step's directory!!!
-    mafft_exe = _find_exe(_DEFAULT_EXE_NAME, _ENV_VAR)
-    threads = threads or multiprocessing.cpu_count()
+    mafft_exe = run_utils.find_exe(_DEFAULT_EXE_NAME, _ENV_VAR, _install_instructions, 'MAFFT')
+    threads = threads or run_utils.get_num_threads()
+    log_run = run_utils.LogRun(threads=threads)
     outputs = []
 
     # Files to run
-    with open('finish.yml', 'r') as r:
-        seq_files = yaml.load(r, Loader=yaml.CLoader)  # dict with attrs: filename, short, max_seq_length
+    seq_files = run_utils.load_finish_yml()  # dict with attrs: filename, short, max_seq_length
     short_files = sorted((d for d in seq_files if d['short']), key=lambda x: -x['max_seq_length'])
     long_files = sorted((d for d in seq_files if not d['short']), key=lambda x: x['max_seq_length'])
 
@@ -70,9 +59,10 @@ def run(locale=True, threads=None):
 
     # Zip files
     if not locale:
-        with ZipFile('output.zip', 'w') as output:
-            for f in outputs:
-                output.write(f)
+        run_utils.zip_files(outputs)
+
+    #
+    log_run.finish()
 
 
 if __name__ == '__main__':

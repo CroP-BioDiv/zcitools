@@ -96,7 +96,8 @@ def _copy_alignment_file(align_step, in_step, files_to_proc, args, partitions_ob
         else:
             output.write(_NEXUS_DATA.format(**params))
 
-    files_to_proc.append(dict(filename=a_f, short=align_step.is_short(), nchains=args.nchains))
+    files_to_proc.append(dict(filename=a_f, result_prefix=in_step.step_file(_RESULT_PREFIX),
+                              short=align_step.is_short(), nchains=args.nchains))
 
 
 def create_mr_bayes_data(step_data, alignment_step, args, partitions_obj, run_threads):
@@ -138,6 +139,7 @@ def create_mr_bayes_data(step_data, alignment_step, args, partitions_obj, run_th
     # Remove step directory from files since run script is called from step directory
     for d in files_to_proc:
         d['filename'] = step.strip_step_dir(d['filename'])
+        d['result_prefix'] = step.strip_step_dir(d['result_prefix'])
     finish_f = step.step_file('finish.yml')
     write_yaml(files_to_proc, finish_f)
 

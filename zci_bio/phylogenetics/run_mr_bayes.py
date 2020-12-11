@@ -2,9 +2,6 @@
 
 import os
 import shutil
-# import multiprocessing
-import psutil
-import subprocess
 import itertools
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -40,27 +37,24 @@ There are two ways for this script to locate executable to run:
 
 
 def _run_mr_bayes(exe, run_dir, f):
-    cmd = [exe, f]
-    print(f"Cmd: cd {run_dir}; {' '.join(cmd)}")
-    subprocess.run(cmd, cwd=run_dir)  # , stdout=subprocess.DEVNULL)
+    run_utils.run_cmd([exe, f], cwd=run_dir)
 
 
 def _run_mr_bayes_mpi(exe, run_dir, f, nchains, threads, job_idx):
     # There must be at least as many chains as MPI processors
     # Chain consists of two chains :-)
     threads = min(threads, nchains * 2)
-    cmd = ['mpirun', '-np', str(threads), exe, f]
+    cmd = ['mpirun', '-np', threads, exe, f]
     # Use logical cores if needed
-    if threads > psutil.cpu_count(logical=False):
+    if threads > run_utils.get_num_threads():
         cmd.insert(1, '--use-hwthread-cpus')
     # if job_idx:
     #     cmd.insert(1, '--tag-output')
-    subprocess.run(cmd, cwd=run_dir)  # , stdout=subprocess.DEVNULL)
+    run_utils.run_cmd(cmd, cwd=run_dir)
 
 
 def run(locale=True, threads=None, use_mpi=True):
-    # threads = threads or multiprocessing.cpu_count()
-    threads = threads or psutil.cpu_count(logical=True)
+    threads = threads or run_utils.get_num_logical_threads()
     # find_exe(default_exe, env_var, install_instructions, raise_desc)
     mr_bayes_mpi_exe = run_utils.find_exe(_DEFAULT_EXE_NAME_MPI, _ENV_VAR_MPI, _install_instructions, None) \
         if (use_mpi and threads > 1) else None
@@ -107,7 +101,7 @@ def run(locale=True, threads=None, use_mpi=True):
 
     # Zip files
     if not locale:
-        base_names = [d['filename'].replace('.nex', '') for d in data_files]
+        base_names = [d['result_prefix'] for d in data_files]
         run_utils.zip_files([f + ext for f, ext in itertools.product(base_names, _OUTPUT_EXTENSIONS)],
                             cwd=step_dir, skip_missing=True)
 

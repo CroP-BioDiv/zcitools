@@ -2,6 +2,8 @@ import os
 import shutil
 import datetime
 import yaml
+import multiprocessing
+import subprocess
 from zipfile import ZipFile
 
 _TIMERUN_FILENAME = 'run_info.txt'
@@ -48,9 +50,35 @@ def find_exe(default_exe, env_var, install_instructions, raise_desc):
     return exe
 
 
+def get_num_threads():
+    return multiprocessing.cpu_count()
+
+
+def get_num_logical_threads():
+    try:
+        import psutil
+        return psutil.cpu_count(logical=True)
+    except ImportError:
+        return max(1, (get_num_threads() // 2))
+
+
 def load_finish_yml():
     with open('finish.yml', 'r') as r:
         return yaml.load(r, Loader=yaml.CLoader)
+
+
+def run_cmd(cmd, cwd=None, output_file=None):
+    cmd = [str(x) for x in cmd]  # Fix arguments
+
+    # Print
+    print(f"Cmd: {f'cd {cwd}; ' if cwd else ''}{' '.join(cmd)}{f' > {output_file}' if output_file else ''}")
+
+    # Run
+    if output_file:
+        with open(output_file, 'w') as _out:
+            subprocess.run(cmd, cwd=cwd, stdout=_out)
+    else:
+        subprocess.run(cmd, cwd=cwd)
 
 
 def zip_files(files, cwd=None, zip_filename='output.zip', skip_missing=False):
