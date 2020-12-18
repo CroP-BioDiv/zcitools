@@ -144,8 +144,7 @@ def orient_chloroplast_parts_by_data(seq_rec, orientation, starts=None, partitio
     if 'ssc' in orientation:  # SSC
         parts['ssc'] = parts['ssc'].reverse_complement()
     if 'ira' in orientation:  # IRs
-        parts['ira'] = parts['ira'].reverse_complement()
-        parts['irb'] = parts['irb'].reverse_complement()
+        parts['ira'], parts['irb'] = parts['irb'].reverse_complement(), parts['ira'].reverse_complement()
 
     new_seq = parts['lsc'] + parts['ira'] + parts['ssc'] + parts['irb']
     assert len(seq_rec.seq) == len(new_seq.seq), \

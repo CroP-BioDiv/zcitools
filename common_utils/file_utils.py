@@ -184,8 +184,8 @@ def set_run_instructions(module, step, files_to_zip, instructions):
 
     more_to_zip = [inst_f, run_f]
 
-    # Copy calc_utils script
-    if run_module := getattr(module, 'calc_utils', None):
+    # Copy exec_utils script
+    if run_module := getattr(module, 'exec_utils', None):
         utils_f = step.step_file(os.path.basename(run_module.__file__))
         copy_file(run_module.__file__, utils_f)
         more_to_zip.append(utils_f)

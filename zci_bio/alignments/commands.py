@@ -24,7 +24,7 @@ class AlignGenomes(CreateStepFromStepCommand):
         parser.add_argument(
             '-w', '--whole-partition', choices=['gene', 'CDS'],
             help='For whole alignment which set partition type to use. Values: gene, CDS.')
-        parser.add_argument('-r', '--run', action='store_true', help='Run Clustal Omega locale')
+        parser.add_argument('-r', '--run', action='store_true', help='Run alignment locale')
 
     def step_base_name(self):
         return self._format_step_name(self._STEP_NAMES[self.args.alignment_program])

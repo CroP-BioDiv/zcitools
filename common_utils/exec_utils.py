@@ -24,9 +24,11 @@ class LogRun:
         lasted = int(ended.timestamp() - self.started)  # Just seconds
         days = lasted // (24 * 60 * 60)
         desc = f'{days}d:' if days else ''
-        hours = (rest := (lasted - days * 24 * 3600)) // 3600
+        rest = lasted - days * 24 * 3600
+        hours = rest // 3600
         desc += f'{hours:02}h:' if desc or hours else ''
-        mins = (rest := (rest - hours * 3600)) // 60
+        rest -= hours * 3600
+        mins = rest // 60
         desc += f'{mins:02}m:' if desc or mins else ''
         secs = rest - mins * 60
         desc += f'{secs:02}s'
