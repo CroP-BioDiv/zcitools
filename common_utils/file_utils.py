@@ -3,7 +3,7 @@ import errno
 import sys
 import shutil
 import yaml
-from zipfile import ZipFile, ZIP_BZIP2
+from zipfile import ZipFile, ZIP_DEFLATED
 
 # Settings
 settings_defaults = dict(
@@ -137,8 +137,9 @@ def extract_from_zip(zip_f, zip_filename, output_filename):
 
 
 def zip_files(output_filename, files):
-    with ZipFile(output_filename, 'w', compression=ZIP_BZIP2) as _zip:
+    with ZipFile(output_filename, 'w', compression=ZIP_DEFLATED) as _zip:
         for f in files:
+            assert os.path.isfile(f), f
             _zip.write(f)
 
 

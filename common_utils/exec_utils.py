@@ -83,7 +83,7 @@ def run_cmd(cmd, cwd=None, output_file=None):
         subprocess.run(cmd, cwd=cwd)
 
 
-def zip_files(files, cwd=None, zip_filename='output.zip', skip_missing=False):
+def zip_output(files, cwd=None, zip_filename='output.zip', skip_missing=False):
     if cwd:
         os.chdir(cwd)
 
@@ -93,3 +93,5 @@ def zip_files(files, cwd=None, zip_filename='output.zip', skip_missing=False):
                 output.write(f_name)
             elif not skip_missing:
                 raise ValueError(f'File {f_name} is missing!')
+        if os.path.isfile(_TIMERUN_FILENAME):
+            output.write(_TIMERUN_FILENAME)

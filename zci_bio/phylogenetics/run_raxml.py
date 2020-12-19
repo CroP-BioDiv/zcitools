@@ -1,12 +1,11 @@
 #!/usr/bin/python3
 
 import os
-import yaml
-import shutil
-import subprocess
 from concurrent.futures import ThreadPoolExecutor
-import multiprocessing
-from zipfile import ZipFile
+try:                 # Run locally, with whole project
+    import common_utils.exec_utils as exec_utils
+except ImportError:  # Run standalone, on server
+    import exec_utils
 
 
 _DEFAULT_EXE_NAME = 'raxml_threads'  # probably raxmlHPC-PTHREADS-AVX2
@@ -39,31 +38,21 @@ There are two ways for this script to locate executable to run:
 """
 
 
-# Note: it would be good that all scripts accept same format envs
-def _find_exe(default_exe, env_var):
-    exe = os.getenv(env_var, default_exe)
-    if not shutil.which(exe):
-        print(_install_instructions.format(exe=default_exe, env_var=env_var))
-        raise ValueError(f'No RAxML installed! Tried {exe}')
-    return exe
-
-
 def _run(exe, run_dir, input_file, seed, threads):
     _ps = os.path.isfile(os.path.join(run_dir, 'partitions.ind'))
     cmd = [exe, '-s', input_file, '-T', str(threads), '-x', str(seed), '-p', str(seed)] + \
         (_ps_args if _ps else []) + \
         _stat_args
-    print(f"Cmd: cd {run_dir}; {' '.join(cmd)}")
-    subprocess.run(cmd, cwd=run_dir)  # , stdout=subprocess.DEVNULL)
+    exec_utils.run_cmd(cmd, cwd=run_dir)
 
 
 def run(locale=True, threads=None):
-    raxml_exe = _find_exe(_DEFAULT_EXE_NAME, _ENV_VAR)
-    threads = threads or multiprocessing.cpu_count()
+    raxml_exe = exec_utils.find_exe(_DEFAULT_EXE_NAME, _ENV_VAR, _install_instructions, 'RAxML')
+    threads = threads or exec_utils.get_num_logical_threads()
+    log_run = exec_utils.LogRun(threads=threads, use_mpi=use_mpi, raxml_exe=raxml_exe)
 
     # Files to run
-    with open('finish.yml', 'r') as r:
-        data_files = yaml.load(r, Loader=yaml.CLoader)  # dict with attrs: filename, short
+    data_files = exec_utils.load_finish_yml()  # dict with attrs: filename, short
     short_files = sorted((d for d in data_files if d['short']), key=lambda x: -x['length'])
     long_files = sorted((d for d in data_files if not d['short']), key=lambda x: x['length'])
 
@@ -78,13 +67,12 @@ def run(locale=True, threads=None):
             _dir, f = os.path.split(d['filename'])
             _run(raxml_exe, os.path.abspath(_dir), f, d['seed'], threads)
 
+    log_run.finish()  # Creates run_info.txt file
+
     # Zip files
     if not locale:
-        with ZipFile('output.zip', 'w') as output:
-            for f in data_files:
-                d = os.path.dirname(f['filename'])
-                for x in _OUTPUT_FILES:
-                    output.write(os.path.join(d, x))
+        dirs = [os.path.dirname(f['filename']) for f in data_files]
+        exec_utils.zip_output([os.path.join(d, x) for d, x in itertools.product(dirs, _OUTPUT_FILES)])
 
 
 if __name__ == '__main__':

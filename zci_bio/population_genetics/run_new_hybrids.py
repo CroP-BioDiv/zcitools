@@ -6,7 +6,7 @@ import yaml
 import subprocess
 from concurrent.futures import ThreadPoolExecutor
 import multiprocessing
-from zipfile import ZipFile, ZIP_BZIP2
+from zipfile import ZipFile, ZIP_DEFLATED
 
 
 _DEFAULT_EXE_NAME = 'newhybrids-no-gui-linux.exe'
@@ -96,7 +96,7 @@ def run(locale=True, threads=None):
 
     # Zip files
     if not locale:
-        with ZipFile('output.zip', 'w', compression=ZIP_BZIP2) as output:
+        with ZipFile('output.zip', 'w', compression=ZIP_DEFLATED) as output:
             for f in output_files:
                 output.write(f)
 

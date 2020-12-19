@@ -1,5 +1,5 @@
 import os
-from zipfile import ZipFile, ZIP_BZIP2
+from zipfile import ZipFile, ZIP_DEFLATED
 from .file_utils import ensure_directory, silent_remove
 from .exceptions import ZCItoolsValueError
 
@@ -72,7 +72,7 @@ class CommonDB:
     def set_record(self, record_ident, *step_files, force=False, info=False):
         rec_filename = self._check_set_record(record_ident, force=force, info=info)
         if rec_filename:
-            with ZipFile(rec_filename, mode='w', compression=ZIP_BZIP2) as zip_f:
+            with ZipFile(rec_filename, mode='w', compression=ZIP_DEFLATED) as zip_f:
                 for f in step_files:
                     if os.path.isfile(f):
                         self._save_file(zip_f, f)
@@ -84,7 +84,7 @@ class CommonDB:
     def set_record_from_stream(self, record_ident, data, arcname, force=False, info=False):
         rec_filename = self._check_set_record(record_ident, force=force, info=info)
         if rec_filename:
-            with ZipFile(rec_filename, mode='w', compression=ZIP_BZIP2) as zip_f:
+            with ZipFile(rec_filename, mode='w', compression=ZIP_DEFLATED) as zip_f:
                 zip_f.writestr(arcname, data)
 
     # Get record data

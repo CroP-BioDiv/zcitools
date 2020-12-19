@@ -99,14 +99,13 @@ def run(locale=True, threads=None, use_mpi=True):
                 _dir, f = os.path.split(d['filename'])
                 executor.submit(_run_mr_bayes, mr_bayes_exe, os.path.abspath(_dir), f)
 
+    log_run.finish()  # Creates run_info.txt file
+
     # Zip files
     if not locale:
         base_names = [d['result_prefix'] for d in data_files]
-        exec_utils.zip_files([f + ext for f, ext in itertools.product(base_names, _OUTPUT_EXTENSIONS)],
-                             cwd=step_dir, skip_missing=True)
-
-    #
-    log_run.finish()
+        exec_utils.zip_output([f + ext for f, ext in itertools.product(base_names, _OUTPUT_EXTENSIONS)],
+                              cwd=step_dir, skip_missing=True)
 
 
 if __name__ == '__main__':

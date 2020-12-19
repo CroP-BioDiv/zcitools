@@ -57,12 +57,11 @@ def run(locale=True, threads=None):
         outputs.append(_alignment_file(d['filename']))
         _run_single(mafft_exe, d['filename'], d['namelength'], outputs[-1], threads)
 
+    log_run.finish()  # Creates run_info.txt file
+
     # Zip files
     if not locale:
-        exec_utils.zip_files(outputs)
-
-    #
-    log_run.finish()
+        exec_utils.zip_output(outputs)
 
 
 if __name__ == '__main__':
