@@ -10,6 +10,7 @@ settings_defaults = dict(
     ps_viewer='evince',
     image_viewer='gpicview',
     email=None,
+    workflow=None,
 )
 
 

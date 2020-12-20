@@ -30,9 +30,11 @@ def _format_commands(commands_map, group, filter_m):
 
 
 class RunCommand:
-    def __init__(self, registered_commands=None, registered_steps=None):
+    def __init__(self, registered_commands=None, registered_steps=None, registered_workflows=None):
         self.commands_map = dict()  # command -> command class that processes it
         self.steps_map = dict()
+        self.workflows_map = dict()
+
         # Add common commands and step types
         self.register_commands(common_commands)
         self.register_steps(common_steps)
@@ -41,6 +43,8 @@ class RunCommand:
             self.register_commands(registered_commands)
         if registered_steps:
             self.register_steps(registered_steps)
+        if registered_workflows:
+            self.register_workflows(registered_workflows)
 
     def register_commands(self, command_classes):
         for command_cls in command_classes:
@@ -57,6 +61,14 @@ class RunCommand:
                 raise ZCItoolsValueError(
                     f"Step {s_type} already registerd ({self.steps_map[s_type].__class__.__name__})!")
             self.steps_map[s_type] = step_cls
+
+    def register_workflows(self, workflow_classes):
+        for w_cls in workflow_classes:
+            wf = w_cls._WORKFLOW
+            if wf in self.workflows_map:
+                raise ZCItoolsValueError(
+                    f"Workflow {wf} already registerd ({self.workflows_map[wf].__class__.__name__})!")
+            self.workflows_map[wf] = w_cls
 
     #
     def run(self):

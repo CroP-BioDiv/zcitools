@@ -1,6 +1,7 @@
 # Note: importing is done in run() methods to prevent crashes because of not used missing libraries!
 from types import SimpleNamespace
 from step_project.base_commands import ProjectCommand, NonProjectCommand
+from common_utils.exceptions import ZCItoolsValueError
 
 
 class InitProject(NonProjectCommand):
@@ -11,10 +12,14 @@ class InitProject(NonProjectCommand):
     def set_arguments(parser):
         parser.add_argument('dirname', help='Directory name')
         parser.add_argument('-d', '--description', help='Project description text')
+        parser.add_argument('-w', '--workflow', help="Set project's workflow")
 
     def run(self):
         from ..init_project import init_project
-        init_project(self.args.dirname, self.args.description)
+        a = self.args
+        if a.workflow and a.workflow not in self.project.workflows_map:
+            raise ZCItoolsValueError(f"Workflow {a.workflow} doesn't exist!")
+        init_project(a.dirname, a.description, a.workflow)
 
 
 class Unfinish(ProjectCommand):
