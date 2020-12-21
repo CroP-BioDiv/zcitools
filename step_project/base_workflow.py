@@ -91,7 +91,7 @@ class BaseWorkflow:
         s_status = self.steps_status()
         re_run = True
         actions = self.actions()
-        to_finish = []
+        to_finish = set()
         while re_run:
             re_run = False
             for action in actions:
@@ -104,7 +104,7 @@ class BaseWorkflow:
                         s_status[sn] = 'completed' \
                             if self.project.read_step(sn, no_check=True).is_completed() else 'in_process'
                 if s_status[sn] == 'in_process':
-                    to_finish.append(sn)
+                    to_finish.add(sn)
         if to_finish:
             print(f"""
 There are steps to finish!
@@ -113,14 +113,13 @@ Check for INSTRUCTION.txt and calculate.zip in steps:
 """)
 
     def cmd_graph(self):
-        # "dashed", "dotted", "solid", "invis" and "bold"
-        styles = dict(not_in='dotted', completed='solid', in_process='dashed')
+        styles = dict(not_in='dotted', completed='solid', in_process='dashedg')
+        status = self.steps_status()
         nodes = []
         edges = []
-        status = self.steps_status()
         for a in self.actions():
             sn = a.step_name
             nodes.append((sn, dict(label=sn, style=styles[status[sn]])))
-            edges.extend((p, a.step_name, a.command) for p in a.prev_steps)
+            edges.extend((p, sn, a.command) for p in a.prev_steps)
 
         create_graph_from_data(nodes, edges, 'workflow_graph')

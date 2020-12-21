@@ -91,6 +91,18 @@ class CommonDB:
     def has_record(self, record_ident):
         return self._dir_exists and os.path.isfile(self.get_record_filename(record_ident))
 
+    def get_all_record_ident(self, startswith=None):
+        n = len(self.db_dir) + 1
+        for root, subdirs, files in os.walk(self.db_dir):
+            if (r := root[n:]):
+                rel_dir = os.path.split(r)
+            else:
+                rel_dir = tuple()
+            if startswith:
+                yield from (rel_dir + (f,) for f in files if f.startswith(startswith))
+            else:
+                yield from (rel_dir + (f,) for f in files)
+
     def _get_zip_data(self, record_ident):
         # Returns tuple (filename, data) of a record.
         zip_filename = self.get_record_filename(record_ident)
@@ -123,6 +135,10 @@ class CommonDB:
     def get_record_data(self, record_ident):
         for _, _, data in self._get_zip_data(record_ident):
             return data
+
+    def get_record_str(self, record_ident):
+        if (d := self.get_record_data(record_ident)):
+            return d.decode()
 
     def get_one_file(self, record_ident):
         files = list(self._get_zip_data(record_ident))
