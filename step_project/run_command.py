@@ -1,8 +1,8 @@
-import os.path
+import os
 import sys
 import argparse
 from collections import defaultdict
-from common_utils.file_utils import write_yaml, read_yaml
+from common_utils.file_utils import write_yaml, read_yaml, get_settings
 from common_utils.exceptions import ZCItoolsValueError
 from .common import registered_commands as common_commands, registered_steps as common_steps
 
@@ -71,6 +71,22 @@ class RunCommand:
             self.workflows_map[wf] = w_cls
 
     #
+    def get_workflow_cls(self, wf):
+        if not (w_cls := self.workflows_map.get(wf)):
+            raise ZCItoolsValueError(f"Workflow {wf} doesn't have defined class!")
+        return w_cls
+
+    def get_workflow_obj(self, wf, w_pars):
+        w_cls = self.get_workflow_cls(wf)
+        return w_cls(self, w_pars)
+
+    def get_workflow(self):
+        settings = get_settings()
+        if not (wf := settings.get('workflow')):
+            raise ZCItoolsValueError("Project doesn't have defined workflow!")
+        return self.get_workflow_obj(wf, settings.get('workflow_parameters'))
+
+    #
     def run(self):
         # Read command line parameters
         if len(sys.argv) == 1 or sys.argv[1].lower() == 'help':
@@ -103,6 +119,15 @@ class RunCommand:
 
         parser = self._get_parser(command, False)
         return self._run_command(command, parser.parse_args())
+
+    def run_command_with_args(self, *args):
+        command = args[0].lower()
+        if command not in self.commands_map:
+            raise ZCItoolsValueError(f'Command "{command}" is not supported!')
+
+        parser = self._get_parser(command, False)
+        print(f"Run: {' '.join(args)}")
+        return self._run_command(command, parser.parse_args(args))
 
     def _run_command(self, command, args):
         self._args = args  # Store commands args
@@ -172,6 +197,7 @@ class RunCommand:
         if command_cls._COMMAND_TYPE in ('new_step', 'new_steps'):
             parser.add_argument('-N', '--step-num', type=int, help='Step num prefix')
             parser.add_argument('-D', '--step-description', help='Step description')
+            parser.add_argument('--fixed-name', help='Set fixed name')
             parser.add_argument('--no-data-check', action='store_true', help=f'Do not check step data on loading.')
         command_cls.set_arguments(parser)
         return parser
@@ -185,6 +211,9 @@ class RunCommand:
 
     def new_step_name(self, command_obj, args):
         # Find step name. Format <num>_<step_base_name>[_<description>]
+        if args.fixed_name:
+            return args.fixed_name
+
         prev_steps = command_obj.prev_steps()
 
         if command_obj._PRESENTATION:
@@ -264,3 +293,12 @@ class RunCommand:
                     return step
                 next_prev.extend(step.get_prev_steps())
             prev_steps = next_prev
+
+    #
+    def get_step_dirs(self):
+        return (d for d in os.listdir('.')
+                if os.path.isdir(d) and os.path.isfile(os.path.join(d, 'description.yml')))
+
+    def get_steps(self):
+        for step_name in self.get_step_dirs():
+            yield self.read_step(step_name, no_check=True)

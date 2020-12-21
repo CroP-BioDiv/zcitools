@@ -1,5 +1,6 @@
 import os.path
 from common_utils.file_utils import settings_defaults, ensure_directory, write_yaml
+from common_utils.exceptions import ZCItoolsValueError
 
 _readme = """
 Tools description:
@@ -14,7 +15,7 @@ zcit workflow <command> <args>
 """
 
 
-def init_project(dirname, project_desc, workflow):
+def init_project(project, dirname, project_desc, workflow, workflow_parameters):
     if os.path.isfile('project_log.yml'):
         print(f'Warning: init project called on existing project!')
         print(f'Warning: project {dirname} was not created!')
@@ -23,7 +24,16 @@ def init_project(dirname, project_desc, workflow):
         # Add setting file
         settings = dict(settings_defaults)
         if workflow:
+            if workflow_parameters:
+                w_pars = dict(x.split('=') for x in workflow_parameters.split(';'))
+            else:
+                w_pars = dict()
+            wf_cls = project.get_workflow_cls(workflow)
+            if (not_in := [p for p in wf_cls.required_parameters() if p not in w_pars]):
+                raise ZCItoolsValueError(f"Workflow's parameters not specified: {', '.join(not_in)}!")
+
             settings['workflow'] = workflow
+            settings['workflow_parameters'] = w_pars
         write_yaml(settings, os.path.join(dirname, 'settings.yml'))
 
         # Create empty project.log file

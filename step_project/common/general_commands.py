@@ -1,7 +1,6 @@
 # Note: importing is done in run() methods to prevent crashes because of not used missing libraries!
 from types import SimpleNamespace
 from step_project.base_commands import ProjectCommand, NonProjectCommand
-from common_utils.exceptions import ZCItoolsValueError
 
 
 class InitProject(NonProjectCommand):
@@ -13,13 +12,13 @@ class InitProject(NonProjectCommand):
         parser.add_argument('dirname', help='Directory name')
         parser.add_argument('-d', '--description', help='Project description text')
         parser.add_argument('-w', '--workflow', help="Set project's workflow")
+        parser.add_argument('-p', '--workflow-parameters', default='',
+                            help="Workflow's parameters. Format: name1=value1;name2=value2;...")
 
     def run(self):
         from ..init_project import init_project
         a = self.args
-        if a.workflow and a.workflow not in self.project.workflows_map:
-            raise ZCItoolsValueError(f"Workflow {a.workflow} doesn't exist!")
-        init_project(a.dirname, a.description, a.workflow)
+        init_project(self.project, a.dirname, a.description, a.workflow, a.workflow_parameters)
 
 
 class Unfinish(ProjectCommand):
@@ -103,3 +102,19 @@ class Show(ProjectCommand):
     def run(self):
         step = self.project.read_step(self.args.step)
         step.show_data(params=self.args.params)
+
+
+#
+class Workflow(ProjectCommand):
+    _COMMAND = 'workflow'
+    _HELP = "Execute workflow command"
+    _WF_COMMANDS = ('run', 'graph')
+
+    @staticmethod
+    def set_arguments(parser):
+        from ..base_workflow import BaseWorkflow
+        parser.add_argument('command', choices=BaseWorkflow.all_commands(), help='Command to execute')
+        # parser.add_argument('params', nargs='*', help='Additional format option (free format, depends on step type)')
+
+    def run(self):
+        self.project.get_workflow().run_command(self.args.command)

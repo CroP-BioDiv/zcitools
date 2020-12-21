@@ -10,5 +10,5 @@ class Graph(ProjectCommand):
         pass
 
     def run(self):
-        from .project_graph import create_graph
-        create_graph(self.project)
+        from .project_graph import create_project_graph
+        create_project_graph(self.project)

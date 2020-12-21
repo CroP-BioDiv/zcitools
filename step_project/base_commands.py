@@ -1,5 +1,6 @@
 import os.path
 from common_utils.common_db import CommonDB
+from common_utils.exceptions import ZCItoolsValueError
 
 """
 Command classes, called from zcit script.
@@ -96,6 +97,19 @@ class NonProjectCommand(_Command):
     _PROJECT_COMMAND = False
 
 
+class _InputStepMixin:
+    _INPUT_STEP_DATA_TYPE = None
+
+    def _input_step(self, no_data_check=False):
+        assert self._INPUT_STEP_DATA_TYPE
+        a = self.args
+        step = self.project.read_step(
+            a.step, check_data_type=self._INPUT_STEP_DATA_TYPE, no_check=(no_data_check or a.no_data_check))
+        if not step.is_completed():
+            raise ZCItoolsValueError(f"Input step {a.step} is not completed!")
+        return step
+
+
 # Create one step commands
 class CreateStepCommand(ProjectCommand):
     _COMMAND_TYPE = 'new_step'
@@ -118,9 +132,8 @@ class CreateStepCommand(ProjectCommand):
         pass
 
 
-class CreateStepFromStepCommand(CreateStepCommand):
+class CreateStepFromStepCommand(CreateStepCommand, _InputStepMixin):
     # Same as above, but assumes one step as input parameter
-    _INPUT_STEP_DATA_TYPE = None
 
     def step_base_name(self):
         return self._format_step_name(super().step_base_name())
@@ -147,12 +160,6 @@ class CreateStepFromStepCommand(CreateStepCommand):
     def _prev_steps(self):
         return [self.args.step]
 
-    def _input_step(self, no_data_check=False):
-        assert self._INPUT_STEP_DATA_TYPE
-        a = self.args
-        return self.project.read_step(
-            a.step, check_data_type=self._INPUT_STEP_DATA_TYPE, no_check=(no_data_check or a.no_data_check))
-
 
 # Create more steps commands
 class CreateStepsCommand(ProjectCommand):
@@ -173,9 +180,7 @@ class CreateStepsCommand(ProjectCommand):
         raise NotImplementedError(f'Method {self.__class__.__name__}.run(step_data) is not implemented!')
 
 
-class CreateStepsFromStepCommand(CreateStepsCommand):
-    _INPUT_STEP_DATA_TYPE = None
-
+class CreateStepsFromStepCommand(CreateStepsCommand, _InputStepMixin):
     @staticmethod
     def set_arguments(parser):
         CreateStepsCommand.set_arguments(parser)
@@ -186,9 +191,3 @@ class CreateStepsFromStepCommand(CreateStepsCommand):
 
     def _prev_steps(self):
         return [self.args.step]
-
-    def _input_step(self, no_data_check=False):
-        assert self._INPUT_STEP_DATA_TYPE
-        a = self.args
-        return self.project.read_step(
-            a.step, check_data_type=self._INPUT_STEP_DATA_TYPE, no_check=(no_data_check or a.no_data_check))

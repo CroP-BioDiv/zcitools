@@ -11,6 +11,7 @@ settings_defaults = dict(
     image_viewer='gpicview',
     email=None,
     workflow=None,
+    workflow_parameters=None,
 )
 
 
