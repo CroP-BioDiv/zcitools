@@ -3,7 +3,7 @@ import itertools
 from collections import namedtuple
 from common_utils.exceptions import ZCItoolsValueError
 from common_utils.cache import cache
-from common_utils.file_utils import remove_directory, merge_zip_files
+from common_utils.file_utils import remove_directory, merge_zip_files, write_str_in_file
 from .common.graph.project_graph import create_graph_from_data
 
 
@@ -30,7 +30,7 @@ class WfAction(namedtuple('WfAction', 'step_name, prev_steps, cmd, additional_re
 
 class BaseWorkflow:
     _WORKFLOW = None  # Name of workflow
-    _COMMAND_METHODS = dict(run='cmd_run', graph='cmd_graph', calcs='cmd_calcs')
+    _COMMAND_METHODS = dict(run='cmd_run', graph='cmd_graph', calcs='cmd_calcs', summary='cmd_summary')
 
     def __init__(self, project, parameters):
         self.project = project
@@ -70,6 +70,9 @@ class BaseWorkflow:
         # List of tuples (step_name, cmd, additional_required_steps)
         raise NotImplementedError('')
 
+    def summary(self):
+        raise NotImplementedError('')
+
     #
     @cache
     def all_step_names(self):
@@ -93,6 +96,10 @@ class BaseWorkflow:
             if os.path.isdir(sn) and not os.path.isfile(os.path.join(sn, 'description.yml')):
                 print('Info: removing step with an error:', sn)
                 remove_directory(sn)
+
+    def read_step_if_in(self, step_name):
+        if os.path.isdir(step_name):
+            return self.project.read_step(step_name, no_check=True)
 
     #
     def run_command(self, cmd):
@@ -161,3 +168,9 @@ Check for INSTRUCTION.txt and calculate.zip in step(s):
             print('No pending calculations!')
         else:
             merge_zip_files('calculate_pending.zip', to_zip)
+
+    def cmd_summary(self):
+        text = self.summary()
+        print(text)
+        write_str_in_file('workflow_summary.txt', text)
+

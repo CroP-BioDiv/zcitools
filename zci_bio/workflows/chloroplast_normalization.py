@@ -1,5 +1,6 @@
 from step_project.base_workflow import BaseWorkflow
 from common_utils.cache import cache
+from common_utils.file_utils import read_csv
 
 
 class ChloroplastNormalization(BaseWorkflow):
@@ -66,3 +67,21 @@ class ChloroplastNormalization(BaseWorkflow):
                 ])
 
         return actions
+
+    def summary(self):
+        family = self.parameters['family']
+        outgroup = self.parameters['outgroup']
+        text = ''
+
+        if step := self.read_step_if_in('01_chloroplast_list'):
+            num_acc = sum(int(s != outgroup) for s in step.get_column_values('ncbi_ident'))
+            num_removed = 0
+            if (ss_csv := step.step_file('same_species.csv')):
+                data = read_csv(ss_csv)
+                num_removed = len(data) - len(set(d[0] for d in data))
+            text += f"""
+Number of genomes in NCBI : {num_acc + num_removed}
+Number of genomes to work : {num_acc}
+"""
+
+        return text
