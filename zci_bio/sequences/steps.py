@@ -110,6 +110,11 @@ Each sequence can be stored in one or more files in different formats.
         seq_record = self.get_sequence_record(seq_ident)
         return str(seq_record.seq)
 
+    def get_sequence_filename(self, seq_ident):
+        # Returns existing sequence file.
+        if (fs := self._sequences[seq_ident]):
+            return self.step_file(fs[0])
+
     def get_sequence_file(self, seq_ident, file_type):
         # Returns sequence of given file type
         # First check does it exist

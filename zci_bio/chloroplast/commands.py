@@ -29,6 +29,8 @@ class ChloroplastFixByAnalyse(CreateStepFromStepCommand):
         CreateStepFromStepCommand.set_arguments(parser)
         parser.add_argument('-o', '--keep-offset', default=DEFAULT_KEEP_OFFSET, type=int,
                             help='Do not rotate genome if offset is less than given value.')
+        parser.add_argument('-a', '--fix-all', action='store_true',
+                            help="Force fixing of genomes without annotated revert repeats")
 
     def step_base_name(self):
         m = self.args.method[0].lower()
@@ -57,7 +59,7 @@ class ChloroplastFixByAnalyse(CreateStepFromStepCommand):
         #
         return fix_method(step_data,
                           self._input_step(no_data_check=True),
-                          self.args.keep_offset,
+                          self.args.keep_offset, self.args.fix_all,
                           self.get_common_db_object())
 
 

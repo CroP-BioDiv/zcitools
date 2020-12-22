@@ -183,6 +183,10 @@ Table data is stored in table.csv with header, separator ;, quote character ".
     def index_on_table(self, *columns):
         return IndexOnTable(self.get_column_names(), self.get_rows(), *columns)
 
+    def select(self, columns):  # ToDo: other parts of SELECT statement? where, order
+        idxs = [self.column_index(c) for c in columns]
+        return ([row[i] for i in idxs] for row in self.get_rows())
+
     # Show data
     def show_data(self, params=None):
         if not self.is_completed():

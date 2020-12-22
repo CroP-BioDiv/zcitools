@@ -12,7 +12,7 @@ def _copy_from_origin(step, annotation_step, seq_ident):
     step.add_sequence_file(os.path.basename(an_filename))
 
 
-def fix_by_parts(step_data, analyse_step, keep_offset, sequences_db):
+def fix_by_parts(step_data, analyse_step, keep_offset, force_fix_all, sequences_db):
     step = SequencesStep(analyse_step.project, step_data, remove_data=True)
     analyse_step.propagate_step_name_prefix(step)
     annotation_step = analyse_step.project.find_previous_step_of_type(analyse_step, 'annotations')
@@ -21,8 +21,9 @@ def fix_by_parts(step_data, analyse_step, keep_offset, sequences_db):
     for row in analyse_step.rows_as_dicts():
         seq_ident = row['AccesionNumber']
         if not (starts := row['Part starts']):
-            print(f"Warning: sequence {seq_ident} doesn't have parts!")
-            _copy_from_origin(step, annotation_step, seq_ident)
+            if force_fix_all:
+                print(f"Warning: sequence {seq_ident} doesn't have parts!")
+                _copy_from_origin(step, annotation_step, seq_ident)
             continue
 
         starts = [int(f.strip()) for f in starts.split(',')]
@@ -63,7 +64,7 @@ def fix_by_parts(step_data, analyse_step, keep_offset, sequences_db):
     return step
 
 
-def fix_by_trnF_GAA(step_data, analyse_step, keep_offset, sequences_db):
+def fix_by_trnF_GAA(step_data, analyse_step, keep_offset, force_fix_all, sequences_db):
     step = SequencesStep(analyse_step.project, step_data, remove_data=True)
     analyse_step.propagate_step_name_prefix(step)
     annotation_step = analyse_step.project.find_previous_step_of_type(analyse_step, 'annotations')
@@ -71,8 +72,9 @@ def fix_by_trnF_GAA(step_data, analyse_step, keep_offset, sequences_db):
     for row in analyse_step.rows_as_dicts():
         seq_ident = row['AccesionNumber']
         if (offset := row['trnF-GAA']) in (None, ''):
-            print(f"Warning: sequence {seq_ident} doesn't have trnF-GAA gene!")
-            # _copy_from_origin(step, annotation_step, seq_ident)  # ???
+            if force_fix_all:
+                print(f"Warning: sequence {seq_ident} doesn't have trnF-GAA gene!")
+                _copy_from_origin(step, annotation_step, seq_ident)  # ???
             continue
 
         orientation = row['Orientation']

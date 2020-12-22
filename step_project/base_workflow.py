@@ -2,6 +2,8 @@ import os
 import itertools
 from collections import namedtuple
 from common_utils.exceptions import ZCItoolsValueError
+from common_utils.cache import cache
+from common_utils.file_utils import remove_directory
 from .common.graph.project_graph import create_graph_from_data
 
 
@@ -11,10 +13,6 @@ class WfAction(namedtuple('WfAction', 'step_name, prev_steps, cmd')):
         assert isinstance(step_name, str), step_name
 
         # prev_steps is None, str, or list of string
-        if isinstance(prev_steps, str):
-            prev_steps = [prev_steps]
-        elif not prev_steps:
-            prev_steps = []
         assert isinstance(prev_steps, (list, tuple)), prev_steps
         assert all(isinstance(s, str) for s in prev_steps), prev_steps
 
@@ -43,37 +41,49 @@ class BaseWorkflow:
     def required_parameters():
         raise NotImplementedError('')
 
+    @cache
     def actions(self):
         # Iterator of WfAction objects
-        raise NotImplementedError('')
+        actions = self._actions()  # List of tuples (step_name, cmd (str or list))
+        actions = [(sn, cmd.split() if isinstance(cmd, str) else cmd) for sn, cmd in actions]
+        assert all(isinstance(cmd, (list, tuple)) for _, cmd in actions)
 
-    def _check_actions(self, actions):
-        # Check step names
-        step_names = set(a.step_name for a in actions)
-        prev_names = set(itertools.chain.from_iterable(a.prev_steps for a in actions))
-        if (not_in := (prev_names - step_names)):
-            raise ZCItoolsValueError(f"Worflow prev steps, not in project steps! {', '.join(sorted(not_in))}")
         # Check commands
         commands_map = self.project.commands_map
-        if (not_in := [a.command for a in actions if a.command not in commands_map]):
+        if (not_in := [cmd[0] for _, cmd in actions if cmd[0] not in commands_map]):
             raise ZCItoolsValueError(f"Worflow actions, not existing command(s)! {', '.join(sorted(not_in))}")
-        return actions
+
+        # Check step names
+        step_names = set(sn for sn, _ in actions)
+        return [WfAction(sn, [c for c in cmd if c in step_names], cmd) for sn, cmd in actions]
+
+    def _actions(self):
+        # List of tuples (step_name, cmd)
+        raise NotImplementedError('')
 
     #
-    def all_steps(self):
+    @cache
+    def all_step_names(self):
         return sorted(a.step_name for a in self.actions())
 
     def steps_status(self):
         status = dict()
-        for d in self.all_steps():
+        for d in self.all_step_names():
             if os.path.isdir(d):
                 status[d] = 'completed' if self.project.read_step(d, no_check=True).is_completed() else 'in_process'
             else:
                 status[d] = 'not_in'
         return status
 
+    def _remove_steps_with_error(self):
+        for sn in self.all_step_names():
+            if os.path.isdir(sn) and not os.path.isfile(os.path.join(sn, 'description.yml')):
+                print('Info: removing step with an error:', sn)
+                remove_directory(sn)
+
     #
     def run_command(self, cmd):
+        self._remove_steps_with_error()
         getattr(self, self._COMMAND_METHODS[cmd])()
 
     def cmd_run(self):
@@ -113,13 +123,14 @@ Check for INSTRUCTION.txt and calculate.zip in steps:
 """)
 
     def cmd_graph(self):
-        styles = dict(not_in='dotted', completed='solid', in_process='dashedg')
+        node_styles = dict(not_in='dotted', completed='solid', in_process='dashed')
+        edge_styles = dict(not_in='dotted', completed='solid', in_process='solid')
         status = self.steps_status()
         nodes = []
         edges = []
         for a in self.actions():
             sn = a.step_name
-            nodes.append((sn, dict(label=sn, style=styles[status[sn]])))
-            edges.extend((p, sn, a.command) for p in a.prev_steps)
+            nodes.append((sn, dict(label=sn, style=node_styles[status[sn]])))
+            edges.extend((p, sn, dict(label=a.command, style=edge_styles[status[sn]])) for p in a.prev_steps)
 
         create_graph_from_data(nodes, edges, 'workflow_graph')
