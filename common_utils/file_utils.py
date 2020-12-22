@@ -82,6 +82,7 @@ def link_file(source, dest):
     if sys.platform == "win32":
         shutil.copyfile(source, dest)
     else:
+        source = os.path.relpath(os.path.abspath(source), start=os.path.dirname(dest))
         os.symlink(source, dest)
 
 

@@ -227,6 +227,21 @@ def fetch_chloroplast_list(project, step_data, args):
              _to_date(d['CreateDate']), _to_date(d['UpdateDate']),
              d['Title'], max_taxid]
             for d in data]
+
+        # Add outgroup(s)
+        if outgroups := args.outgroup:
+            data = Entrez().search_summary('nucleotide', term=' OR '.join(f'{o}[Accession]' for o in outgroups))
+            if data:
+                rows.extend([int(d['Gi']), d['Caption'],
+                             int(d['TaxId']), int(d['Length']),
+                             _to_date(d['CreateDate']), _to_date(d['UpdateDate']),
+                             d['Title'], 1] for d in data)
+                fetched = [d['Caption'] for d in data]
+                if not_in := [o for o in outgroups if o not in fetched]:
+                    print('Warning: no data fetched for outgroups:', not_in)
+            else:
+                print('Warning: no data fetched for specified outgroups!', outgroups)
+
         step.set_table_data(rows, columns)
 
     step.save()  # Takes a care about complete status!

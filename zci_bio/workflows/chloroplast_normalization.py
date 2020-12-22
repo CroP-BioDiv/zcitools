@@ -11,8 +11,11 @@ class ChloroplastNormalization(BaseWorkflow):
 
     @cache
     def _actions(self):
+        family = self.parameters['family']
+        outgroup = self.parameters['outgroup']
+
         actions = [
-            ('01_chloroplast_list', f"ncbi_chloroplast_list -f {self.parameters['family']}"),
+            ('01_chloroplast_list', f"ncbi_chloroplast_list -f {family} -o {outgroup}"),
             ('02_seqs', 'fetch_seqs 01_chloroplast_list'),
             ('03_GeSeq', 'ge_seq 02_seqs'),
             ('04_AnalyseChloroplast', 'analyse_chloroplast 03_GeSeq'),
@@ -26,8 +29,6 @@ class ChloroplastNormalization(BaseWorkflow):
             ('oA_02_GeSeq', 'seq_subset 03_GeSeq'),  # All
         ]
 
-        # +n{S|A}_01_seqs  Obrada
-        # +n{S|A}_02_GeSeq GeSeq obrada
         # +n{S|A}_03_MAFFT MAFFT
         # n{S|A}_og_MAFFT MAFFT
         # +-n{S|A}_04_MrBayes_C MrBayes
@@ -36,7 +37,6 @@ class ChloroplastNormalization(BaseWorkflow):
         # +-n{S|A}_04_RAxML_P   RAxML
         # n{S|A}_05_trees Analiza
 
-        # +o{S|A}_02_GeSeq Filtriranje
         # +o{S|A}_03_MAFFT MAFFT
         # o{S|A}_og_MAFFT MAFFT
         # +-o{S|A}_04_MrBayes_C MrBayes
@@ -45,24 +45,24 @@ class ChloroplastNormalization(BaseWorkflow):
         # +-o{S|A}_04_RAxML_P   RAxML
         # o{S|A}_05_trees Analiza
 
-        # for a in ('n', 'o'):
-        #     for b in ('S', 'A'):
-        #         ab = f'{a}{b}'
-        #         s2 = f'{ab}_02_GeSeq'
-        #         s3 = f'{ab}_03_MAFFT'
-        #         s4_b_c = f'{ab}_04_MrBayes_C'
-        #         s4_b_p = f'{ab}_04_MrBayes_P'
-        #         s4_r_c = f'{ab}_04_RAxML_C'
-        #         s4_r_p = f'{ab}_04_RAxML_P'
-        #         phylos = [s4_b_c, s4_b_p, s4_r_c, s4_r_p]
-        #         s5 = f'{ab}_05_trees'
-        #         actions.extend([
-        #             (s3, ['align_genomes', s2]),
-        #             # (s4_b_c, ['mr_bayes', s3, '?']),
-        #             # (s4_b_p, ['mr_bayes', s3, '?']),
-        #             # (s4_r_c, ['raxml', s3, '?']),
-        #             # (s4_r_p, ['raxml', s3, '?']),
-        #             # (s5, ['??'] + phylos),
-        #         ])
+        for a in ('n', 'o'):
+            for b in ('S', 'A'):
+                ab = f'{a}{b}'
+                s2 = f'{ab}_02_GeSeq'
+                s3 = f'{ab}_03_MAFFT'
+                s4_b_c = f'{ab}_04_MrBayes_C'
+                s4_b_p = f'{ab}_04_MrBayes_P'
+                s4_r_c = f'{ab}_04_RAxML_C'
+                s4_r_p = f'{ab}_04_RAxML_P'
+                phylos = [s4_b_c, s4_b_p, s4_r_c, s4_r_p]
+                s5 = f'{ab}_05_trees'
+                actions.extend([
+                    (s3, f'align_genomes {s2} w'),
+                    # (s4_b_c, ['mr_bayes', s3]),  # , '?'
+                    # (s4_b_p, ['mr_bayes', s3]),  # , '?'
+                    # (s4_r_c, ['raxml', s3]),  # , '?'
+                    # (s4_r_p, ['raxml', s3]),  # , '?'
+                    # (s5, ['??'] + phylos),
+                ])
 
         return actions

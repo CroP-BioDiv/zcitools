@@ -88,11 +88,8 @@ class NCBIChloroplastList(CreateStepCommand):
     def set_arguments(parser):
         parser.add_argument('-c', '--csv-filename', help='Filename of downloaded csv data.')
         parser.add_argument('-f', '--family', help='Family (ToDo)')
+        parser.add_argument('-o', '--outgroup', action='append', help='Outgroup(s)')
 
     def run(self, step_data):
         from .fetch_genome_assemblies import fetch_chloroplast_list
         return fetch_chloroplast_list(self.project, step_data, self.args)
-
-    # def finish(self, step_obj):
-    #     from .fetch_genome_assemblies import finish_fetch_genome_assemblies
-    #     finish_fetch_genome_assemblies(step_obj)
