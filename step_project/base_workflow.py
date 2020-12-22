@@ -3,7 +3,7 @@ import itertools
 from collections import namedtuple
 from common_utils.exceptions import ZCItoolsValueError
 from common_utils.cache import cache
-from common_utils.file_utils import remove_directory
+from common_utils.file_utils import remove_directory, merge_zip_files
 from .common.graph.project_graph import create_graph_from_data
 
 
@@ -30,7 +30,7 @@ class WfAction(namedtuple('WfAction', 'step_name, prev_steps, cmd, additional_re
 
 class BaseWorkflow:
     _WORKFLOW = None  # Name of workflow
-    _COMMAND_METHODS = dict(run='cmd_run', graph='cmd_graph')
+    _COMMAND_METHODS = dict(run='cmd_run', graph='cmd_graph', calcs='cmd_calcs')
 
     def __init__(self, project, parameters):
         self.project = project
@@ -148,3 +148,16 @@ Check for INSTRUCTION.txt and calculate.zip in step(s):
             edges.extend((p, sn, dict(label=a.command, style='dotted')) for p in a.additional_reqs)
 
         create_graph_from_data(nodes, edges, 'workflow_graph')
+
+    def cmd_calcs(self):
+        # Collects data from calculate.zip's in unfinished steps
+        to_zip = []
+        for sn in self.all_step_names():
+            if os.path.isdir(sn):
+                step = self.project.read_step(sn, no_check=True)
+                if not step.is_completed() and step.is_file('calculate.zip'):
+                    to_zip.append(step.step_file('calculate.zip'))
+        if not to_zip:
+            print('No pending calculations!')
+        else:
+            merge_zip_files('calculate_pending.zip', to_zip)

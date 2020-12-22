@@ -57,6 +57,23 @@ class Finish(ProjectCommand):
             command_obj.finish(step)
 
 
+class RunAndFinish(ProjectCommand):
+    _COMMAND = 'run_and_finish'
+    _HELP = "Run locally and finish step"
+
+    @staticmethod
+    def set_arguments(parser):
+        parser.add_argument('step', help='Step name')
+
+    def run(self):
+        import subprocess
+        step_name = self.args.step
+        step = self.project.read_step(step_name, no_check=True)  # Set to be in update mode
+        if not step.is_completed():
+            subprocess.run(['python3', step.run_module_name()], cwd=step_name)
+            self.project.run_command_with_args('finish', step_name)
+
+
 class Clean(ProjectCommand):
     _COMMAND = 'clean'
     _HELP = "Remove not needed step data (cache and processed files)"

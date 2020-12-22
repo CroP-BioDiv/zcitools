@@ -214,6 +214,14 @@ class Step:
     def step_subdirectories(self):
         return sorted(f for f in os.listdir(self.directory) if os.path.isdir(os.path.join(self.directory, f)))
 
+    def run_module_name(self):
+        pattern = re.compile(r'run_.*\.py')
+        py_files = [f for f in os.listdir(self.directory) if pattern.search(f)]
+        if len(py_files) == 1:
+            return py_files[0]
+        elif py_files:
+            print(f'Warning: step {self.directory} contains more python run modules!', py_files)
+
     def remove_cache_files(self):
         for f in self.step_files():
             if self._is_cache_file(f):

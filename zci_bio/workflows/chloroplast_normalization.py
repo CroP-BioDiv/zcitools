@@ -60,8 +60,8 @@ class ChloroplastNormalization(BaseWorkflow):
                     (s3, f'align_genomes {s2} w'),
                     # (s4_b_c, ['mr_bayes', s3]),  # , '?'
                     # (s4_b_p, ['mr_bayes', s3]),  # , '?'
-                    # (s4_r_c, ['raxml', s3]),  # , '?'
-                    # (s4_r_p, ['raxml', s3]),  # , '?'
+                    (s4_r_c, f'raxml {s3} -p'),
+                    (s4_r_p, f'raxml {s3} -a {s2}'),
                     # (s5, ['??'] + phylos),
                 ])
 

@@ -156,6 +156,17 @@ def list_zip_files(zip_filename):
         return [z_i.filename for z_i in _zip.infolist() if not z_i.is_dir()]
 
 
+def merge_zip_files(z_name, zip_filenames):
+    if len(zip_filenames) == 1:
+        copy_file(zip_filenames[0], z_name)
+    elif zip_filenames:
+        with ZipFile(z_name, 'w', compression=ZIP_DEFLATED) as _zip:
+            for fname in zip_filenames:
+                zf = ZipFile(fname, 'r')
+                for n in zf.namelist():
+                    _zip.writestr(n, zf.open(n).read())
+
+
 # Fasta file
 def write_fasta(filename, data):
     with open(filename, 'w') as fa:
