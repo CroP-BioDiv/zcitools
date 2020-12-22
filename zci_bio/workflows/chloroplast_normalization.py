@@ -16,11 +16,11 @@ class ChloroplastNormalization(BaseWorkflow):
             ('02_seqs', 'fetch_seqs 01_chloroplast_list'),
             ('03_GeSeq', 'ge_seq 02_seqs'),
             ('04_AnalyseChloroplast', 'analyse_chloroplast 03_GeSeq'),
-            # #
-            # ('nS_01_seq', 'fix_by_analysis parts 04_AnalyseChloroplast'),
-            # ('nA_01_seq', 'fix_by_analysis parts 04_AnalyseChloroplast -a'),
-            # ('nS_02_GeSeq', 'ge_seq nS_01_seq'),
-            # ('nA_02_GeSeq', 'ge_seq nA_01_seq'),
+            #
+            ('nS_01_seq', 'fix_by_analysis parts 04_AnalyseChloroplast'),
+            ('nA_01_seq', 'fix_by_analysis parts 04_AnalyseChloroplast -a'),
+            ('nS_02_GeSeq', 'ge_seq nS_01_seq'),
+            ('nA_02_GeSeq', 'ge_seq nA_01_seq', 'nS_02_GeSeq'),  # Same seqeunces are annotated
             #
             ('oS_02_GeSeq', 'seq_subset 03_GeSeq --analyses-with-irs 04_AnalyseChloroplast'),
             ('oA_02_GeSeq', 'seq_subset 03_GeSeq'),  # All
