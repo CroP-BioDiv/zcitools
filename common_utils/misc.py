@@ -35,15 +35,15 @@ def find_registered(init_filename, package, dir_list=None, exclude_dirs=None):
                 if os.path.isfile(os.path.join(_dir, f, 'commands.py')):
                     r = importlib.import_module(f'.{f}.commands', package=package)
                     commands.extend(c for c in r.__dict__.values() if getattr(c, '_COMMAND', None))
-                else:
-                    print(f"Warning: module {package}.{f} doesn't have registeded commands!")
+                # else:
+                #     print(f"Warning: module {package}.{f} doesn't have registeded commands!")
 
             if not found_steps:
                 if os.path.isfile(os.path.join(_dir, f, 'steps.py')):
                     r = importlib.import_module(f'.{f}.steps', package=package)
                     steps.extend(c for c in r.__dict__.values() if getattr(c, '_STEP_TYPE', None))
-                else:
-                    print(f"Warning: module {package}.{f} doesn't have registeded steps!")
+                # else:
+                #     print(f"Warning: module {package}.{f} doesn't have registeded steps!")
     #
     return commands, steps
 

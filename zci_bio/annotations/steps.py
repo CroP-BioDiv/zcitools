@@ -78,6 +78,10 @@ Annotations are stored:
     def concatenate_seqs_genbank(self, filename, seq_idents, filter_seqs=None):
         concatenate_sequences(filename, [self.get_sequence_filename(si) for si in filter_seqs or self._sequences])
 
+    def can_be_completed(self):
+        # Note: Work for GeSeq!
+        return any(f.endswith('.zip') for f in os.listdir(self.directory))
+
     #
     def extract_shared_features(self, feature_type, filter_seqs=None):
         # Returns tuple (set of same gene, dict ((seq_ident, gene) -> seq part))

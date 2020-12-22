@@ -102,7 +102,7 @@ class BaseWorkflow:
 
         # Finish not finished step with output.zip in it
         for s_obj in self.project.get_steps():
-            if not s_obj.is_completed() and s_obj.is_file('ouput.zip'):
+            if not s_obj.is_completed() and s_obj.can_be_completed():
                 self.project.run_command_with_args('finish', s_obj.directory)
 
         # Run not run process action that has all dependencies satisfied
@@ -127,7 +127,7 @@ class BaseWorkflow:
         if to_finish:
             print(f"""
 There are steps to finish!
-Check for INSTRUCTION.txt and calculate.zip in steps:
+Check for INSTRUCTION.txt and calculate.zip in step(s):
 {', '.join(sorted(to_finish))}
 """)
 

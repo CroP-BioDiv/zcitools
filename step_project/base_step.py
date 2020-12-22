@@ -127,6 +127,9 @@ class Step:
     def is_completed(self):
         return self._step_data['completed']
 
+    def can_be_completed(self):
+        return self.is_file('ouput.zip')
+
     def get_local_name(self):
         return self._step_name_list[-1]
 

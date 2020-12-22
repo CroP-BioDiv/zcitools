@@ -20,7 +20,7 @@ class ChloroplastNormalization(BaseWorkflow):
             ('nS_01_seq', 'fix_by_analysis parts 04_AnalyseChloroplast'),
             ('nA_01_seq', 'fix_by_analysis parts 04_AnalyseChloroplast -a'),
             ('nS_02_GeSeq', 'ge_seq nS_01_seq'),
-            ('nA_02_GeSeq', 'ge_seq nA_01_seq', 'nS_02_GeSeq'),  # Same seqeunces are annotated
+            ('nA_02_GeSeq', 'ge_seq nA_01_seq', 'nS_02_GeSeq'),  # Same sequences are annotated, no need to have 2 finishes pending!
             #
             ('oS_02_GeSeq', 'seq_subset 03_GeSeq --analyses-with-irs 04_AnalyseChloroplast'),
             ('oA_02_GeSeq', 'seq_subset 03_GeSeq'),  # All
