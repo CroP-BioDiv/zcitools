@@ -43,6 +43,7 @@ class AlignGenomes(CreateStepFromStepCommand):
         # Check are needed files in zip, not something strange
         files = set(d['filename'].replace('sequences.fa', 'alignment.phy')
                     for d in read_yaml(step_obj.step_file('finish.yml')))
+        files.add('run_info.txt')
         finish_alignment_data(step_obj, files)
 
 

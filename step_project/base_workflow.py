@@ -75,14 +75,18 @@ class BaseWorkflow:
     def all_step_names(self):
         return sorted(a.step_name for a in self.actions())
 
+    def step_status(self, step_name):
+        if not os.path.isdir(step_name):
+            return 'not_in'
+        step = self.project.read_step(step_name, no_check=True)
+        if step.is_completed():
+            return 'completed'
+        if step.can_be_completed():
+            return 'can_be_completed'
+        return 'in_process'
+
     def steps_status(self):
-        status = dict()
-        for d in self.all_step_names():
-            if os.path.isdir(d):
-                status[d] = 'completed' if self.project.read_step(d, no_check=True).is_completed() else 'in_process'
-            else:
-                status[d] = 'not_in'
-        return status
+        return dict((d, self.step_status(d)) for d in self.all_step_names())
 
     def _remove_steps_with_error(self):
         for sn in self.all_step_names():
@@ -120,9 +124,8 @@ class BaseWorkflow:
                         self.project.run_command_with_args(*action.cmd, '--fixed-name', sn)
                         re_run = True
                         # Update status
-                        s_status[sn] = 'completed' \
-                            if self.project.read_step(sn, no_check=True).is_completed() else 'in_process'
-                if s_status[sn] == 'in_process':
+                        s_status[sn] = self.step_status(sn)
+                if s_status[sn] in ('in_process', 'can_be_completed'):
                     to_finish.add(sn)
         if to_finish:
             print(f"""
@@ -132,9 +135,9 @@ Check for INSTRUCTION.txt and calculate.zip in step(s):
 """)
 
     def cmd_graph(self):
-        node_styles = dict(not_in='dotted', completed='solid', in_process='dashed')
-        edge_styles = dict(not_in='dashed', completed='solid', in_process='solid')
-        add_edge_styles = dict(not_in='dotted', completed='dotted', in_process='dotted')
+        node_styles = dict(not_in='dotted', completed='solid', in_process='dashed', can_be_completed='dashed,filled')
+        edge_styles = dict(not_in='dashed', completed='solid', in_process='solid', can_be_completed='solid')
+        # add_edge_styles = dict(not_in='dotted', completed='dotted', in_process='dotted', can_be_completed='dotted')
         status = self.steps_status()
         nodes = []
         edges = []
@@ -142,6 +145,6 @@ Check for INSTRUCTION.txt and calculate.zip in step(s):
             sn = a.step_name
             nodes.append((sn, dict(label=sn, style=node_styles[status[sn]])))
             edges.extend((p, sn, dict(label=a.command, style=edge_styles[status[sn]])) for p in a.prev_steps)
-            edges.extend((p, sn, dict(label=a.command, style=add_edge_styles[status[sn]])) for p in a.additional_reqs)
+            edges.extend((p, sn, dict(label=a.command, style='dotted')) for p in a.additional_reqs)
 
         create_graph_from_data(nodes, edges, 'workflow_graph')
