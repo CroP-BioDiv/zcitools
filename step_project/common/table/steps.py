@@ -14,7 +14,6 @@ Step interface regarding table data structure:
  - get_column_values_by_type(data_type)
 """
 
-import csv
 import itertools
 import os.path
 from decimal import Decimal
@@ -22,7 +21,7 @@ from datetime import date
 from step_project.base_step import Step, StepCollection
 from common_utils.exceptions import ZCItoolsValueError
 from common_utils.show import print_table
-from common_utils.file_utils import ensure_directory, append_line_to_file, read_file_as_list
+from common_utils.file_utils import ensure_directory, append_line_to_file, read_file_as_list, write_csv, read_csv
 from common_utils.value_data_types import KNOWN_DATA_TYPES
 
 _type_format = dict(
@@ -50,23 +49,6 @@ def _check_rows(columns, rows):
     if diff_lengts:
         raise ZCItoolsValueError(f"Rows have different length than specified columns {n_cols}: {diff_lengts}")
     # ToDo: data types?
-
-
-def _write_csv(filename, columns, rows):
-    with open(filename, 'w', newline='') as outcsv:
-        writer = csv.writer(outcsv, delimiter=';', quotechar='"')
-        writer.writerow([n for n, _ in columns])  # Header
-        writer.writerows(rows)
-
-
-def _read_csv(filename):
-    if os.path.isfile(filename):
-        with open(filename, 'r') as incsv:
-            reader = csv.reader(incsv, delimiter=';', quotechar='"')
-            next(reader)  # Skip header
-            return list(reader)
-    else:
-        return []
 
 
 # -------------------------------------------------------------
@@ -114,7 +96,7 @@ Table data is stored in table.csv with header, separator ;, quote character ".
 
         # Write csv
         if self._rows:
-            _write_csv(self._get_table_filename(), self._columns, self._rows)
+            write_csv(self._get_table_filename(), self._columns, self._rows)
 
     # Retrieve data methods
     def has_column(self, column_name):
@@ -139,7 +121,7 @@ Table data is stored in table.csv with header, separator ;, quote character ".
 
     def get_rows(self):
         if self._rows is None:
-            self._rows = _read_csv(self._get_table_filename())
+            self._rows = read_csv(self._get_table_filename())
             for i, (_, dt) in enumerate(self._columns):
                 if ff := _type_format.get(dt):
                     for r in self._rows:
@@ -237,7 +219,7 @@ Groups that do not have data are store as a list in file no_data.txt
             self._rows = None  # Remove get_rows() cache
             data_dir = self._data_subdirectory()
             ensure_directory(data_dir)
-            _write_csv(os.path.join(data_dir, group), self._columns[1:], rows)
+            write_csv(os.path.join(data_dir, group), self._columns[1:], rows)
         else:
             append_line_to_file(self._no_data_filename(), group)
 
@@ -254,7 +236,7 @@ Groups that do not have data are store as a list in file no_data.txt
             if os.path.isdir(data_dir):
                 self._rows = list(
                     itertools.chain.from_iterable(
-                        [[group] + r for r in _read_csv(os.path.join(data_dir, group))]
+                        [[group] + r for r in read_csv(os.path.join(data_dir, group))]
                         for group in os.listdir(data_dir)))
             else:
                 self._rows = []

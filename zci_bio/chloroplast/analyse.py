@@ -150,8 +150,8 @@ Corrections by parts:
   With offset       : {sum(1 for d in self.seq_descs.values() if offset_off(d.part_offset))}
   Fixed             : {sum(1 for d in self.seq_descs.values() if d.part_orientation or offset_off(d.part_offset))}
 
-{self._find_species_stats()}
 """
+        # {self._find_species_stats()}
 
         print(summary)
         write_str_in_file(self.step.step_file('summary.txt'), summary)
@@ -162,28 +162,28 @@ Corrections by parts:
             write_str_in_file(r_file, '\n'.join(errors) + '\n')
             print(f'Problems found in sequences! Check file {r_file}.')
 
-    def _find_species_stats(self):
-        ncbi_tax = get_ncbi_taxonomy()
-        ident_2_taxid = dict(self.table_data.iterate_column('tax_id'))
-        taxid_2_ident = dict((v, k) for k, v in ident_2_taxid.items())
-        species, without_sp = ncbi_tax.group_taxids_in_species(set(ident_2_taxid.values()))
+    # def _find_species_stats(self):
+    #     ncbi_tax = get_ncbi_taxonomy()
+    #     ident_2_taxid = dict(self.table_data.iterate_column('tax_id'))
+    #     taxid_2_ident = dict((v, k) for k, v in ident_2_taxid.items())
+    #     species, without_sp = ncbi_tax.group_taxids_in_species(set(ident_2_taxid.values()))
 
-        # Species with more genomes
-        ret = []
-        for (sp_taxid, sp_name), data in species.items():
-            if len(data) > 1:
-                ret.append(f'  Genomes for species {sp_name} ({sp_taxid}):')
-                ret.extend(f'   - {taxid_2_ident[taxid]} {name} ({taxid}) of rank {rank}' for taxid, name, rank in data)
-        if ret:
-            ret = ['Species with more accessions:'] + ret
-        else:
-            ret.append('No species found with more genomes!')
+    #     # Species with more genomes
+    #     ret = []
+    #     for (sp_taxid, sp_name), data in species.items():
+    #         if len(data) > 1:
+    #             ret.append(f'  Genomes for species {sp_name} ({sp_taxid}):')
+    #             ret.extend(f'   - {taxid_2_ident[taxid]} {name} ({taxid}) of rank {rank}' for taxid, name, rank in data)
+    #     if ret:
+    #         ret = ['Species with more accessions:'] + ret
+    #     else:
+    #         ret.append('No species found with more genomes!')
 
-        # Without species
-        if without_sp:
-            ret.extend(['', "No 'base' species in NCBI taxa database found for:"])
-            ret.extend(f' - {taxid_2_ident[taxid]} {name} ({taxid}) of rank {rank}' for taxid, name, rank in without_sp)
-        return '\n'.join(ret)
+    #     # Without species
+    #     if without_sp:
+    #         ret.extend(['', "No 'base' species in NCBI taxa database found for:"])
+    #         ret.extend(f' - {taxid_2_ident[taxid]} {name} ({taxid}) of rank {rank}' for taxid, name, rank in without_sp)
+    #     return '\n'.join(ret)
 
     def _find_errors(self):
         offset_off = lambda o: (abs(o or 0) > DEFAULT_KEEP_OFFSET)

@@ -2,6 +2,7 @@ import os
 import errno
 import sys
 import shutil
+import csv
 import yaml
 from zipfile import ZipFile, ZIP_DEFLATED
 
@@ -115,6 +116,24 @@ def append_line_to_file(filename, s):
 def read_file_as_list(filename):
     with open(filename, 'r') as r:
         return [line.strip() for line in r.readlines()]
+
+
+# CSV
+def write_csv(filename, columns, rows):
+    with open(filename, 'w', newline='') as outcsv:
+        writer = csv.writer(outcsv, delimiter=';', quotechar='"')
+        writer.writerow([n for n, _ in columns])  # Header
+        writer.writerows(rows)
+
+
+def read_csv(filename):
+    if os.path.isfile(filename):
+        with open(filename, 'r') as incsv:
+            reader = csv.reader(incsv, delimiter=';', quotechar='"')
+            next(reader)  # Skip header
+            return list(reader)
+    else:
+        return []
 
 
 # YAML

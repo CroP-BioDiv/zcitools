@@ -5,9 +5,9 @@ import csv
 from decimal import Decimal
 from datetime import date
 from step_project.common.table.steps import TableStep, Rows2Table
-from common_utils.file_utils import write_str_in_file
+from common_utils.file_utils import write_str_in_file, write_csv
 from common_utils.value_data_types import fromisoformat
-from ...utils.ncbi_taxonomy import NCBITaxonomy
+from ...utils.ncbi_taxonomy import get_ncbi_taxonomy
 
 _instructions = """
 Steps:
@@ -178,7 +178,7 @@ def fetch_chloroplast_list(project, step_data, args):
     max_taxid = None
     if args.family:
         # step.set_step_name_prefix(args.family)  # No need for this
-        max_taxid = NCBITaxonomy().name_2_taxid(args.family)
+        max_taxid = get_ncbi_taxonomy().name_2_taxid(args.family)
 
     if args.csv_filename and os.path.isfile(args.csv_filename):
         column_descs = [
@@ -204,6 +204,7 @@ def fetch_chloroplast_list(project, step_data, args):
             rows2table.set_rows(reader)
             rows2table.in_table_step(step)
 
+    #
     elif args.family:
         from ...utils.entrez import Entrez
         data = Entrez().search_summary(
@@ -242,6 +243,30 @@ def fetch_chloroplast_list(project, step_data, args):
             else:
                 print('Warning: no data fetched for specified outgroups!', outgroups)
 
+        # Filter genomes form same species
+        taxid_2_idx = dict((r[2], idx) for idx, r in enumerate(rows))
+        species, without_sp = get_ncbi_taxonomy().group_taxids_in_species(list(taxid_2_idx.keys()))
+        same_sp_rows = []
+        remove_idxs = []
+        for (taxid, sp_name), l_sps in species.items():
+            if len(l_sps) > 1:
+                # Sort by (CreateDate, ncbi_ident) desc
+                sp_rows = sorted((rows[taxid_2_idx[taxid]] for taxid, _, _ in l_sps),
+                                 reverse=True, key=lambda r: (r[4], r[0]))
+                same_sp_rows.extend(([taxid, sp_name] + r) for r in sp_rows)
+                remove_idxs.extend(taxid_2_idx[r[2]] for r in sp_rows[1:])
+                #
+                print(f'Genomes for species {sp_name} ({taxid}):')
+                for row in sp_rows:
+                    print(f' - {row[1]} (length: {row[3]}, date: {row[4]}) {row[6]}')
+
+        if remove_idxs:
+            for idx in sorted(remove_idxs, reverse=True):
+                rows.pop(idx)
+            write_csv(step.step_file('same_species.csv'),
+                      [('sp_tax_id', 'int'), ('sp_name', 'str')] + columns, same_sp_rows)
+
+        #
         step.set_table_data(rows, columns)
 
     step.save()  # Takes a care about complete status!
