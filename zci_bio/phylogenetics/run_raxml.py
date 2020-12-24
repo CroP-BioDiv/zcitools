@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import os
+import itertools
 from concurrent.futures import ThreadPoolExecutor
 try:                 # Run locally, with whole project
     import common_utils.exec_utils as exec_utils

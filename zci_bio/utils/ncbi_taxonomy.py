@@ -132,7 +132,22 @@ class NCBITaxonomy:
     def find_close_taxids(self, taxid, max_taxid, from_taxids):
         parents = self._nt().get_lineage_translator([taxid] + list(from_taxids))
         for p_id in parents[taxid][-2::-1]:
-            if f_taxids := [t for t in from_taxids if p_id in parents[t]]:
-                return f_taxids
+            try:
+                if f_taxids := [t for t in from_taxids if p_id in parents[t]]:
+                    return f_taxids
+            except KeyError as err:
+                print("""
+---------------------------------------------------------------------
+Parent taxa wasn't found!
+Try to upgrade ETE taxonomy database.
+In python console run these lines:
+
+from ete3 import NCBITaxa
+ncbi = NCBITaxa()
+ncbi.update_taxonomy_database()
+
+---------------------------------------------------------------------
+""")
+                raise err
             if p_id == max_taxid:
                 break

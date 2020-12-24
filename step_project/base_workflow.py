@@ -173,4 +173,3 @@ Check for INSTRUCTION.txt and calculate.zip in step(s):
         text = self.summary()
         print(text)
         write_str_in_file('workflow_summary.txt', text)
-
