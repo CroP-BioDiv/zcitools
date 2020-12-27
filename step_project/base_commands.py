@@ -151,8 +151,6 @@ class CreateStepFromStepCommand(CreateStepCommand, _InputStepMixin):
     @staticmethod
     def set_arguments(parser):
         parser.add_argument('step', help='Input step')
-        parser.add_argument('-A', '--append-input-step-name', action='store_true',
-                            help='Append input sequence step name')
 
     def common_db_identifier(self):
         return self._COMMON_DB_IDENT or self._input_step(no_data_check=True).common_db_identifier()

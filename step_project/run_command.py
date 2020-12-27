@@ -127,9 +127,9 @@ class RunCommand:
 
         parser = self._get_parser(command, False)
         print(f"Run: {' '.join(args)}")
-        return self._run_command(command, parser.parse_args(args))
+        return self._run_command(command, parser.parse_args(args), cmd_args=args)
 
-    def _run_command(self, command, args):
+    def _run_command(self, command, args, cmd_args=None):
         self._args = args  # Store commands args
         command_obj = self.commands_map[command](self, args)
         command_type = command_obj.get_command_type()
@@ -153,7 +153,7 @@ class RunCommand:
                              common_db_identifier=list(db_id) if db_id else None,
                              command=command,
                              command_args=command_args,
-                             cmd=' '.join(sys.argv[1:]))
+                             cmd=' '.join(cmd_args or sys.argv[1:]))
             ret = None
             if command_type == 'new_step':
                 step_data['step_name'] = self.new_step_name(command_obj, args)
@@ -197,7 +197,9 @@ class RunCommand:
         if command_cls._COMMAND_TYPE in ('new_step', 'new_steps'):
             parser.add_argument('-N', '--step-num', type=int, help='Step num prefix')
             parser.add_argument('-D', '--step-description', help='Step description')
-            parser.add_argument('--fixed-name', help='Set fixed name')
+            parser.add_argument('-A', '--append-input-step-name', action='store_true',
+                                help='Append input sequence step name')
+            parser.add_argument('--step-name', help='Set fixed name')
             parser.add_argument('--no-data-check', action='store_true', help=f'Do not check step data on loading.')
         command_cls.set_arguments(parser)
         return parser
@@ -211,8 +213,8 @@ class RunCommand:
 
     def new_step_name(self, command_obj, args):
         # Find step name. Format <num>_<step_base_name>[_<description>]
-        if args.fixed_name:
-            return args.fixed_name
+        if args.step_name:
+            return args.step_name
 
         prev_steps = command_obj.prev_steps()
 

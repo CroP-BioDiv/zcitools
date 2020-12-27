@@ -210,48 +210,24 @@ def fetch_chloroplast_list(project, step_data, args):
         data = Entrez().search_summary(
             'nucleotide',
             term=f'"{args.family}"[Organism] AND ("complete genome"[Title] AND chloroplast[Title]) AND refseq')
+        summary_data = dict()
 
-        # ToDo: ?
-        #   'Status': 'live',
-        #   'ReplacedBy': '',
-        #   'Flags': IntegerElement(768, attributes={}),
-        #   'Comment': '  ',
-        #   'Extra': 'gi|334702303|ref|NC_015543.1||gnl|NCBI_GENOMES|27514[334702303]',
-        #   'AccessionVersion': 'NC_015543.1'},
         columns = [('AccessionId', 'int'), ('ncbi_ident', 'seq_ident'),
                    ('tax_id', 'int'), ('length', 'int'),
                    ('create_date', 'date'), ('update_date', 'date'),
                    ('title', 'str'), ('max_taxid', 'int')]
-        rows = [
-            [int(d['Gi']), d['Caption'],
-             int(d['TaxId']), int(d['Length']),
-             _to_date(d['CreateDate']), _to_date(d['UpdateDate']),
-             d['Title'], max_taxid]
-            for d in data]
+        family_rows = _filter_summary_data(data, max_taxid)
+        _set_summary_data_for_genomes(family_rows, 'ncbi_family', summary_data)
 
-        # Add outgroup(s)
-        if outgroups := args.outgroup:
-            data = Entrez().search_summary('nucleotide', term=' OR '.join(f'{o}[Accession]' for o in outgroups))
-            if data:
-                rows.extend([int(d['Gi']), d['Caption'],
-                             int(d['TaxId']), int(d['Length']),
-                             _to_date(d['CreateDate']), _to_date(d['UpdateDate']),
-                             d['Title'], 1] for d in data)
-                fetched = [d['Caption'] for d in data]
-                if not_in := [o for o in outgroups if o not in fetched]:
-                    print('Warning: no data fetched for outgroups:', not_in)
-            else:
-                print('Warning: no data fetched for specified outgroups!', outgroups)
-
-        # Filter genomes form same species
-        taxid_2_idx = dict((r[2], idx) for idx, r in enumerate(rows))
+        # Filter genomes from same species
+        taxid_2_idx = dict((r[2], idx) for idx, r in enumerate(family_rows))
         species, without_sp = get_ncbi_taxonomy().group_taxids_in_species(list(taxid_2_idx.keys()))
         same_sp_rows = []
         remove_idxs = []
         for (taxid, sp_name), l_sps in species.items():
             if len(l_sps) > 1:
                 # Sort by (CreateDate, ncbi_ident) desc
-                sp_rows = sorted((rows[taxid_2_idx[taxid]] for taxid, _, _ in l_sps),
+                sp_rows = sorted((family_rows[taxid_2_idx[taxid]] for taxid, _, _ in l_sps),
                                  reverse=True, key=lambda r: (r[4], r[0]))
                 same_sp_rows.extend(([taxid, sp_name] + r) for r in sp_rows)
                 remove_idxs.extend(taxid_2_idx[r[2]] for r in sp_rows[1:])
@@ -260,14 +236,56 @@ def fetch_chloroplast_list(project, step_data, args):
                 for row in sp_rows:
                     print(f' - {row[1]} (length: {row[3]}, date: {row[4]}) {row[6]}')
 
+        _set_summary_data_for_genomes([family_rows[i] for i in remove_idxs], 'removed', summary_data)
         if remove_idxs:
             for idx in sorted(remove_idxs, reverse=True):
-                rows.pop(idx)
+                family_rows.pop(idx)
             write_csv(step.step_file('same_species.csv'),
                       [('sp_tax_id', 'int'), ('sp_name', 'str')] + columns, same_sp_rows)
 
+        # Add outgroup(s)
+        outgroup_rows = []
+        if outgroups := args.outgroup:
+            data = Entrez().search_summary('nucleotide', term=' OR '.join(f'{o}[Accession]' for o in outgroups))
+            if data:
+                outgroup_rows = _filter_summary_data(data, 1)
+                fetched = [d['Caption'] for d in data]
+                if not_in := [o for o in outgroups if o not in fetched]:
+                    print('Warning: no data fetched for outgroups:', not_in)
+            else:
+                print('Warning: no data fetched for specified outgroups!', outgroups)
+
         #
-        step.set_table_data(rows, columns)
+        all_rows = sorted(family_rows + outgroup_rows, key=lambda r: r[1])
+        step.set_table_data(all_rows, columns)
+        #
+        _set_summary_data_for_genomes(family_rows, 'family', summary_data)
+        _set_summary_data_for_genomes(outgroup_rows, 'outgroup', summary_data)
+        _set_summary_data_for_genomes(all_rows, 'all', summary_data)
+        step.save_summary_data(summary_data)
 
     step.save()  # Takes a care about complete status!
     return step
+
+
+def _set_summary_data_for_genomes(rows, desc, summary_data):
+    summary_data[f'{desc}_num_genomes'] = len(rows)
+    summary_data[f'{desc}_max_length'] = max((r[3] for r in rows), default=None)
+    summary_data[f'{desc}_min_length'] = min((r[3] for r in rows), default=None)
+    summary_data[f'{desc}_max_create_date'] = max((r[4] for r in rows), default=None)
+    summary_data[f'{desc}_min_create_date'] = min((r[4] for r in rows), default=None)
+
+
+def _filter_summary_data(data, max_taxid):
+    # ToDo: ?
+    #   'Status': 'live',
+    #   'ReplacedBy': '',
+    #   'Flags': IntegerElement(768, attributes={}),
+    #   'Comment': '  ',
+    #   'Extra': 'gi|334702303|ref|NC_015543.1||gnl|NCBI_GENOMES|27514[334702303]',
+    #   'AccessionVersion': 'NC_015543.1'},
+    return [[int(d['Gi']), d['Caption'],
+             int(d['TaxId']), int(d['Length']),
+             _to_date(d['CreateDate']), _to_date(d['UpdateDate']),
+             d['Title'], max_taxid]
+            for d in data]

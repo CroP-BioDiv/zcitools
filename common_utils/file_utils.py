@@ -6,6 +6,9 @@ import csv
 import yaml
 from zipfile import ZipFile, ZIP_DEFLATED
 
+yaml.Dumper.ignore_aliases = lambda *args: True
+
+
 # Settings
 settings_defaults = dict(
     ps_viewer='evince',

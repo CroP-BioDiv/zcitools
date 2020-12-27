@@ -116,7 +116,7 @@ def finish_raxml_data(step_obj):
         if _dir not in dirs:
             raise ZCItoolsValueError(f'Output contains file(s) in not step directory ({_dir})!')
 
-        if not _re_raxml_output.search(parts[-1]):
+        if not _re_raxml_output.search(parts[-1]) and parts[-1] != 'run_info.txt':
             raise ZCItoolsValueError(f'Not RAxML output file(s)found in the output ({parts[-1]})!')
 
     # Unzip data

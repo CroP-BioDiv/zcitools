@@ -87,7 +87,7 @@ def _copy_alignment_file(align_step, in_step, files_to_proc, args, partitions_ob
         elif (f := args.burninfrac) and 0 <= f < 1:
             brn = f'relburnin=yes burninfrac={f}'
         else:
-            brn = ''  # Default is burninfrac=0.25
+            brn = f'relburnin=yes burninfrac=0.25'  # Default is burninfrac=0.25
         # ToDo: Check or set samplefreq?
         params = dict(ngen=ngen, printfreq=printfreq, samplefreq=args.samplefreq, nchains=args.nchains, burnin=brn,
                       filename_prefix=_RESULT_PREFIX)
@@ -171,7 +171,7 @@ def finish_mr_bayes_data(step_obj):
         if _dir not in dirs:
             raise ZCItoolsValueError(f'Output contains file(s) in not step directory ({_dir})!')
 
-        if parts[-1] not in allowed_files:
+        if parts[-1] not in allowed_files and parts[-1] != 'run_info.txt':
             raise ZCItoolsValueError(f'Not MrBayes output file(s)found in the output ({parts[-1]})!')
 
     # Unzip data

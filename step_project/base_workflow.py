@@ -31,6 +31,7 @@ class WfAction(namedtuple('WfAction', 'step_name, prev_steps, cmd, additional_re
 class BaseWorkflow:
     _WORKFLOW = None  # Name of workflow
     _COMMAND_METHODS = dict(run='cmd_run', graph='cmd_graph', calcs='cmd_calcs', summary='cmd_summary')
+    _SUMMARY_STEPS = None
 
     def __init__(self, project, parameters):
         self.project = project
@@ -98,8 +99,11 @@ class BaseWorkflow:
                 remove_directory(sn)
 
     def read_step_if_in(self, step_name):
-        if os.path.isdir(step_name):
-            return self.project.read_step(step_name, no_check=True)
+        try:
+            step = self.project.read_step(step_name, no_check=True)
+        except ZCItoolsValueError:
+            return None
+        return step
 
     #
     def run_command(self, cmd):
@@ -128,7 +132,7 @@ class BaseWorkflow:
                 sn = action.step_name
                 if s_status[sn] == 'not_in':
                     if all(s_status[s] == 'completed' for s in action.all_prev_steps):
-                        self.project.run_command_with_args(*action.cmd, '--fixed-name', sn)
+                        self.project.run_command_with_args(*action.cmd, '--step-name', sn)
                         re_run = True
                         # Update status
                         s_status[sn] = self.step_status(sn)
@@ -170,6 +174,12 @@ Check for INSTRUCTION.txt and calculate.zip in step(s):
             merge_zip_files('calculate_pending.zip', to_zip)
 
     def cmd_summary(self):
-        text = self.summary()
-        print(text)
-        write_str_in_file('workflow_summary.txt', text)
+        if not self._SUMMARY_STEPS:
+            print('No summary steps!!!')
+            return
+        for s in self._SUMMARY_STEPS:
+            pass
+
+        # text = self.summary()
+        # print(text)
+        # write_str_in_file('workflow_summary.txt', text)

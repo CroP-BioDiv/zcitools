@@ -5,6 +5,7 @@ from common_utils.exceptions import ZCItoolsValueError
 
 class ChloroplastNormalization(BaseWorkflow):
     _WORKFLOW = 'chloroplast_normalization'
+    _SUMMARY_STEPS = ['04_AnalyseChloroplast', '01_chloroplast_list']
 
     @staticmethod
     def required_parameters():
@@ -58,9 +59,9 @@ class ChloroplastNormalization(BaseWorkflow):
                 s5 = f'{ab}_05_trees'
                 actions.extend([
                     (s3, f'align_genomes {s2} w'),
-                    # (s4_c_b, ['mr_bayes', s3]),  # , '?'
+                    (s4_c_b, f'mr_bayes {s3} -p'),
                     (s4_c_r, f'raxml {s3} -p'),
-                    # (s4_p_b, ['mr_bayes', s3]),  # , '?'
+                    (s4_p_b, f'mr_bayes {s3} -a {s2}'),
                     (s4_p_r, f'raxml {s3} -a {s2}'),
                     # (s5, ['??'] + phylos),
                 ])

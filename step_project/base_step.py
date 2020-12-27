@@ -159,6 +159,15 @@ class Step:
             return d['data'].get(attr, default)
         return default
 
+    # Summary data
+    def save_summary_data(self, data):
+        assert isinstance(data, dict), data
+        write_yaml(data, self.step_file('summary.yml'))
+
+    def get_summary_data(self):
+        if os.path.isfile(f := self.step_file('summary.yml')):
+            return read_yaml(f)
+
     # Substep methods
     def get_substep_step_data(self, step_name):
         return dict(step_name=step_name)  # , prev_steps=None, command=None, command_args=None, cmd=None)
