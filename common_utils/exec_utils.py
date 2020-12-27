@@ -4,7 +4,7 @@ import datetime
 import yaml
 import multiprocessing
 import subprocess
-from zipfile import ZipFile
+from zipfile import ZipFile, ZIP_DEFLATED
 
 _TIMERUN_FILENAME = 'run_info.txt'
 
@@ -87,7 +87,7 @@ def zip_output(files, cwd=None, zip_filename='output.zip', skip_missing=False):
     if cwd:
         os.chdir(cwd)
 
-    with ZipFile(zip_filename, 'w') as output:
+    with ZipFile(zip_filename, 'w', compression=ZIP_DEFLATED) as output:
         for f_name in files:
             if os.path.isfile(f_name):
                 output.write(f_name)

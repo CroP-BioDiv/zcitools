@@ -49,7 +49,7 @@ def _run(exe, run_dir, input_file, seed, threads):
 
 def run(locale=True, threads=None):
     raxml_exe = exec_utils.find_exe(_DEFAULT_EXE_NAME, _ENV_VAR, _install_instructions, 'RAxML')
-    threads = threads or exec_utils.get_num_logical_threads()
+    threads = threads or exec_utils.get_num_threads()
     log_run = exec_utils.LogRun(threads=threads, raxml_exe=raxml_exe)
 
     # Files to run
