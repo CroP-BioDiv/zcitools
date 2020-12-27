@@ -37,6 +37,7 @@ class AnalyseGenomes:
         self.annotations_step = annotations_step
         project = step.project
         self.table_step = project.find_previous_step_of_type(self.annotations_step, 'table')
+        print(self.table_step._columns)
         self.sequences_step = project.find_previous_step_of_type(self.annotations_step, 'sequences')
 
     @property
@@ -111,46 +112,70 @@ class AnalyseGenomes:
 
         # Corrections
         offset_off = lambda o: (abs(o or 0) > DEFAULT_KEEP_OFFSET)
-        parts_orient_count = defaultdict(int)
+        _po_count = defaultdict(int)
         for d in self.seq_descs.values():
             if d.part_orientation:
                 for p in d.part_orientation.split(','):
-                    parts_orient_count[p] += 1
-        parts_orient_count = '; '.join(f'{n} ({p})' for p, n in sorted(parts_orient_count.items()))
-        if parts_orient_count:
+                    _po_count[p] += 1
+        if parts_orient_count := '; '.join(f'{n} ({p})' for p, n in sorted(_po_count.items())):
             parts_orient_count = f' ({parts_orient_count})'
 
-        summary = f"""Statistics:
+        summary_data = dict(
+            num_genomes=len(data),
+            min_sequence_length=min(len(seq) for _, seq in sequences_step._iterate_records()),
+            max_sequence_length=max(len(seq) for _, seq in sequences_step._iterate_records()),
+            num_ncbi_annotations=len(ncbi_with),
+            num_ge_seq_annotations=len(ge_seq_with),
+            num_without_annotation=len(data) - len(set(ge_seq_with + ncbi_with)),
+            min_first_date=min(d.first_date for d in data.values()),
+            max_first_date=max(d.first_date for d in data.values()),
+            min_created_date=min(d.created_date for d in data.values()),
+            max_created_date=max(d.created_date for d in data.values()),
+            num_wrong_orientations=sum(1 for d in self.seq_descs.values() if d.part_orientation),
+            desc_wrong_orientations=list(_po_count.items()) if _po_count else None,
+            num_wrong_offset=sum(1 for d in self.seq_descs.values() if offset_off(d.part_offset)),
+            num_to_fix=sum(1 for d in self.seq_descs.values() if d.part_orientation or offset_off(d.part_offset)),
+        )
+        for k, v in min_genes.items():
+            summary_data[f'genes_min_{k}'] = v
+            summary_data[f'genes_max_{k}'] = max_genes[k]
+        for p_idx, p_name in enumerate(('lsc', 'ir', 'ssc')):
+            summary_data[f'part_min_length_{p_name}'] = min(l[p_idx] for l in p_lengths)
+            summary_data[f'part_max_length_{p_name}'] = max(l[p_idx] for l in p_lengths)
+        self.step.save_summary_data(summary_data)
 
-Minimum sequence length: {min(len(seq) for _, seq in sequences_step._iterate_records())}
-Maximum sequence length: {max(len(seq) for _, seq in sequences_step._iterate_records())}
-Number of genomes containing IRS by NCBI annotation  : {len(ncbi_with)}
-Number of genomes containing IRS by GeSeq annotation : {len(ge_seq_with)}
-Number of genomes without IRS                        : {len(data) - len(set(ge_seq_with + ncbi_with))}
+
+        summary = """Statistics:
+
+Minimum sequence length: {min_sequence_length}
+Maximum sequence length: {max_sequence_length}
+Number of genomes containing IRS by NCBI annotation  : {num_ncbi_annotations}
+Number of genomes containing IRS by GeSeq annotation : {num_ge_seq_annotations}
+Number of genomes without IRS                        : {num_without_annotation}
 
 Range of dates:
-  First date     : {min(d.first_date for d in data.values())} - {max(d.first_date for d in data.values())}
-  Published date : {min(d.created_date for d in data.values())} - {max(d.created_date for d in data.values())}
+  First date     : {min_first_date} - {max_first_date}
+  Published date : {min_created_date} - {max_created_date}
 
 Range of number of genes:
-  Annotated        : {min_genes['annotated']} - {max_genes['annotated']}
-  Disjunct         : {min_genes['disjunct']} - {max_genes['disjunct']}
-  Name/strand      : {min_genes['name_strand']} - {max_genes['name_strand']}
-  Name             : {min_genes['names']} - {max_genes['names']}
-  Without location : {min_genes['without_location']} - {max_genes['without_location']}
-  Without name     : {min_genes['without_name']} - {max_genes['without_name']}
+  Annotated        : {genes_min_annotated} - {genes_max_annotated}
+  Disjunct         : {genes_min_disjunct} - {genes_max_disjunct}
+  Name/strand      : {genes_min_name_strand} - {genes_max_name_strand}
+  Name             : {genes_min_names} - {genes_max_names}
+  Without location : {genes_min_without_location} - {genes_max_without_location}
+  Without name     : {genes_min_without_name} - {genes_max_without_name}
 
 Range of part lengths:
-  LSC : {min(l[0] for l in p_lengths)} - {max(l[0] for l in p_lengths)}
-  IRs : {min(l[1] for l in p_lengths)} - {max(l[1] for l in p_lengths)}
-  SSC : {min(l[2] for l in p_lengths)} - {max(l[2] for l in p_lengths)}
+  LSC : {part_min_length_lsc} - {part_max_length_lsc}
+  IRs : {part_min_length_ir} - {part_max_length_ir}
+  SSC : {part_min_length_ssc} - {part_max_length_ssc}
 
 Corrections by parts:
-  Wrong orientation : {sum(1 for d in self.seq_descs.values() if d.part_orientation)}{parts_orient_count}
-  With offset       : {sum(1 for d in self.seq_descs.values() if offset_off(d.part_offset))}
-  Fixed             : {sum(1 for d in self.seq_descs.values() if d.part_orientation or offset_off(d.part_offset))}
+  Wrong orientation : {num_wrong_orientations}{parts_orient_count}
+  With offset       : {num_wrong_offset}
+  Fixed             : {num_to_fix}
 
-"""
+""".format(parts_orient_count=parts_orient_count, **summary_data)
         # {self._find_species_stats()}
 
         print(summary)
