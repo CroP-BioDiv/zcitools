@@ -1,7 +1,10 @@
 import os.path
 import itertools
+import re
 from step_project.base_step import Step, StepCollection
+from common_utils.file_utils import write_str_in_file, read_file_as_str
 from common_utils.exceptions import ZCItoolsValueError
+from ..utils.import_methods import import_bio_phylo, import_ete3_Tree, import_dendropy
 
 
 class RAxMLStep(Step):
@@ -46,6 +49,18 @@ Stores an RAxML calculation from alignment.
     def show_data(self, params=None):
         print('RAxML', self.directory)
 
+    def get_consensus_file(self):
+        # Returns filename of consensus tree in newick format
+        return self.step_file('RAxML_bestTree.raxml_output')
+
+    def get_consensus_tree(self, library):
+        assert library in ('ete', 'dendropy'), library  # 'bio.phylo',
+        if library == 'ete':
+            return import_ete3_Tree()(self.get_consensus_file())
+        if library == 'dendropy':
+            pass
+        assert False, 'ToDo!!!'
+
 
 class RAxMLSteps(StepCollection):
     _STEP_TYPE = 'raxmls'
@@ -53,7 +68,7 @@ class RAxMLSteps(StepCollection):
 
     # Show data
     def show_data(self, params=None):
-        print('MrBayes', self.directory)
+        print('RAxML', self.directory)
 
 
 #
@@ -61,6 +76,26 @@ class MrBayesStep(RAxMLStep):
     "Stores an MrBayes calculation on alignment."
     _STEP_TYPE = 'mr_bayes'
 
+    def get_consensus_file(self):
+        cf = self.step_file('consensus.newick')
+        if not os.path.isfile(cf):
+            # Bio.Phylo can't read nexus file with 
+            # Remove problematic comments from nexus file
+            f = self.step_file('consensus.nexus')
+            text = read_file_as_str(self.step_file('result.con.tre'))
+            write_str_in_file(f, re.sub(r'\[&[^\]]*]', '', text))
+            import_bio_phylo().convert(f, 'nexus', cf, 'newick')
+        return cf
+
+    def get_consensus_tree(self, library):
+        assert library in ('ete', 'dendropy'), library  # 'bio.phylo',
+        if library == 'ete':
+            return import_ete3_Tree()(self.get_consensus_file())
+        if library == 'dendropy':
+            pass
+        assert False, 'ToDo!!!'
+
+    #
     def get_p_files(self):
         return [self.step_file(f) for f in self.step_files(matches=r'.*\.run[12]\.p')]
 

@@ -1,4 +1,4 @@
-from step_project.base_commands import ProjectCommand, CreateStepFromStepCommand
+from step_project.base_commands import ProjectCommand, CreateStepCommand, CreateStepFromStepCommand
 from common_utils.exceptions import ZCItoolsValueError
 from .constants import DEFAULT_KEEP_OFFSET
 
@@ -61,6 +61,17 @@ class ChloroplastFixByAnalyse(CreateStepFromStepCommand):
                           self._input_step(no_data_check=True),
                           self.args.keep_offset, self.args.fix_all,
                           self.get_common_db_object())
+
+
+class ChloroplastNormalizationResult(CreateStepCommand):
+    _COMMAND = 'normalization_result'
+    _HELP = "Analyses phylogeny results of chloroplast normalization."
+    _COMMAND_GROUP = 'Chloroplast'
+    _STEP_BASE_NAME = 'normalization_result'
+
+    def run(self, step_data):
+        from .normalization_result import NormalizationResult
+        NormalizationResult(self.project).run(step_data)
 
 
 class ChloroplastAlign(CreateStepFromStepCommand):

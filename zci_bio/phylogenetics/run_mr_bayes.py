@@ -5,10 +5,10 @@ import shutil
 import itertools
 import time
 from concurrent.futures import ThreadPoolExecutor
-try:                 # Run locally, with whole project
-    import common_utils.exec_utils as exec_utils
-except ImportError:  # Run standalone, on server
+try:                 # Import standalone version (on server)
     import exec_utils
+except ImportError:  # Or import project version
+    import common_utils.exec_utils as exec_utils
 
 _DEFAULT_EXE_NAME = 'mr_bayes'
 _ENV_VAR = 'MR_BAYES_EXE'

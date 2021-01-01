@@ -98,13 +98,6 @@ class BaseWorkflow:
                 print('Info: removing step with an error:', sn)
                 remove_directory(sn)
 
-    def read_step_if_in(self, step_name):
-        try:
-            step = self.project.read_step(step_name, no_check=True)
-        except ZCItoolsValueError:
-            return None
-        return step
-
     #
     def run_command(self, cmd):
         self._remove_steps_with_error()
@@ -171,7 +164,7 @@ Check for INSTRUCTION.txt and calculate.zip in step(s):
         if not to_zip:
             print('No pending calculations!')
         else:
-            merge_zip_files('calculate_pending.zip', to_zip)
+            merge_zip_files('calculate_pending.zip', to_zip, info=True)
 
     def cmd_summary(self):
         if not self._SUMMARY_STEPS:

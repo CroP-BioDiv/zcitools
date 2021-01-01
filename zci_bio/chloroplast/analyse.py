@@ -37,7 +37,6 @@ class AnalyseGenomes:
         self.annotations_step = annotations_step
         project = step.project
         self.table_step = project.find_previous_step_of_type(self.annotations_step, 'table')
-        print(self.table_step._columns)
         self.sequences_step = project.find_previous_step_of_type(self.annotations_step, 'sequences')
 
     @property

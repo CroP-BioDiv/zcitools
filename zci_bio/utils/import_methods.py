@@ -40,17 +40,42 @@ def import_bio_entrez():
     return Entrez
 
 
-@import_method("""
+_missing_ete_3 = """
 ETE Toolkit library (http://etetoolkit.org/docs/latest/index.html) is missing.
 
 For installation instruction check web page:
 http://etetoolkit.org/download/
 
 Short: pip install ete3
-""")
+"""
+
+
+@import_method(_missing_ete_3)
 def import_ete3_NCBITaxa():
     from ete3 import NCBITaxa
     return NCBITaxa
+
+
+@import_method(_missing_ete_3)
+def import_ete3_Tree():
+    from ete3 import Tree
+    return Tree
+
+
+_missing_dendropy = """
+DendroPy library (https://dendropy.org) is missing.
+
+For installation instruction check web page:
+https://dendropy.org/#installing
+
+Short: pip install dendropy
+"""
+
+
+@import_method(_missing_dendropy)
+def import_dendropy():
+    import dendropy
+    return dendropy
 
 
 @import_method("""

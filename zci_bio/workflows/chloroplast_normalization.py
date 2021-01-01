@@ -12,7 +12,7 @@ class ChloroplastNormalization(BaseWorkflow):
         return ('family', 'outgroup')
 
     def has_A_branch(self):
-        if step := self.read_step_if_in('04_AnalyseChloroplast'):
+        if step := self.project.read_step_if_in('04_AnalyseChloroplast', check_data_type='table'):
             if all(step.get_column_values('Part starts')):
                 return False
         return True
@@ -36,7 +36,9 @@ class ChloroplastNormalization(BaseWorkflow):
         if has_A:
             actions += [
                 ('nA_01_seq', 'fix_by_analysis parts 04_AnalyseChloroplast -a'),
-                ('nA_02_GeSeq', 'ge_seq nA_01_seq', 'nS_02_GeSeq'),  # Same sequences are annotated, no need to have 2 finishes pending!
+                # Note: Additional dependency added since same sequences are annotated,
+                # and there is no need to have 2 steps pending for finishing.
+                ('nA_02_GeSeq', 'ge_seq nA_01_seq', 'nS_02_GeSeq'),
                 ('oA_02_GeSeq', 'seq_subset 03_GeSeq'),  # All
             ]
 
@@ -46,6 +48,7 @@ class ChloroplastNormalization(BaseWorkflow):
         # o{S|A}_wo_MAFFT MAFFT
         # o{S|A}_05_trees Analiza
 
+        tree_steps = []
         for a in ('n', 'o'):
             for b in (('S', 'A') if has_A else ('S',)):
                 ab = f'{a}{b}'
@@ -55,17 +58,15 @@ class ChloroplastNormalization(BaseWorkflow):
                 s4_c_r = f'{ab}_04_C_RAxML'
                 s4_p_b = f'{ab}_04_P_MrBayes'
                 s4_p_r = f'{ab}_04_P_RAxML'
-                # phylos = [s4_c_b, s4_p_b, s4_c_r, s4_p_r]
-                s5 = f'{ab}_05_trees'
+                tree_steps.extend([s4_c_b, s4_p_b, s4_c_r, s4_p_r])
                 actions.extend([
                     (s3, f'align_genomes {s2} w'),
                     (s4_c_b, f'mr_bayes {s3} -p'),
                     (s4_c_r, f'raxml {s3} -p'),
                     (s4_p_b, f'mr_bayes {s3} -a {s2}'),
                     (s4_p_r, f'raxml {s3} -a {s2}'),
-                    # (s5, ['??'] + phylos),
                 ])
-
+        actions.append(('X_result', 'normalization_result', tree_steps))
         return actions
 
     def summary(self):
@@ -73,7 +74,7 @@ class ChloroplastNormalization(BaseWorkflow):
         outgroup = self.parameters['outgroup']
         text = ''
 
-        if step := self.read_step_if_in('01_chloroplast_list'):
+        if step := self.project.read_step_if_in('01_chloroplast_list'):
             num_acc = sum(int(s != outgroup) for s in step.get_column_values('ncbi_ident'))
             num_removed = 0
             if (ss_csv := step.step_file('same_species.csv')):
