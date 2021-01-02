@@ -1,6 +1,37 @@
 from step_project.common.table.steps import TableStep
 from common_utils.file_utils import get_settings
 from common_utils.exceptions import ZCItoolsValueError
+from common_utils.cache import cache_args
+from common_utils.terminal_layout import StringColumns
+
+
+def _ed(d):
+    # Result of ETE3 tree compare method.
+    # Keys: rf, max_rf, ref_edges_in_source, source_edges_in_ref, effective_tree_size,
+    #       norm_rf, treeko_dist, source_subtrees, common_edges, source_edges, ref_edges
+    return f"{int(d['rf'])}/{int(d['max_rf'])}"
+
+
+class _TreeDiffs:
+    def __init__(self, norm_result, seq_type):
+        self.seq_type = seq_type
+        get_tree = norm_result.get_tree
+        on_cp = ('oC', 'oP', 'nC', 'nP')
+        mr_bayes_trees = [get_tree(f'{on}{seq_type}_04_{cp}_MrBayes', 'ete') for on, cp in on_cp]
+        raxml_trees = [get_tree(f'{on}{seq_type}_04_{cp}_RAxML', 'ete') for on, cp in on_cp]
+
+        self.m2r_diffs = [m.compare(r) for m, r in zip(mr_bayes_trees, raxml_trees)]
+        self.m_diffs = [o.compare(n) for o, n in zip(mr_bayes_trees[:2], mr_bayes_trees[2:])]
+        self.r_diffs = [o.compare(n) for o, n in zip(raxml_trees[:2], raxml_trees[2:])]
+
+    def print(self):
+        rows = [[f'Seqs {self.seq_type}', '', ''],
+                ['', 'Complete', 'Parts'],
+                ['o', _ed(self.m2r_diffs[0]), _ed(self.m2r_diffs[1])],
+                ['n', _ed(self.m2r_diffs[2]), _ed(self.m2r_diffs[3])],
+                ['o-n', _ed(self.m_diffs[0]), _ed(self.m_diffs[1])],
+                ['', _ed(self.r_diffs[0]), _ed(self.r_diffs[1])]]
+        print(StringColumns(rows))
 
 
 class NormalizationResult:
@@ -8,34 +39,45 @@ class NormalizationResult:
         self.project = project
         self.outgroup = None
         self.analyses_step = None
-        self.trees = dict()            # step_name -> step object
+        self.has_A = False
+        self.tree_steps = dict()       # step_name -> step object
+        #
         self.phylos_on_same_data = []  # Pairs of strings (MrBayes step name, RAxML step name)
+        self.S_tree_diffs = None  # Of type _TreeDiffs
+        self.A_tree_diffs = None  # Of type _TreeDiffs
 
-    def get_rooted_tree(self, step_name, library):
-        tree = self.trees[step_name].get_consensus_tree(library)
+    @cache_args
+    def get_tree(self, step_name, library):
+        tree = self.tree_steps[step_name].get_consensus_tree(library)
+        # Rename p_* into NC_*
+        if library == 'ete':
+            for node in tree.traverse():
+                if node.name.startswith('p_'):
+                    node.name = f'NC_{node.name[2:]}'
+        else:
+            assert False, 'ToDo'
+
         if not (leaves := tree.get_leaves_by_name(self.outgroup)):
             raise ZCItoolsValueError(f"No outgroup in step's tree! {step_name}")
         if len(leaves) != 1:
             raise ZCItoolsValueError(f"More nodes with name {outgroup} in step {step_name}!")
+
+        #
         tree.set_outgroup(leaves[0])
         return tree
 
     #
+    def _tree_diffs(self, seq_type):
+        pass
+
     def run(self, step_data):
         self._find_project_data()
 
-        #
-        for step_name_mr_bayes, step_name_raxml in self.phylos_on_same_data:
-            tree_mr_bayes = self.get_rooted_tree(step_name_mr_bayes, 'ete')
-            tree_raxml = self.get_rooted_tree(step_name_raxml, 'ete')
-            d = tree_mr_bayes.compare(tree_raxml)
-            # Keys: rf, max_rf, ref_edges_in_source, source_edges_in_ref, effective_tree_size,
-            #       norm_rf, treeko_dist, source_subtrees, common_edges, source_edges, ref_edges
-
-            print(step_name_mr_bayes, step_name_raxml, [d[x] for x in ('rf', 'max_rf', 'norm_rf')])
-            if d['rf']:
-                print('  ', d['source_edges'] - d['common_edges'])
-                print('  ', d['ref_edges'] - d['common_edges'])
+        self.S_tree_diffs = _TreeDiffs(self, 'S')
+        self.S_tree_diffs.print()
+        if self.has_A:
+            self.A_tree_diffs = _TreeDiffs(self, 'A')
+            self.A_tree_diffs.print()
 
         # Create step and collect data
         step = TableStep(self.project, step_data, remove_data=True)
@@ -55,24 +97,19 @@ class NormalizationResult:
                 '04_AnalyseChloroplast', check_data_type='table', no_check=True)
         if not self.analyses_step:
             raise ZCItoolsValueError('No analyse chloroplast step (04_AnalyseChloroplast)!')
-        has_A = not all(self.analyses_step.get_column_values('Part starts'))
+        self.has_A = not all(self.analyses_step.get_column_values('Part starts'))
 
         # Find all phylogenetic steps
         for a in ('n', 'o'):
-            for b in (('S', 'A') if has_A else ('S',)):
+            for b in (('S', 'A') if self.has_A else ('S',)):
                 ab = f'{a}{b}_04'
                 for parts in ('C', 'P'):
                     ab_part = f'{ab}_{parts}'
                     for phylo, dt in (('MrBayes', 'mr_bayes'), ('RAxML', 'raxml')):
                         step_name = f'{ab_part}_{phylo}'
-                        self.trees[step_name] = self.project.read_step_if_in(
+                        self.tree_steps[step_name] = self.project.read_step_if_in(
                             step_name, check_data_type=dt, no_check=True)
                     self.phylos_on_same_data.append((f'{ab_part}_MrBayes', f'{ab_part}_RAxML'))
 
-        if (no_steps := [k for k, v in self.trees.items() if not v]):
+        if (no_steps := [k for k, v in self.tree_steps.items() if not v]):
             raise ZCItoolsValueError(f"No tree step(s): {', '.join(sorted(no_steps))}!")
-
-        # o{S|A}_04_C_MrBayes, o{S|A}_04_C_RAxML
-        # o{S|A}_04_P_MrBayes, o{S|A}_04_P_RAxML
-        # n{S|A}_04_C_MrBayes, n{S|A}_04_C_RAxML
-        # n{S|A}_04_P_MrBayes, n{S|A}_04_P_RAxML
