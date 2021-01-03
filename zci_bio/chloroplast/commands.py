@@ -71,7 +71,7 @@ class ChloroplastNormalizationResult(CreateStepCommand):
 
     def run(self, step_data):
         from .normalization_result import NormalizationResult
-        NormalizationResult(self.project).run(step_data)
+        return NormalizationResult(self.project).run(step_data)
 
 
 class ChloroplastAlign(CreateStepFromStepCommand):

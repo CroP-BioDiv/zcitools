@@ -24,7 +24,10 @@ def create_project_graph(project, output_filename='project_graph'):
 
 def create_graph_from_data(nodes, edges, output_filename):
     pygraphviz = import_pygraphviz()
-    graph = pygraphviz.AGraph(strict=True, directed=True)
+    attrs = dict(strict=True, directed=True)
+    if len(nodes) > 10:
+        attrs['rankdir'] = 'LR'
+    graph = pygraphviz.AGraph(**attrs)
     # graph.graph_attr['rankdir'] = 'LR'  # Orientation left-right
     # graph.node_attr['shape'] = 'plaintext'
     # graph.node_attr['shape'] = 'record'

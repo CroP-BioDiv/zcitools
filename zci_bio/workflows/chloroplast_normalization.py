@@ -28,36 +28,30 @@ class ChloroplastNormalization(BaseWorkflow):
             ('03_GeSeq', 'ge_seq 02_seqs'),
             ('04_AnalyseChloroplast', 'analyse_chloroplast 03_GeSeq'),
             #
-            ('nS_01_seq', 'fix_by_analysis parts 04_AnalyseChloroplast'),
-            ('nS_02_GeSeq', 'ge_seq nS_01_seq'),
+            ('Sn_01_seq', 'fix_by_analysis parts 04_AnalyseChloroplast'),
+            ('Sn_02_GeSeq', 'ge_seq Sn_01_seq'),
             #
-            ('oS_02_GeSeq', 'seq_subset 03_GeSeq --analyses-with-irs 04_AnalyseChloroplast'),
+            ('So_02_GeSeq', 'seq_subset 03_GeSeq --analyses-with-irs 04_AnalyseChloroplast'),
         ]
         if has_A:
             actions += [
-                ('nA_01_seq', 'fix_by_analysis parts 04_AnalyseChloroplast -a'),
+                ('An_01_seq', 'fix_by_analysis parts 04_AnalyseChloroplast -a'),
                 # Note: Additional dependency added since same sequences are annotated,
                 # and there is no need to have 2 steps pending for finishing.
-                ('nA_02_GeSeq', 'ge_seq nA_01_seq', 'nS_02_GeSeq'),
-                ('oA_02_GeSeq', 'seq_subset 03_GeSeq'),  # All
+                ('An_02_GeSeq', 'ge_seq An_01_seq', 'Sn_02_GeSeq'),
+                ('Ao_02_GeSeq', 'seq_subset 03_GeSeq'),  # All
             ]
 
-        # n{S|A}_wo_MAFFT MAFFT
-        # n{S|A}_05_trees Analiza
-
-        # o{S|A}_wo_MAFFT MAFFT
-        # o{S|A}_05_trees Analiza
-
         tree_steps = []
-        for a in ('n', 'o'):
-            for b in (('S', 'A') if has_A else ('S',)):
-                ab = f'{a}{b}'
+        for sa in ('SA' if has_A else 'S'):
+            for on in 'on':
+                ab = f'{sa}{on}'
                 s2 = f'{ab}_02_GeSeq'
                 s3 = f'{ab}_03_MAFFT'
-                s4_c_b = f'{ab}_04_C_MrBayes'
-                s4_c_r = f'{ab}_04_C_RAxML'
-                s4_p_b = f'{ab}_04_P_MrBayes'
-                s4_p_r = f'{ab}_04_P_RAxML'
+                s4_c_b = f'{ab}_04_W_MrBayes'
+                s4_c_r = f'{ab}_04_W_RAxML'
+                s4_p_b = f'{ab}_04_G_MrBayes'
+                s4_p_r = f'{ab}_04_G_RAxML'
                 tree_steps.extend([s4_c_b, s4_p_b, s4_c_r, s4_p_r])
                 actions.extend([
                     (s3, f'align_genomes {s2} w'),

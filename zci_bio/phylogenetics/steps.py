@@ -58,7 +58,7 @@ Stores an RAxML calculation from alignment.
         if library == 'ete':
             return import_ete3_Tree()(self.get_consensus_file())
         if library == 'dendropy':
-            pass
+            return import_dendropy().Tree.get(path=self.get_consensus_file(), schema='newick')
         assert False, 'ToDo!!!'
 
 
@@ -92,7 +92,7 @@ class MrBayesStep(RAxMLStep):
         if library == 'ete':
             return import_ete3_Tree()(self.get_consensus_file())
         if library == 'dendropy':
-            pass
+            return import_dendropy().Tree.get(path=self.step_file('result.con.tre'), schema='nexus')
         assert False, 'ToDo!!!'
 
     #

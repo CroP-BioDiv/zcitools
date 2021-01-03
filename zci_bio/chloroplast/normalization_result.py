@@ -16,21 +16,30 @@ class _TreeDiffs:
     def __init__(self, norm_result, seq_type):
         self.seq_type = seq_type
         get_tree = norm_result.get_tree
-        on_cp = ('oC', 'oP', 'nC', 'nP')
-        mr_bayes_trees = [get_tree(f'{on}{seq_type}_04_{cp}_MrBayes', 'ete') for on, cp in on_cp]
-        raxml_trees = [get_tree(f'{on}{seq_type}_04_{cp}_RAxML', 'ete') for on, cp in on_cp]
+        on_wg = ('oW', 'oG', 'nW', 'nG')
+
+        # Robinson-Foulds distance, ETE3 used
+        mr_bayes_trees = [get_tree(f'{seq_type}{on}_04_{wg}_MrBayes', 'ete') for on, wg in on_wg]
+        raxml_trees = [get_tree(f'{seq_type}{on}_04_{wg}_RAxML', 'ete') for on, wg in on_wg]
 
         self.m2r_diffs = [m.compare(r) for m, r in zip(mr_bayes_trees, raxml_trees)]
-        self.m_diffs = [o.compare(n) for o, n in zip(mr_bayes_trees[:2], mr_bayes_trees[2:])]
-        self.r_diffs = [o.compare(n) for o, n in zip(raxml_trees[:2], raxml_trees[2:])]
+        self.rf_m_diffs = [o.compare(n) for o, n in zip(mr_bayes_trees[:2], mr_bayes_trees[2:])]
+        self.rf_r_diffs = [o.compare(n) for o, n in zip(raxml_trees[:2], raxml_trees[2:])]
+
+        # Branch score distance, DendroPy used
+        # mr_bayes_trees = [get_tree(f'{seq_type}{on}_04_{wg}_MrBayes', 'dendropy') for on, wg in on_wg]
+        # raxml_trees = [get_tree(f'{seq_type}{on}_04_{wg}_RAxML', 'dendropy') for on, wg in on_wg]
+
+        # self.bs_m_diffs = [o.compare(n) for o, n in zip(mr_bayes_trees[:2], mr_bayes_trees[2:])]
+        # self.bs_r_diffs = [o.compare(n) for o, n in zip(raxml_trees[:2], raxml_trees[2:])]
 
     def print(self):
         rows = [[f'Seqs {self.seq_type}', '', ''],
                 ['', 'Complete', 'Parts'],
                 ['o', _ed(self.m2r_diffs[0]), _ed(self.m2r_diffs[1])],
                 ['n', _ed(self.m2r_diffs[2]), _ed(self.m2r_diffs[3])],
-                ['o-n', _ed(self.m_diffs[0]), _ed(self.m_diffs[1])],
-                ['', _ed(self.r_diffs[0]), _ed(self.r_diffs[1])]]
+                ['o-n', _ed(self.rf_m_diffs[0]), _ed(self.rf_m_diffs[1])],
+                ['', _ed(self.rf_r_diffs[0]), _ed(self.rf_r_diffs[1])]]
         print(StringColumns(rows))
 
 
@@ -42,7 +51,6 @@ class NormalizationResult:
         self.has_A = False
         self.tree_steps = dict()       # step_name -> step object
         #
-        self.phylos_on_same_data = []  # Pairs of strings (MrBayes step name, RAxML step name)
         self.S_tree_diffs = None  # Of type _TreeDiffs
         self.A_tree_diffs = None  # Of type _TreeDiffs
 
@@ -100,16 +108,13 @@ class NormalizationResult:
         self.has_A = not all(self.analyses_step.get_column_values('Part starts'))
 
         # Find all phylogenetic steps
-        for a in ('n', 'o'):
-            for b in (('S', 'A') if self.has_A else ('S',)):
-                ab = f'{a}{b}_04'
-                for parts in ('C', 'P'):
-                    ab_part = f'{ab}_{parts}'
+        for sa in ('SA' if self.has_A else 'S'):
+            for on in 'on':
+                for wg in 'WG':
                     for phylo, dt in (('MrBayes', 'mr_bayes'), ('RAxML', 'raxml')):
-                        step_name = f'{ab_part}_{phylo}'
+                        step_name = f'{sa}{on}_04_{wg}_{phylo}'
                         self.tree_steps[step_name] = self.project.read_step_if_in(
                             step_name, check_data_type=dt, no_check=True)
-                    self.phylos_on_same_data.append((f'{ab_part}_MrBayes', f'{ab_part}_RAxML'))
 
         if (no_steps := [k for k, v in self.tree_steps.items() if not v]):
             raise ZCItoolsValueError(f"No tree step(s): {', '.join(sorted(no_steps))}!")
