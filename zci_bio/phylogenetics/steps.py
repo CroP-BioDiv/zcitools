@@ -56,6 +56,7 @@ Stores an RAxML calculation from alignment.
     def get_consensus_tree(self, library):
         assert library in ('ete', 'dendropy'), library  # 'bio.phylo',
         if library == 'ete':
+            # ete3 reads only newick format!
             return import_ete3_Tree()(self.get_consensus_file())
         if library == 'dendropy':
             return import_dendropy().Tree.get(path=self.get_consensus_file(), schema='newick')
@@ -79,7 +80,7 @@ class MrBayesStep(RAxMLStep):
     def get_consensus_file(self):
         cf = self.step_file('consensus.newick')
         if not os.path.isfile(cf):
-            # Bio.Phylo can't read nexus file with 
+            # Note: Bio.Phylo can't handle nexus file with more than one comment in a value part!
             # Remove problematic comments from nexus file
             f = self.step_file('consensus.nexus')
             text = read_file_as_str(self.step_file('result.con.tre'))
@@ -90,6 +91,7 @@ class MrBayesStep(RAxMLStep):
     def get_consensus_tree(self, library):
         assert library in ('ete', 'dendropy'), library  # 'bio.phylo',
         if library == 'ete':
+            # ete3 reads only newick format!
             return import_ete3_Tree()(self.get_consensus_file())
         if library == 'dendropy':
             return import_dendropy().Tree.get(path=self.step_file('result.con.tre'), schema='nexus')
