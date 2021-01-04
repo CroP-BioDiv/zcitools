@@ -17,11 +17,11 @@ class _TreeDiffs:
         get_tree = norm_result.trees.get
         on_wg = ('oW', 'oG', 'nW', 'nG')
 
-        # Robinson-Foulds distance
         mr_bayes_trees = [get_tree(f'{seq_type}{on}_04_{wg}_MrBayes') for on, wg in on_wg]
         raxml_trees = [get_tree(f'{seq_type}{on}_04_{wg}_RAxML') for on, wg in on_wg]
 
-        self.m2r_diffs = [m.distance_robinson_foulds(r, False) for m, r in zip(mr_bayes_trees, raxml_trees)]
+        # Robinson-Foulds distance
+        self.rf_same_diffs = [m.distance_robinson_foulds(r, False) for m, r in zip(mr_bayes_trees, raxml_trees)]
         self.rf_m_diffs = [o.distance_robinson_foulds(n, False) for o, n in zip(mr_bayes_trees[:2], mr_bayes_trees[2:])]
         self.rf_r_diffs = [o.distance_robinson_foulds(n, False) for o, n in zip(raxml_trees[:2], raxml_trees[2:])]
 
@@ -29,28 +29,39 @@ class _TreeDiffs:
         self.bs_m_diffs = [o.distance_branche_score(n, False) for o, n in zip(mr_bayes_trees[:2], mr_bayes_trees[2:])]
         self.bs_r_diffs = [o.distance_branche_score(n, False) for o, n in zip(raxml_trees[:2], raxml_trees[2:])]
 
+        # Branch score distance
+        # self.kc_same_diffs = [m.distance_kendall_colijn(r) for m, r in zip(mr_bayes_trees, raxml_trees)]
+        self.kc_m_diffs = [o.distance_kendall_colijn(n) for o, n in zip(mr_bayes_trees[:2], mr_bayes_trees[2:])]
+        self.kc_r_diffs = [o.distance_kendall_colijn(n) for o, n in zip(raxml_trees[:2], raxml_trees[2:])]
+
     def print(self):
         # Distance result format methods
         # Robinson-Foulds distance
         # Keys: rf, max_rf, ref_edges_in_source, source_edges_in_ref, effective_tree_size,
         #       norm_rf, treeko_dist, source_subtrees, common_edges, source_edges, ref_edges
-        _rf = lambda d: f"{int(d['rf'])}/{int(d['max_rf'])}"
-        # Branch score distance
+        def _rf(d):
+            return f"{int(d['rf'])}/{int(d['max_rf'])}"
 
+        # Branch score distance
         def _bs(d):
             av_l = (d['stat_1']['average_length'] + d['stat_2']['average_length']) / 2
             return f"{_most_sign(d['bs'], 3)}/{_most_sign(av_l, 3)}"
-            # return str(round(bs, 3 - int(floor(log10(abs(bs)))) - 1))
+
+        # Kendall-Colijn distance
+        def _kc(d):
+            return _most_sign(d, 3)
 
         rows = [
             [f'Seqs {self.seq_type}', '', '', ''],
             ['', '', 'Complete', 'Parts'],
-            ['o', 'RF', _rf(self.m2r_diffs[0]), _rf(self.m2r_diffs[1])],
-            ['n', 'RF', _rf(self.m2r_diffs[2]), _rf(self.m2r_diffs[3])],
+            ['o', 'RF', _rf(self.rf_same_diffs[0]), _rf(self.rf_same_diffs[1])],
+            ['n', 'RF', _rf(self.rf_same_diffs[2]), _rf(self.rf_same_diffs[3])],
             ['o-n', 'RF', _rf(self.rf_m_diffs[0]), _rf(self.rf_m_diffs[1])],
             ['', '', _rf(self.rf_r_diffs[0]), _rf(self.rf_r_diffs[1])],
             ['', 'BS', _bs(self.bs_m_diffs[0]), _bs(self.bs_m_diffs[1])],
             ['', '', _bs(self.bs_r_diffs[0]), _bs(self.bs_r_diffs[1])],
+            ['', 'KC', _kc(self.kc_m_diffs[0]), _kc(self.kc_m_diffs[1])],
+            ['', '', _kc(self.kc_r_diffs[0]), _kc(self.kc_r_diffs[1])],
         ]
         print(StringColumns(rows))
 
