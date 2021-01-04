@@ -1,3 +1,4 @@
+from math import floor, log10
 from step_project.common.table.steps import TableStep
 from common_utils.file_utils import get_settings
 from common_utils.exceptions import ZCItoolsValueError
@@ -6,13 +7,17 @@ from common_utils.terminal_layout import StringColumns
 from ..utils.phylogenetic_tree import PhylogeneticTree
 
 
+def _most_sign(num, digits):
+    return str(round(num, digits - int(floor(log10(abs(num)))) - 1))
+
+
 class _TreeDiffs:
     def __init__(self, norm_result, seq_type):
         self.seq_type = seq_type
         get_tree = norm_result.trees.get
         on_wg = ('oW', 'oG', 'nW', 'nG')
 
-        # Robinson-Foulds distance, ETE3 used
+        # Robinson-Foulds distance
         mr_bayes_trees = [get_tree(f'{seq_type}{on}_04_{wg}_MrBayes') for on, wg in on_wg]
         raxml_trees = [get_tree(f'{seq_type}{on}_04_{wg}_RAxML') for on, wg in on_wg]
 
@@ -20,24 +25,33 @@ class _TreeDiffs:
         self.rf_m_diffs = [o.distance_robinson_foulds(n, False) for o, n in zip(mr_bayes_trees[:2], mr_bayes_trees[2:])]
         self.rf_r_diffs = [o.distance_robinson_foulds(n, False) for o, n in zip(raxml_trees[:2], raxml_trees[2:])]
 
-        # Branch score distance, DendroPy used
-        # mr_bayes_trees = [get_tree(f'{seq_type}{on}_04_{wg}_MrBayes', 'dendropy') for on, wg in on_wg]
-        # raxml_trees = [get_tree(f'{seq_type}{on}_04_{wg}_RAxML', 'dendropy') for on, wg in on_wg]
-
-        # self.bs_m_diffs = [o.compare(n) for o, n in zip(mr_bayes_trees[:2], mr_bayes_trees[2:])]
-        # self.bs_r_diffs = [o.compare(n) for o, n in zip(raxml_trees[:2], raxml_trees[2:])]
+        # Branch score distance
+        self.bs_m_diffs = [o.distance_branche_score(n, False) for o, n in zip(mr_bayes_trees[:2], mr_bayes_trees[2:])]
+        self.bs_r_diffs = [o.distance_branche_score(n, False) for o, n in zip(raxml_trees[:2], raxml_trees[2:])]
 
     def print(self):
-        _ed = lambda d: f"{int(d['rf'])}/{int(d['max_rf'])}"
+        # Distance result format methods
+        # Robinson-Foulds distance
         # Keys: rf, max_rf, ref_edges_in_source, source_edges_in_ref, effective_tree_size,
         #       norm_rf, treeko_dist, source_subtrees, common_edges, source_edges, ref_edges
+        _rf = lambda d: f"{int(d['rf'])}/{int(d['max_rf'])}"
+        # Branch score distance
 
-        rows = [[f'Seqs {self.seq_type}', '', ''],
-                ['', 'Complete', 'Parts'],
-                ['o', _ed(self.m2r_diffs[0]), _ed(self.m2r_diffs[1])],
-                ['n', _ed(self.m2r_diffs[2]), _ed(self.m2r_diffs[3])],
-                ['o-n', _ed(self.rf_m_diffs[0]), _ed(self.rf_m_diffs[1])],
-                ['', _ed(self.rf_r_diffs[0]), _ed(self.rf_r_diffs[1])]]
+        def _bs(d):
+            av_l = (d['stat_1']['average_length'] + d['stat_2']['average_length']) / 2
+            return f"{_most_sign(d['bs'], 3)}/{_most_sign(av_l, 3)}"
+            # return str(round(bs, 3 - int(floor(log10(abs(bs)))) - 1))
+
+        rows = [
+            [f'Seqs {self.seq_type}', '', '', ''],
+            ['', '', 'Complete', 'Parts'],
+            ['o', 'RF', _rf(self.m2r_diffs[0]), _rf(self.m2r_diffs[1])],
+            ['n', 'RF', _rf(self.m2r_diffs[2]), _rf(self.m2r_diffs[3])],
+            ['o-n', 'RF', _rf(self.rf_m_diffs[0]), _rf(self.rf_m_diffs[1])],
+            ['', '', _rf(self.rf_r_diffs[0]), _rf(self.rf_r_diffs[1])],
+            ['', 'BS', _bs(self.bs_m_diffs[0]), _bs(self.bs_m_diffs[1])],
+            ['', '', _bs(self.bs_r_diffs[0]), _bs(self.bs_r_diffs[1])],
+        ]
         print(StringColumns(rows))
 
 
@@ -80,7 +94,7 @@ class NormalizationResult:
                 '04_AnalyseChloroplast', check_data_type='table', no_check=True)
         if not self.analyses_step:
             raise ZCItoolsValueError('No analyse chloroplast step (04_AnalyseChloroplast)!')
-        self.has_A = settings.get('calc_all', 0) and not all(self.analyses_step.get_column_values('Part starts'))
+        self.has_A = wf.get('calc_all', 0) and not all(self.analyses_step.get_column_values('Part starts'))
 
         # Find all phylogenetic steps
         for sa in ('SA' if self.has_A else 'S'):

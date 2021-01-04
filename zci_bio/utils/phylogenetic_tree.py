@@ -75,6 +75,16 @@ class PhylogeneticTree:
         all_ns.update(d2.keys())
         return ((d1.get(ns, 0), d2.get(ns, 0)) for ns in all_ns)
 
+    def _edge_stats(self, tree):
+        dists = [node.dist for node in tree.traverse()]
+        sum_length = sum(dists)
+        num_edges = len(dists)
+        return dict(min_length=min(dists),
+                    max_length=max(dists),
+                    sum_length=sum_length,
+                    average_length=sum_length / num_edges,
+                    num_edges=num_edges)
+
     # Distances
     @_distance
     def distance_robinson_foulds(self, et1, et2, rooted):
@@ -85,7 +95,11 @@ class PhylogeneticTree:
         if rooted:
             assert False, 'ToDo...'
         else:
-            return sum(abs(a - b) for a, b in self._branch_lengths(et1, et2))
+            stat_1 = self._edge_stats(et1)
+            stat_2 = self._edge_stats(et2)
+            return dict(bs=sum(abs(a - b) for a, b in self._branch_lengths(et1, et2)),
+                        stat_1=stat_1,
+                        stat_2=stat_2)
 
     @_distance
     def distance_kendall_colijn(self, et1, et2, rooted):

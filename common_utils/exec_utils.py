@@ -9,6 +9,20 @@ from zipfile import ZipFile, ZIP_DEFLATED
 _TIMERUN_FILENAME = 'run_info.txt'
 
 
+def lasted_str(lasted):
+    days = lasted // (24 * 60 * 60)
+    desc = f'{days}d:' if days else ''
+    rest = lasted - days * 24 * 3600
+    hours = rest // 3600
+    desc += f'{hours:02}h:' if desc or hours else ''
+    rest -= hours * 3600
+    mins = rest // 60
+    desc += f'{mins:02}m:' if desc or mins else ''
+    secs = rest - mins * 60
+    desc += f'{secs:02}s'
+    return desc
+
+
 class LogRun:
     def __init__(self, **data):
         started = datetime.datetime.now()
@@ -22,16 +36,7 @@ class LogRun:
     def finish(self, **data):
         ended = datetime.datetime.now()
         lasted = int(ended.timestamp() - self.started)  # Just seconds
-        days = lasted // (24 * 60 * 60)
-        desc = f'{days}d:' if days else ''
-        rest = lasted - days * 24 * 3600
-        hours = rest // 3600
-        desc += f'{hours:02}h:' if desc or hours else ''
-        rest -= hours * 3600
-        mins = rest // 60
-        desc += f'{mins:02}m:' if desc or mins else ''
-        secs = rest - mins * 60
-        desc += f'{secs:02}s'
+        desc = lasted_str(lasted)
         print(f'Calculation lasted: {desc} ({lasted}s)')
 
         with open(_TIMERUN_FILENAME, 'a') as _out:
