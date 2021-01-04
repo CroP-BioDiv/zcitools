@@ -21,7 +21,7 @@ def _check_same_nodes(et1, et2):
 
 def _distance(func):
     @wraps(func)
-    def func_wrapper(self, t2, rooted):
+    def func_wrapper(self, t2, rooted=False):
         assert isinstance(t2, PhylogeneticTree), type(t2)
         if rooted:
             et1 = self.rooted_tree()

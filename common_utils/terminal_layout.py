@@ -175,3 +175,11 @@ class TreeBox(Box):
         else:
             boxes.append(Box(self.get_opposite_direction(), boxes=[TreeBox(c) for c in root.children]))
         super().__init__(direction, boxes=boxes)
+
+
+#
+def fill_rows(rows):
+    max_l = max(len(r) for r in rows)
+    for r in rows:
+        if len(r) < max_l:
+            r.extend([''] * (max_l - len(r)))

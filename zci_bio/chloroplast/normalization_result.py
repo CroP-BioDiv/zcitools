@@ -1,9 +1,10 @@
 from math import floor, log10
+from itertools import product
 from step_project.common.table.steps import TableStep
-from common_utils.file_utils import get_settings
+from common_utils.file_utils import get_settings, write_str_in_file
 from common_utils.exceptions import ZCItoolsValueError
 from common_utils.cache import cache_args
-from common_utils.terminal_layout import StringColumns
+from common_utils.terminal_layout import StringColumns, fill_rows
 from ..utils.phylogenetic_tree import PhylogeneticTree
 
 
@@ -13,29 +14,41 @@ def _most_sign(num, digits):
 
 class _TreeDiffs:
     def __init__(self, norm_result, seq_type):
-        self.seq_type = seq_type
+        self.seq_type = s = seq_type
         get_tree = norm_result.trees.get
-        on_wg = ('oW', 'oG', 'nW', 'nG')
 
-        mr_bayes_trees = [get_tree(f'{seq_type}{on}_04_{wg}_MrBayes') for on, wg in on_wg]
-        raxml_trees = [get_tree(f'{seq_type}{on}_04_{wg}_RAxML') for on, wg in on_wg]
+        # MrBayes - RAxML; Same alignments, same partition data, diff phylogenetics methods
+        self.mr_bayes_2_raxml = dict(
+            (on + wg, get_tree(f'{s}{on}_04_{wg}_MrBayes').distance_robinson_foulds(get_tree(f'{s}{on}_04_{wg}_RAxML')))
+            for on, wg in product('on', 'WG'))
 
-        # Robinson-Foulds distance
-        self.rf_same_diffs = [m.distance_robinson_foulds(r, False) for m, r in zip(mr_bayes_trees, raxml_trees)]
-        self.rf_m_diffs = [o.distance_robinson_foulds(n, False) for o, n in zip(mr_bayes_trees[:2], mr_bayes_trees[2:])]
-        self.rf_r_diffs = [o.distance_robinson_foulds(n, False) for o, n in zip(raxml_trees[:2], raxml_trees[2:])]
+        # Whole - Genes; Same alignments, diff partition data, same phylogenetics methods
+        on_MR = list(product('on', ('MrBayes', 'RAxML')))
+        self.whole_2_genes_RF = dict(
+            (on + m[0], get_tree(f'{s}{on}_04_W_{m}').distance_robinson_foulds(get_tree(f'{s}{on}_04_G_{m}')))
+            for on, m in on_MR)
+        self.whole_2_genes_BS = dict(
+            (on + m[0], get_tree(f'{s}{on}_04_W_{m}').distance_branche_score(get_tree(f'{s}{on}_04_G_{m}')))
+            for on, m in on_MR)
+        self.whole_2_genes_KC = dict(
+            (on + m[0], get_tree(f'{s}{on}_04_W_{m}').distance_kendall_colijn(get_tree(f'{s}{on}_04_G_{m}')))
+            for on, m in on_MR)
 
-        # Branch score distance
-        self.bs_m_diffs = [o.distance_branche_score(n, False) for o, n in zip(mr_bayes_trees[:2], mr_bayes_trees[2:])]
-        self.bs_r_diffs = [o.distance_branche_score(n, False) for o, n in zip(raxml_trees[:2], raxml_trees[2:])]
+        # original-normalized
+        WG_MR = list(product('WG', ('MrBayes', 'RAxML')))
+        self.orig_2_norm_RF = dict(
+            (wg + m[0], get_tree(f'{s}o_04_{wg}_{m}').distance_robinson_foulds(get_tree(f'{s}n_04_{wg}_{m}')))
+            for wg, m in WG_MR)
+        self.orig_2_norm_BS = dict(
+            (wg + m[0], get_tree(f'{s}o_04_{wg}_{m}').distance_branche_score(get_tree(f'{s}n_04_{wg}_{m}')))
+            for wg, m in WG_MR)
+        self.orig_2_norm_KC = dict(
+            (wg + m[0], get_tree(f'{s}o_04_{wg}_{m}').distance_kendall_colijn(get_tree(f'{s}n_04_{wg}_{m}')))
+            for wg, m in WG_MR)
 
-        # Branch score distance
-        # self.kc_same_diffs = [m.distance_kendall_colijn(r) for m, r in zip(mr_bayes_trees, raxml_trees)]
-        self.kc_m_diffs = [o.distance_kendall_colijn(n) for o, n in zip(mr_bayes_trees[:2], mr_bayes_trees[2:])]
-        self.kc_r_diffs = [o.distance_kendall_colijn(n) for o, n in zip(raxml_trees[:2], raxml_trees[2:])]
-
-    def print(self):
+    def get_rows(self):
         # Distance result format methods
+
         # Robinson-Foulds distance
         # Keys: rf, max_rf, ref_edges_in_source, source_edges_in_ref, effective_tree_size,
         #       norm_rf, treeko_dist, source_subtrees, common_edges, source_edges, ref_edges
@@ -52,18 +65,34 @@ class _TreeDiffs:
             return _most_sign(d, 3)
 
         rows = [
-            [f'Seqs {self.seq_type}', '', '', ''],
-            ['', '', 'Complete', 'Parts'],
-            ['o', 'RF', _rf(self.rf_same_diffs[0]), _rf(self.rf_same_diffs[1])],
-            ['n', 'RF', _rf(self.rf_same_diffs[2]), _rf(self.rf_same_diffs[3])],
-            ['o-n', 'RF', _rf(self.rf_m_diffs[0]), _rf(self.rf_m_diffs[1])],
-            ['', '', _rf(self.rf_r_diffs[0]), _rf(self.rf_r_diffs[1])],
-            ['', 'BS', _bs(self.bs_m_diffs[0]), _bs(self.bs_m_diffs[1])],
-            ['', '', _bs(self.bs_r_diffs[0]), _bs(self.bs_r_diffs[1])],
-            ['', 'KC', _kc(self.kc_m_diffs[0]), _kc(self.kc_m_diffs[1])],
-            ['', '', _kc(self.kc_r_diffs[0]), _kc(self.kc_r_diffs[1])],
+            [f'Seqs {self.seq_type}'],
+            ['MrBayes-RAxML'],
+            ['', 'Distance', 'Whole (no partition)', 'Genes (partition)'],
+            ['original', 'RF', _rf(self.mr_bayes_2_raxml['oW']), _rf(self.mr_bayes_2_raxml['oG'])],
+            ['normalized', 'RF', _rf(self.mr_bayes_2_raxml['nW']), _rf(self.mr_bayes_2_raxml['nG'])],
+            #
+            [],
+            ['Whole-Genes'],
+            ['', 'Distance', 'MrBayes', 'RAxML'],
+            ['original', 'RF', _rf(self.whole_2_genes_RF['oM']), _rf(self.whole_2_genes_RF['oR'])],
+            ['', 'BS', _bs(self.whole_2_genes_BS['oM']), _bs(self.whole_2_genes_BS['oR'])],
+            ['', 'KC', _kc(self.whole_2_genes_KC['oM']), _kc(self.whole_2_genes_KC['oR'])],
+            ['normalized', 'RF', _rf(self.whole_2_genes_RF['nM']), _rf(self.whole_2_genes_RF['nR'])],
+            ['', 'BS', _bs(self.whole_2_genes_BS['nM']), _bs(self.whole_2_genes_BS['nR'])],
+            ['', 'KC', _kc(self.whole_2_genes_KC['nM']), _kc(self.whole_2_genes_KC['nR'])],
+            #
+            [],
+            ['original-normalized'],
+            ['', 'Distance', 'MrBayes', 'RAxML'],
+            ['Whole', 'RF', _rf(self.orig_2_norm_RF['WM']), _rf(self.orig_2_norm_RF['WR'])],
+            ['', 'BS', _bs(self.orig_2_norm_BS['WM']), _bs(self.orig_2_norm_BS['WR'])],
+            ['', 'KC', _kc(self.orig_2_norm_KC['WM']), _kc(self.orig_2_norm_KC['WR'])],
+            ['Genes', 'RF', _rf(self.orig_2_norm_RF['GM']), _rf(self.orig_2_norm_RF['GR'])],
+            ['', 'BS', _bs(self.orig_2_norm_BS['GM']), _bs(self.orig_2_norm_BS['GR'])],
+            ['', 'KC', _kc(self.orig_2_norm_KC['GM']), _kc(self.orig_2_norm_KC['GR'])],
         ]
-        print(StringColumns(rows))
+        fill_rows(rows)
+        return rows
 
 
 class NormalizationResult:
@@ -82,15 +111,23 @@ class NormalizationResult:
         self._find_project_data()
 
         self.S_tree_diffs = _TreeDiffs(self, 'S')
-        self.S_tree_diffs.print()
+        rows = self.S_tree_diffs.get_rows()
+        text = str(StringColumns(rows))
         if self.has_A:
             self.A_tree_diffs = _TreeDiffs(self, 'A')
-            self.A_tree_diffs.print()
+            rows_a = self.A_tree_diffs.get_text()
+            text += '\n\n' + str(StringColumns(rows_a))
+            rows.extend(rows_a)
 
         # Create step and collect data
         step = TableStep(self.project, step_data, remove_data=True)
         self.analyses_step.propagate_step_name_prefix(step)
-        step.save()
+        step.set_table_data(rows, [(f'c_{i}', 'str') for i in range(1, 5)])
+        step.save()  # completed=True
+        #
+        write_str_in_file(step.step_file('summary.txt'), text)
+        print(text)
+
         return step
 
     def _find_project_data(self):
