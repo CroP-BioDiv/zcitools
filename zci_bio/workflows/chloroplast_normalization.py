@@ -12,6 +12,8 @@ class ChloroplastNormalization(BaseWorkflow):
         return ('family', 'outgroup')
 
     def has_A_branch(self):
+        if not self.parameters.get('calc_all', 0):
+            return False
         if step := self.project.read_step_if_in('04_AnalyseChloroplast', check_data_type='table'):
             if all(step.get_column_values('Part starts')):
                 return False

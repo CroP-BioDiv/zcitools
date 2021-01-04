@@ -147,7 +147,7 @@ Check for INSTRUCTION.txt and calculate.zip in step(s):
         edges = []
         for a in self.actions():
             sn = a.step_name
-            nodes.append((sn, dict(label=sn, style=node_styles[status[sn]])))
+            nodes.append((sn, dict(label=sn, style=node_styles[status[sn]], shape='rectangle')))
             edges.extend((p, sn, dict(label=a.command, style=edge_styles[status[sn]])) for p in a.prev_steps)
             edges.extend((p, sn, dict(label=a.command, style='dotted')) for p in a.additional_reqs)
 

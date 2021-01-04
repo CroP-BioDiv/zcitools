@@ -80,7 +80,7 @@ class NormalizationResult:
                 '04_AnalyseChloroplast', check_data_type='table', no_check=True)
         if not self.analyses_step:
             raise ZCItoolsValueError('No analyse chloroplast step (04_AnalyseChloroplast)!')
-        self.has_A = not all(self.analyses_step.get_column_values('Part starts'))
+        self.has_A = settings.get('calc_all', 0) and not all(self.analyses_step.get_column_values('Part starts'))
 
         # Find all phylogenetic steps
         for sa in ('SA' if self.has_A else 'S'):
