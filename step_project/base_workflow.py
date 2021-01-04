@@ -113,24 +113,22 @@ class BaseWorkflow:
             if not s_obj.is_completed() and s_obj.can_be_completed():
                 self.project.run_command_with_args('finish', s_obj.directory)
 
-        # Run not run process action that has all dependencies satisfied
-        # ToDo: or not todo: topological sort, next to work, ...
-        s_status = self.steps_status()
-        re_run = True
-        actions = self.actions()
+        # Run actions that have all dependencies satisfied
         to_finish = set()
+        re_run = True
         while re_run:
-            re_run = False
-            for action in actions:
-                sn = action.step_name
-                if s_status[sn] == 'not_in':
-                    if all(s_status[s] == 'completed' for s in action.all_prev_steps):
-                        self.project.run_command_with_args(*action.cmd, '--step-name', sn)
-                        re_run = True
-                        # Update status
-                        s_status[sn] = self.step_status(sn)
-                if s_status[sn] in ('in_process', 'can_be_completed'):
-                    to_finish.add(sn)
+            # Note: after each calculation check actions, project structure can change!
+            for action in self.actions():
+                step_status = self.step_status(action.step_name)
+                if step_status == 'not_in':
+                    if all(self.step_status(s) == 'completed' for s in action.all_prev_steps):
+                        self.project.run_command_with_args(*action.cmd, '--step-name', action.step_name)
+                        break
+                if step_status in ('in_process', 'can_be_completed'):
+                    to_finish.add(action.step_name)
+            else:
+                re_run = False
+
         if to_finish:
             print(f"""
 There are steps to finish!
