@@ -1,5 +1,4 @@
 # Note: importing is done in run() methods to prevent crashes because of not used missing libraries!
-from types import SimpleNamespace
 from step_project.base_commands import ProjectCommand, NonProjectCommand
 
 
@@ -52,6 +51,7 @@ class Finish(ProjectCommand):
         if step.is_completed() and not self.args.force:
             print(f"Info: step {self.args.step} is completed!")
         else:
+            from types import SimpleNamespace
             orig_args = SimpleNamespace(**step._step_data['command_args'])
             command_obj = self.project.commands_map[step.get_command()](self.project, orig_args)
             command_obj.finish(step)
@@ -119,6 +119,29 @@ class Show(ProjectCommand):
     def run(self):
         step = self.project.read_step(self.args.step)
         step.show_data(params=self.args.params)
+
+
+class ZipCalculate(ProjectCommand):
+    _COMMAND = 'zip_calculate'
+    _HELP = "Zip unfinished step's calculate.zip files into calculates_pending.zip"
+
+    @staticmethod
+    def set_arguments(parser):
+        parser.add_argument('step_names', nargs='*', help='Step names')
+
+    def run(self):
+        import os
+        to_zip = []
+        for sn in sorted(self.args.step_names or os.listdir()):
+            if (step := self.project.read_step_if_in(sn, no_check=True)) and \
+               not step.is_completed() and \
+               step.is_file('calculate.zip'):
+                to_zip.append(step.step_file('calculate.zip'))
+        if to_zip:
+            from common_utils.file_utils import merge_zip_files
+            merge_zip_files('calculates_pending.zip', to_zip, info=True)
+        else:
+            print('No pending calculations!')
 
 
 #
