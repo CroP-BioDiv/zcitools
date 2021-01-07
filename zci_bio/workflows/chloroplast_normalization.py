@@ -132,7 +132,7 @@ Number of genomes: {ng}
 """
             text += _annotation_summary('GeSeq annotation', 'ge_seq', True)
             text += _annotation_summary('NCBI annotation', 'ncbi', True)
-            text += _annotation_summary('Sum annotation', 's', False)
+            text += _annotation_summary('Sum annotation', 'sum', False)
 
         # ToDo: Alignments
         # ToDo: Trees

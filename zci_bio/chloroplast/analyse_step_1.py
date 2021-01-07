@@ -2,7 +2,7 @@ from datetime import datetime
 from .utils import find_chloroplast_irs, create_chloroplast_partition, cycle_distance_min, \
     chloroplast_parts_orientation, trnF_GAA_start, trnH_GUG_start
 from ..utils.entrez import Entrez
-from ..utils.helpers import fetch_from_properties_db
+from ..utils.helpers import fetch_from_properties_db, feature_qualifiers_to_desc
 from ..utils.features import Feature, find_disjunct_features_of_type, find_features_stat
 from common_utils.cache import cache
 
@@ -16,6 +16,7 @@ class SequenceDesc:
         # Annotations
         self.ge_seq = _Annotation(gs_seq, True)   # GeSeq annotation
         self.ncbi = _Annotation(ncbi_seq, False)  # NCBI annotation
+        self.sum = self.ge_seq if self.ge_seq.has_irs else self.ncbi
 
         # Extract data from NCBI GenBank files (comments)
         self.extract_ncbi_comments(analyse.properties_db)
@@ -140,13 +141,15 @@ class _Annotation:
             orient = chloroplast_parts_orientation(seq, self.partition, self.genes)
             if ppp := [p for p in ('lsc', 'ira', 'ssc') if not orient[p]]:
                 self.part_orientation = ','.join(ppp)
+        #
+        self.has_irs = bool(self.parts_data)
 
+    #
     num_genes = property(lambda self: len(self.genes))
     num_genes_stat = property(
         lambda self: ', '.join(str(self.genes_stat[x]) for x in ('annotated', 'disjunct', 'name_strand', 'names',
                                                                 'without_location', 'without_name')))
     # num_cds = property(lambda self: len(self._cds))
-    has_irs = property(lambda self: bool(self.parts_data))
     part_starts = property(lambda self: self.parts_data.starts_str() if self.parts_data else None)
     part_lengths = property(lambda self: self.parts_data.lengths_str() if self.parts_data else None)
     part_num_genes = property(lambda self: self.parts_data.num_genes_str() if self.parts_data else None)
@@ -178,12 +181,12 @@ class _PartsDesc:
         if genes is None:
             self.part_genes = None
             self.offset = None
-            self.trnH_GUG = None
+            # self.trnH_GUG = None
         else:
             part_genes = parts.put_features_in_parts([Feature(seq_length, feature=f) for f in genes])
             self.part_genes = [part_genes[p.name] for p in self.oriented]
             self.offset = seq_offset(seq_length, self.lsc.real_start)
-            self.trnH_GUG = trnH_GUG_offset(seq_length, self.offset, genes)
+            # self.trnH_GUG = trnH_GUG_offset(seq_length, self.offset, genes)
 
     def _in_k(self, num):
         s = str(round(num / 1000, 1))
@@ -212,7 +215,7 @@ def seq_offset(seq_length, offset):
 
 
 def trnH_GUG_offset(seq_length, lsc_start, genes):
-    features = [f for f in genes if f.qualifiers['gene'][0] == 'trnH-GUG']
+    features = [f for f in genes if feature_qualifiers_to_desc(f) == 'trnH-GUG']
     if features:
         rel_to_lsc = [((f.location.start - lsc_start) % seq_length) for f in features]
         return min(seq_offset(seq_length, d) for d in rel_to_lsc)
