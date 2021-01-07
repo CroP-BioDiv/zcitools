@@ -76,6 +76,21 @@ def run(locale=True, threads=None):
         exec_utils.zip_output([os.path.join(d, x) for d, x in itertools.product(dirs, _OUTPUT_FILES)])
 
 
+# For running on cluster
+def get_cluster_run_desc(step):
+    jobs = []
+    for d in step.get_finish_data():
+        run_dir, f = os.path.split(d['filename'])
+        # Similar to _run()
+        seed = d['seed']
+        s_cmd = ['-s', f, '-x', str(seed), '-p', str(seed)] + \
+            (_ps_args if step.is_file(run_dir, 'partitions.ind') else []) + \
+            _stat_args
+        s_cmd = ' '.join(s_cmd)
+        jobs.append(dict(directory=run_dir, single=s_cmd + ' -T 1', threads=s_cmd + ' -T {num_threads}'))
+    return dict(program='raxml', jobs=jobs)
+
+
 if __name__ == '__main__':
     import sys
     run(locale=False, threads=int(sys.argv[1]) if len(sys.argv) > 1 else None)

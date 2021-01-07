@@ -168,6 +168,11 @@ class Step:
         if os.path.isfile(f := self.step_file('summary.yml')):
             return read_yaml(f)
 
+    #
+    def get_finish_data(self):
+        if os.path.isfile(f := self.step_file('finish.yml')):
+            return read_yaml(f)
+
     # Substep methods
     def get_substep_step_data(self, step_name):
         return dict(step_name=step_name)  # , prev_steps=None, command=None, command_args=None, cmd=None)

@@ -4,6 +4,7 @@ import sys
 import shutil
 import csv
 import yaml
+import json
 from zipfile import ZipFile, ZIP_DEFLATED
 
 yaml.Dumper.ignore_aliases = lambda *args: True
@@ -155,6 +156,12 @@ def print_yaml(data):
     print(yaml.dump(data, default_flow_style=False))
 
 
+# JSON
+def write_json(data, filename, mode='w'):
+    with open(filename, mode, encoding='utf-8') as _out:
+        json.dump(data, _out, indent=4)
+
+
 # ZipFile
 def extract_from_zip(zip_f, zip_filename, output_filename):
     with open(output_filename, 'wb') as save_f:
@@ -224,10 +231,20 @@ def set_run_instructions(module, step, files_to_zip, instructions):
     more_to_zip = [inst_f, run_f]
 
     # Copy exec_utils script
-    if run_module := getattr(module, 'exec_utils', None):
-        utils_f = step.step_file(os.path.basename(run_module.__file__))
-        copy_file(run_module.__file__, utils_f)
+    if exec_utils := getattr(module, 'exec_utils', None):
+        utils_f = step.step_file(os.path.basename(exec_utils.__file__))
+        copy_file(exec_utils.__file__, utils_f)
         more_to_zip.append(utils_f)
+
+    # Set cluster run data
+    if hasattr(module, 'get_cluster_run_desc') and (desc := module.get_cluster_run_desc(step)):
+        assert isinstance(desc.get('program'), str), desc
+        assert isinstance(desc.get('jobs'), list), desc
+        assert all(isinstance(job.get('single'), str) or
+                   isinstance(job.get('threads'), str)
+                   for job in desc['jobs']), desc
+        more_to_zip.append(step.step_file('cluster_run.json'))
+        write_json(desc, more_to_zip[-1], mode='w')
 
     # Zip needed files
     zip_files(step.step_file('calculate.zip'), files_to_zip + more_to_zip)
