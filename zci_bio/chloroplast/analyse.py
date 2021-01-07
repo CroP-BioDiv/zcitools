@@ -8,7 +8,7 @@ from common_utils.file_utils import ensure_directory, write_str_in_file, write_f
 from common_utils.properties_db import PropertiesDB
 from common_utils.cache import cache
 from .analyse_step_1 import SequenceDesc
-from .analyse_step_calc import run_align_cmd, find_missing_partitions
+from .analyse_step_calc import run_align_cmd  # , find_missing_partitions
 from .utils import find_chloroplast_irs
 from .constants import DEFAULT_KEEP_OFFSET
 from ..utils.features import Feature
@@ -29,6 +29,14 @@ def analyse_genomes(step_data, annotations_step):
     step.save()
     step.to_excel('chloroplast_analysis.xls')  # Store data for a check
     return step
+
+
+def _get_attr(d, c):
+    if '.' in c:
+        for c in c.split('.'):
+            d = getattr(d, c)
+        return d
+    return getattr(d, c)
 
 
 class AnalyseGenomes:
@@ -55,16 +63,17 @@ class AnalyseGenomes:
         # 1. Collect data from steps
         self.table_data = self.table_step.index_on_table('ncbi_ident')
 
-        data = dict((seq_ident, SequenceDesc(seq_ident, seq, self))
+        ncbi_rec = self.sequences_step.get_sequence_record
+        data = dict((seq_ident, SequenceDesc(seq_ident, seq, ncbi_rec(seq_ident), self))
                     for seq_ident, seq in self.annotations_step._iterate_records())
         self.seq_descs = data
 
-        #  2. Calculate 'missing data'
-        find_missing_partitions(self.seq_descs)
+        # #  2. Calculate 'missing data'
+        # find_missing_partitions(self.seq_descs)
 
-        # Set partition data
-        for seq_ident, d in data.items():
-            d.set_parts_data()
+        # # Set partition data
+        # for seq_ident, d in data.items():
+        #     d.set_parts_data()
 
         #  3. Set table from collected and evaluated data
         columns = [
@@ -75,16 +84,24 @@ class AnalyseGenomes:
             ('created_date', 'Date', 'date'),
             ('first_date', 'First date', 'date'),
             ('length', 'Length', 'int'),
-            # ('num_genes', 'Genes', 'int'),
-            ('num_genes_stat', 'Genes', 'str'),
-            # ('num_cds', 'CDS', 'int'),
-            ('irs_took_from', 'IRS took', 'seq_ident'),
-            ('part_starts', 'Part starts', 'str'),
-            ('part_lengths', 'Part lengths', 'str'),
-            ('part_num_genes', 'Part genes', 'str'),
-            ('part_orientation', 'Orientation', 'str'),
-            ('trnF_GAA', 'trnF-GAA', 'int'),
-            # ('trnH_GUG', 'trnH-GUG', 'str'),
+
+            # GeSeq annotation
+            ('ge_seq.num_genes_stat', 'GeSeq genes', 'str'),
+            ('ge_seq.part_starts', 'Part starts', 'str'),
+            ('ge_seq.part_lengths', 'Part lengths', 'str'),
+            ('ge_seq.part_num_genes', 'Part genes', 'str'),
+            ('ge_seq.part_orientation', 'Orientation', 'str'),
+            # ('ge_seq.trnF_GAA', 'trnF-GAA', 'int'),
+            # ('ge_seq.trnH_GUG', 'trnH-GUG', 'str'),
+
+            # NCBI annotation
+            ('ncbi.num_genes_stat', 'NCBI genes', 'str'),
+            ('ncbi.part_starts', 'Part starts', 'str'),
+            ('ncbi.part_lengths', 'Part lengths', 'str'),
+            ('ncbi.part_num_genes', 'Part genes', 'str'),
+            ('ncbi.part_orientation', 'Orientation', 'str'),
+
+            #
             ('artcle_title', 'Article', 'str'),
             ('journal', 'Journal', 'str'),
             ('pubmed_id', 'PubMed', 'int'),
@@ -92,139 +109,86 @@ class AnalyseGenomes:
             ('sequencing_technology', 'Sequencing Technology', 'str'),
             ('sra_count', 'SRA count', 'int'),
         ]
+        ga = _get_attr
         self.step.set_table_data(
-            [[getattr(d, c) for c, _, _ in columns] for seq_ident, d in sorted(data.items())],
+            [[ga(d, c) for c, _, _ in columns] for seq_ident, d in sorted(data.items())],
             [(n, t) for _, n, t in columns])
 
-        # Statistics
+        # Summary data
         some_data = next(iter(data.values()))
         sequences_step = some_data.sequences_step
-        ncbi_with = [seq_ident for seq_ident, seq in sequences_step._iterate_records()
-                     if find_chloroplast_irs(seq, check_length=False)]
-        ge_seq_with = [seq_ident for seq_ident, seq in self.annotations_step._iterate_records()
-                       if find_chloroplast_irs(seq, check_length=False)]
-        p_lengths = [l for d in data.values() if (l := d.part_lengths_all())]
-        #
-        gks = list(some_data._genes_stat.keys())
-        min_genes = reduce(lambda x, y: dict((k, min(x[k], y[k])) for k in gks), (d._genes_stat for d in data.values()))
-        max_genes = reduce(lambda x, y: dict((k, max(x[k], y[k])) for k in gks), (d._genes_stat for d in data.values()))
 
         # Corrections
         offset_off = lambda o: (abs(o or 0) > DEFAULT_KEEP_OFFSET)
-        _po_count = defaultdict(int)
-        for d in self.seq_descs.values():
-            if d.part_orientation:
-                for p in d.part_orientation.split(','):
-                    _po_count[p] += 1
-        if parts_orient_count := '; '.join(f'{n} ({p})' for p, n in sorted(_po_count.items())):
-            parts_orient_count = f' ({parts_orient_count})'
+
+        def _desc_wrong_orientations(annot_attr):
+            _po_count = defaultdict(int)
+            for d in data.values():
+                if o := getattr(d, annot_attr).part_orientation:
+                    for p in o.split(','):
+                        _po_count[p] += 1
+            return '; '.join(f'{n}-{p}' for p, n in sorted(_po_count.items())) if _po_count else None
+
+        def _desc_wrong_orientations_s():
+            _po_count = defaultdict(int)
+            for d in data.values():
+                if o := (d.ge_seq.part_orientation if d.ge_seq.has_irs else
+                        (d.ncbi.part_orientation if d.ncbi.has_irs else None)):
+                    for p in o.split(','):
+                        _po_count[p] += 1
+            return '; '.join(f'{n}-{p}' for p, n in sorted(_po_count.items())) if _po_count else None
 
         summary_data = dict(
             num_genomes=len(data),
-            min_sequence_length=min(len(seq) for _, seq in sequences_step._iterate_records()),
-            max_sequence_length=max(len(seq) for _, seq in sequences_step._iterate_records()),
-            num_ncbi_annotations=len(ncbi_with),
-            num_ge_seq_annotations=len(ge_seq_with),
-            num_without_annotation=len(data) - len(set(ge_seq_with + ncbi_with)),
-            min_first_date=min(d.first_date for d in data.values()),
-            max_first_date=max(d.first_date for d in data.values()),
-            min_created_date=min(d.created_date for d in data.values()),
-            max_created_date=max(d.created_date for d in data.values()),
-            num_wrong_orientations=sum(1 for d in self.seq_descs.values() if d.part_orientation),
-            desc_wrong_orientations=list(_po_count.items()) if _po_count else None,
-            num_wrong_offset=sum(1 for d in self.seq_descs.values() if offset_off(d.part_offset)),
-            num_to_fix=sum(1 for d in self.seq_descs.values() if d.part_orientation or offset_off(d.part_offset)),
+            # min_sequence_length=min(len(seq) for _, seq in sequences_step._iterate_records()),
+            # max_sequence_length=max(len(seq) for _, seq in sequences_step._iterate_records()),
+            #
+            ge_seq_num_irs=sum(1 for d in data.values() if d.ge_seq.has_irs),
+            ge_seq_wrong_orientations=sum(1 for d in data.values() if d.ge_seq.part_orientation),
+            ge_seq_desc_wrong_orientations=_desc_wrong_orientations('ge_seq'),
+            ge_seq_wrong_offset=sum(1 for d in data.values() if offset_off(d.ge_seq.part_offset)),
+            ge_seq_num_to_fix=sum(1 for d in data.values()
+                                  if d.ge_seq.part_orientation or offset_off(d.ge_seq.part_offset)),
+            #
+            ncbi_num_irs=sum(1 for d in data.values() if d.ncbi.has_irs),
+            ncbi_wrong_orientations=sum(1 for d in data.values() if d.ncbi.part_orientation),
+            ncbi_desc_wrong_orientations=_desc_wrong_orientations('ncbi'),
+            ncbi_wrong_offset=sum(1 for d in data.values() if offset_off(d.ncbi.part_offset)),
+            ncbi_num_to_fix=sum(1 for d in data.values() if d.ncbi.part_orientation or offset_off(d.ncbi.part_offset)),
+            #
+            s_num_irs=sum(1 for d in data.values() if d.ncbi.has_irs or d.ge_seq.has_irs),
+            s_wrong_orientations=sum(
+                1 for d in data.values()
+                if (d.ge_seq.has_irs and d.ge_seq.part_orientation) or
+                (not d.ge_seq.has_irs and d.ncbi.part_orientation)),
+            s_desc_wrong_orientations=_desc_wrong_orientations_s(),
+            s_wrong_offset=sum(
+                1 for d in data.values()
+                if (d.ge_seq.has_irs and d.ge_seq.part_offset) or
+                (not d.ge_seq.has_irs and d.ncbi.part_offset)),
+            s_num_to_fix=sum(
+                1 for d in data.values()
+                if (d.ge_seq.has_irs and d.ge_seq.part_orientation or offset_off(d.ge_seq.part_offset))
+                or (not d.ge_seq.has_irs and d.ncbi.part_orientation or offset_off(d.ncbi.part_offset))),
         )
-        for k, v in min_genes.items():
-            summary_data[f'genes_min_{k}'] = v
-            summary_data[f'genes_max_{k}'] = max_genes[k]
-        for p_idx, p_name in enumerate(('lsc', 'ir', 'ssc')):
-            summary_data[f'part_min_length_{p_name}'] = min(l[p_idx] for l in p_lengths)
-            summary_data[f'part_max_length_{p_name}'] = max(l[p_idx] for l in p_lengths)
-        self.step.save_summary_data(summary_data)
 
+        for a_attr in ('ge_seq', 'ncbi'):
+            gks = list(getattr(some_data, a_attr).genes_stat.keys())
+            min_genes = reduce(lambda x, y: dict((k, min(x[k], y[k])) for k in gks),
+                               (getattr(d, a_attr).genes_stat for d in data.values()))
+            max_genes = reduce(lambda x, y: dict((k, max(x[k], y[k])) for k in gks),
+                               (getattr(d, a_attr).genes_stat for d in data.values()))
 
-        summary = """Statistics:
+            for k, v in min_genes.items():
+                summary_data[f'{a_attr}_genes_min_{k}'] = v
+                summary_data[f'{a_attr}_genes_max_{k}'] = max_genes[k]
 
-Minimum sequence length: {min_sequence_length}
-Maximum sequence length: {max_sequence_length}
-Number of genomes containing IRS by NCBI annotation  : {num_ncbi_annotations}
-Number of genomes containing IRS by GeSeq annotation : {num_ge_seq_annotations}
-Number of genomes without IRS                        : {num_without_annotation}
-
-Range of dates:
-  First date     : {min_first_date} - {max_first_date}
-  Published date : {min_created_date} - {max_created_date}
-
-Range of number of genes:
-  Annotated        : {genes_min_annotated} - {genes_max_annotated}
-  Disjunct         : {genes_min_disjunct} - {genes_max_disjunct}
-  Name/strand      : {genes_min_name_strand} - {genes_max_name_strand}
-  Name             : {genes_min_names} - {genes_max_names}
-  Without location : {genes_min_without_location} - {genes_max_without_location}
-  Without name     : {genes_min_without_name} - {genes_max_without_name}
-
-Range of part lengths:
-  LSC : {part_min_length_lsc} - {part_max_length_lsc}
-  IRs : {part_min_length_ir} - {part_max_length_ir}
-  SSC : {part_min_length_ssc} - {part_max_length_ssc}
-
-Corrections by parts:
-  Wrong orientation : {num_wrong_orientations}{parts_orient_count}
-  With offset       : {num_wrong_offset}
-  Fixed             : {num_to_fix}
-
-""".format(parts_orient_count=parts_orient_count, **summary_data)
-        # {self._find_species_stats()}
-
-        print(summary)
-        write_str_in_file(self.step.step_file('summary.txt'), summary)
-
+            p_lengths = [l for d in data.values() if (l := getattr(d, a_attr).part_lengths_all())]
+            for p_idx, p_name in enumerate(('lsc', 'ir', 'ssc')):
+                summary_data[f'{a_attr}_part_min_length_{p_name}'] = min(l[p_idx] for l in p_lengths)
+                summary_data[f'{a_attr}_part_max_length_{p_name}'] = max(l[p_idx] for l in p_lengths)
         #
-        if errors := self._find_errors():
-            r_file = self.step.step_file('errors.txt')
-            write_str_in_file(r_file, '\n'.join(errors) + '\n')
-            print(f'Problems found in sequences! Check file {r_file}.')
-
-    # def _find_species_stats(self):
-    #     ncbi_tax = get_ncbi_taxonomy()
-    #     ident_2_taxid = dict(self.table_data.iterate_column('tax_id'))
-    #     taxid_2_ident = dict((v, k) for k, v in ident_2_taxid.items())
-    #     species, without_sp = ncbi_tax.group_taxids_in_species(set(ident_2_taxid.values()))
-
-    #     # Species with more genomes
-    #     ret = []
-    #     for (sp_taxid, sp_name), data in species.items():
-    #         if len(data) > 1:
-    #             ret.append(f'  Genomes for species {sp_name} ({sp_taxid}):')
-    #             ret.extend(f'   - {taxid_2_ident[taxid]} {name} ({taxid}) of rank {rank}' for taxid, name, rank in data)
-    #     if ret:
-    #         ret = ['Species with more accessions:'] + ret
-    #     else:
-    #         ret.append('No species found with more genomes!')
-
-    #     # Without species
-    #     if without_sp:
-    #         ret.extend(['', "No 'base' species in NCBI taxa database found for:"])
-    #         ret.extend(f' - {taxid_2_ident[taxid]} {name} ({taxid}) of rank {rank}' for taxid, name, rank in without_sp)
-    #     return '\n'.join(ret)
-
-    def _find_errors(self):
-        offset_off = lambda o: (abs(o or 0) > DEFAULT_KEEP_OFFSET)
-        data = self.seq_descs
-        errors = []
-        l_start = '\n - '
-        if f_ps := [(s, d.irs_took_from) for s, d in data.items() if d.irs_took_from]:
-            errors.append(f'Found partitions for sequences:{l_start}{l_start.join(sorted(f"{s} ({m})" for s, m in f_ps))}')
-        if without_parts := [seq_ident for seq_ident, d in data.items() if not d._partition]:
-            errors.append(f"No partitions for sequences:{l_start}{l_start.join(sorted(without_parts))}")
-        if wrong_oriented_parts := [seq_ident for seq_ident, d in data.items() if d.part_orientation]:
-            errors.append(f"Partitions with wrong orientation in sequences:{l_start}{l_start.join(sorted(wrong_oriented_parts))}")
-        if with_offset := [seq_ident for seq_ident, d in data.items() if offset_off(d.part_offset)]:
-            errors.append(f"Sequences with offset:{l_start}{l_start.join(sorted(with_offset))}")
-        # if with_trnH_offset := [seq_ident for seq_ident, d in data.items() if offset_off(d.part_trnH_GUG)]:
-        #     errors.append(f"Sequneces with trnH-GUG offset:{l_start}{l_start.join(sorted(with_trnH_offset))}")
-        return errors
+        self.step.save_summary_data(summary_data)
 
 
 # ---------------------------------------------------------

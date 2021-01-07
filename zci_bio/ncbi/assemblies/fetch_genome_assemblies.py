@@ -4,6 +4,7 @@ import re
 import csv
 from decimal import Decimal
 from datetime import date
+from collections import defaultdict
 from step_project.common.table.steps import TableStep, Rows2Table
 from common_utils.file_utils import write_str_in_file, write_csv
 from common_utils.value_data_types import fromisoformat
@@ -224,8 +225,10 @@ def fetch_chloroplast_list(project, step_data, args):
         species, without_sp = get_ncbi_taxonomy().group_taxids_in_species(list(taxid_2_idx.keys()))
         same_sp_rows = []
         remove_idxs = []
+        same_species_desc = defaultdict(int)
         for (taxid, sp_name), l_sps in species.items():
             if len(l_sps) > 1:
+                same_species_desc[len(l_sps)] += 1
                 # Sort by (CreateDate, ncbi_ident) desc
                 sp_rows = sorted((family_rows[taxid_2_idx[taxid]] for taxid, _, _ in l_sps),
                                  reverse=True, key=lambda r: (r[4], r[0]))
@@ -237,6 +240,8 @@ def fetch_chloroplast_list(project, step_data, args):
                     print(f' - {row[1]} (length: {row[3]}, date: {row[4]}) {row[6]}')
 
         _set_summary_data_for_genomes([family_rows[i] for i in remove_idxs], 'removed', summary_data)
+        summary_data['same_species_description'] = '; '.join(f'{v}*{k}' for k, v in sorted(same_species_desc.items())) \
+            if same_species_desc else ''
         if remove_idxs:
             for idx in sorted(remove_idxs, reverse=True):
                 family_rows.pop(idx)
@@ -249,7 +254,9 @@ def fetch_chloroplast_list(project, step_data, args):
             data = Entrez().search_summary('nucleotide', term=' OR '.join(f'{o}[Accession]' for o in outgroups))
             if data:
                 outgroup_rows = _filter_summary_data(data, 1)
-                fetched = [d['Caption'] for d in data]
+                fetched = [str(d['Caption']) for d in data]
+                summary_data['outgroup_accession'] = fetched[0]
+                summary_data['outgroup_species'] = ' '.join(data[0]['Title'].split(' ', 2)[:2])
                 if not_in := [o for o in outgroups if o not in fetched]:
                     print('Warning: no data fetched for outgroups:', not_in)
             else:
@@ -274,6 +281,8 @@ def _set_summary_data_for_genomes(rows, desc, summary_data):
     summary_data[f'{desc}_min_length'] = min((r[3] for r in rows), default=None)
     summary_data[f'{desc}_max_create_date'] = max((r[4] for r in rows), default=None)
     summary_data[f'{desc}_min_create_date'] = min((r[4] for r in rows), default=None)
+    summary_data[f'{desc}_max_update_date'] = max((r[5] for r in rows), default=None)
+    summary_data[f'{desc}_min_update_date'] = min((r[5] for r in rows), default=None)
 
 
 def _filter_summary_data(data, max_taxid):

@@ -31,7 +31,6 @@ class WfAction(namedtuple('WfAction', 'step_name, prev_steps, cmd, additional_re
 class BaseWorkflow:
     _WORKFLOW = None  # Name of workflow
     _COMMAND_METHODS = dict(run='cmd_run', graph='cmd_graph', summary='cmd_summary')
-    _SUMMARY_STEPS = None
 
     def __init__(self, project, parameters):
         self.project = project
@@ -71,7 +70,8 @@ class BaseWorkflow:
         # List of tuples (step_name, cmd, additional_required_steps)
         raise NotImplementedError('')
 
-    def summary(self):
+    def get_summary(self):
+        # Returns dict with data to store. Attributes can be: text, table
         raise NotImplementedError('')
 
     #
@@ -152,12 +152,10 @@ Check for INSTRUCTION.txt and calculate.zip in step(s):
         create_graph_from_data(nodes, edges, 'workflow_graph')
 
     def cmd_summary(self):
-        if not self._SUMMARY_STEPS:
-            print('No summary steps!!!')
-            return
-        for s in self._SUMMARY_STEPS:
-            pass
+        summary = self.get_summary()
 
-        # text = self.summary()
-        # print(text)
-        # write_str_in_file('workflow_summary.txt', text)
+        if text := summary.get('text'):
+            print(text)
+            write_str_in_file('workflow_summary.txt', text)
+
+        # if text := summary.get('table'):

@@ -115,7 +115,7 @@ class NormalizationResult:
         text = str(StringColumns(rows))
         if self.has_A:
             self.A_tree_diffs = _TreeDiffs(self, 'A')
-            rows_a = self.A_tree_diffs.get_text()
+            rows_a = self.A_tree_diffs.get_rows()
             text += '\n\n' + str(StringColumns(rows_a))
             rows.extend(rows_a)
 

@@ -5,7 +5,6 @@ from common_utils.exceptions import ZCItoolsValueError
 
 class ChloroplastNormalization(BaseWorkflow):
     _WORKFLOW = 'chloroplast_normalization'
-    _SUMMARY_STEPS = ['04_AnalyseChloroplast', '01_chloroplast_list']
 
     @staticmethod
     def required_parameters():
@@ -65,20 +64,77 @@ class ChloroplastNormalization(BaseWorkflow):
         actions.append(('X_result', 'normalization_result', tree_steps))
         return actions
 
-    def summary(self):
+    def get_summary(self):
         family = self.parameters['family']
         outgroup = self.parameters['outgroup']
         text = ''
 
         if step := self.project.read_step_if_in('01_chloroplast_list'):
-            num_acc = sum(int(s != outgroup) for s in step.get_column_values('ncbi_ident'))
-            num_removed = 0
-            if (ss_csv := step.step_file('same_species.csv')):
-                data = read_csv(ss_csv)
-                num_removed = len(data) - len(set(d[0] for d in data))
+            s = step.get_summary_data()
             text += f"""
-Number of genomes in NCBI : {num_acc + num_removed}
-Number of genomes to work : {num_acc}
+# Input data
+
+Family:
+ * Number of family genomes in NCBI : {s['ncbi_family_num_genomes']}
+ * Number of family genomes to work : {s['family_num_genomes']}
+ * Same species description         : {s['same_species_description']}
+
+Outgroup:
+ * Accession number  : {s['outgroup_accession']}
+ * Species           : {s['outgroup_species']}
+ * Sequence length   : {s['outgroup_max_length']:,}
+ * Create date       : {s['outgroup_max_create_date']}
+ * Update date       : {s['outgroup_max_update_date']}
+
+Set of genome to work:
+ * Length range      : {s['all_min_length']:,} - {s['all_max_length']:,}
+ * Date first range  : {s['all_min_create_date']} - {s['all_max_create_date']}
+ * Date update range : {s['all_min_update_date']} - {s['all_max_update_date']}
 """
 
-        return text
+        if step := self.project.read_step_if_in('04_AnalyseChloroplast'):
+            # s = step.select([])
+            s = step.get_summary_data()
+            ng = s['num_genomes']
+
+            def _annotation_summary(title, a, genes):
+                t = f"""
+{title}:
+ * Number of annotations containing IRS         : {s[f'{a}_num_irs']}
+ * Number of annotations without IRS            : {ng - s[f'{a}_num_irs']}
+ * Number of annotations with wrong orientation : {s[f'{a}_wrong_orientations']}
+ * Description wrong orientations               : {s[f'{a}_desc_wrong_orientations']}
+ * Number of annotations with offset            : {s[f'{a}_wrong_offset']}
+ * Number genomes to normalize                  : {s[f'{a}_num_to_fix']}
+"""
+                if genes:
+                    t += f"""
+    Range of number of genes:
+     * Annotated        : {s[f'{a}_genes_min_annotated']} - {s[f'{a}_genes_max_annotated']}
+     * Disjunct         : {s[f'{a}_genes_min_disjunct']} - {s[f'{a}_genes_max_disjunct']}
+     * Name/strand      : {s[f'{a}_genes_min_name_strand']} - {s[f'{a}_genes_max_name_strand']}
+     * Name             : {s[f'{a}_genes_min_names']} - {s[f'{a}_genes_max_names']}
+     * Without location : {s[f'{a}_genes_min_without_location']} - {s[f'{a}_genes_max_without_location']}
+     * Without name     : {s[f'{a}_genes_min_without_name']} - {s[f'{a}_genes_max_without_name']}
+
+    Range of part lengths:
+     * LSC : {s[f'{a}_part_min_length_lsc']} - {s[f'{a}_part_max_length_lsc']}
+     * IRs : {s[f'{a}_part_min_length_ir']} - {s[f'{a}_part_max_length_ir']}
+     * SSC : {s[f'{a}_part_min_length_ssc']} - {s[f'{a}_part_max_length_ssc']}
+"""
+                return t
+
+            text += f"""
+
+# Analyses
+
+Number of genomes: {ng}
+"""
+            text += _annotation_summary('GeSeq annotation', 'ge_seq', True)
+            text += _annotation_summary('NCBI annotation', 'ncbi', True)
+            text += _annotation_summary('Sum annotation', 's', False)
+
+        # ToDo: Alignments
+        # ToDo: Trees
+
+        return dict(text=text)
