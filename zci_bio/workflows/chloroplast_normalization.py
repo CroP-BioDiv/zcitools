@@ -1,3 +1,4 @@
+import os.path
 from step_project.base_workflow import BaseWorkflow
 from common_utils.file_utils import read_csv
 from common_utils.exceptions import ZCItoolsValueError
@@ -78,8 +79,6 @@ class ChloroplastNormalization(BaseWorkflow):
         return actions
 
     def get_summary(self):
-        family = self.parameters['family']
-        outgroup = self.parameters['outgroup']
         text = ''
 
         # ---------------------------------------------------------------------
@@ -113,11 +112,10 @@ Set of genome to work:
         # ---------------------------------------------------------------------
         # Analyses
         # ---------------------------------------------------------------------
-        if not (step := self.project.read_step_if_in('04_AnalyseChloroplast')):
+        if not (analyses_step := self.project.read_step_if_in('04_AnalyseChloroplast')):
             return text
 
-        # s = step.select([])
-        s = step.get_summary_data()
+        s = analyses_step.get_summary_data()
         ng = s['num_genomes']
 
         def _annotation_summary(title, a, genes):
@@ -153,31 +151,38 @@ Set of genome to work:
 
 Number of genomes: {ng}
 
-{_annotation_summary('GeSeq annotation', 'ge_seq', True)}
-{_annotation_summary('NCBI annotation', 'ncbi', True)}
+{_annotation_summary('GeSeq annotations', 'ge_seq', True)}
+{_annotation_summary('NCBI annotations', 'ncbi', True)}
 {_annotation_summary('Sum of annotations', 'sum', False)}
 """
 
         # ---------------------------------------------------------------------
         # Alignments
         # ---------------------------------------------------------------------
-        has_A = self.has_A_branch()
-        lines = []
-        for sa in ('SA' if has_A else 'S'):
-            for on in 'on':
-                step_name = f'{sa}{on}_03_MAFFT'
-                alignment_length = '-'
-                if step := self.project.read_step_if_in(f'{sa}{on}_03_MAFFT'):
-                    if s := step.get_summary_data():
-                        alignment_length = f"{s['alignment_length']:,}"
-                lines.append(f'  {step_name} : {alignment_length}')
-        lines = '\n'.join(lines)
+        analyses_branches = workflow_branches(self.parameters, analyses_step)
+        gas_2_text = dict(G='GeSeq', S='Sum', A='All')
         text += f"""
 
 # Alignment
 
-{lines}
+Subset        Original      Normalized
 """
+
+        for b in analyses_branches:
+            aligns = []
+            for on in 'on':
+                alignment_length = '-'
+                if step := self.project.read_step_if_in(f'{b}{on}_03_MAFFT'):
+                    if s := step.get_summary_data():
+                        # ToDo: is it safe way to find number of partitions?
+                        num_parts = ''
+                        part_f = os.path.join(f'{b}{on}_04_G_RAxML', 'partitions.ind')
+                        if os.path.isfile(part_f):
+                            num_parts = f' ({sum(1 for l in open(part_f))})'
+                        #
+                        alignment_length = f"{s['alignment_length']:,}{num_parts}"
+                aligns.append(alignment_length)
+            text += f"{gas_2_text[b]:6} {aligns[0]:>15} {aligns[1]:>15}\n"
 
         # ToDo: Trees
 
