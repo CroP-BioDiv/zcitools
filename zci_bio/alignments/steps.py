@@ -102,6 +102,11 @@ Data is stored:
             import_bio_align_io().convert(p_f, 'phylip-relaxed', f, 'nexus', molecule_type='DNA')
             return f
 
+    def make_summary_data(self):
+        align = self.get_alignment_obj()
+        # ToDo: some more data
+        return dict(alignment_length=len(align[0]))
+
     # Partitions (used for phylogeny analysis)
     def get_partition_from_file(self, seq_ident):
         # Returns None or list of integers

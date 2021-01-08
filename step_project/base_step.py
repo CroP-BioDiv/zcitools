@@ -164,9 +164,16 @@ class Step:
         assert isinstance(data, dict), data
         write_yaml(data, self.step_file('summary.yml'))
 
+    def make_summary_data(self):
+        return
+
     def get_summary_data(self):
         if os.path.isfile(f := self.step_file('summary.yml')):
             return read_yaml(f)
+        # 'Cached' version
+        if d := self.make_summary_data():
+            self.save_summary_data(d)
+            return d
 
     #
     def get_finish_data(self):

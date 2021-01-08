@@ -11,7 +11,7 @@ class ChloroplastNormalization(BaseWorkflow):
         return ('family', 'outgroup')
 
     def has_A_branch(self):
-        if not self.parameters.get('calc_all', 0):
+        if not int(self.parameters.get('calc_all', 0)):
             return False
         if step := self.project.read_step_if_in('04_AnalyseChloroplast', check_data_type='table'):
             if all(step.get_column_values('Part starts')):
@@ -69,9 +69,14 @@ class ChloroplastNormalization(BaseWorkflow):
         outgroup = self.parameters['outgroup']
         text = ''
 
-        if step := self.project.read_step_if_in('01_chloroplast_list'):
-            s = step.get_summary_data()
-            text += f"""
+        # ---------------------------------------------------------------------
+        # Collect sequence data
+        # ---------------------------------------------------------------------
+        if not (step := self.project.read_step_if_in('01_chloroplast_list')):
+            return text
+
+        s = step.get_summary_data()
+        text += f"""
 # Input data
 
 Family:
@@ -92,13 +97,18 @@ Set of genome to work:
  * Date update range : {s['all_min_update_date']} - {s['all_max_update_date']}
 """
 
-        if step := self.project.read_step_if_in('04_AnalyseChloroplast'):
-            # s = step.select([])
-            s = step.get_summary_data()
-            ng = s['num_genomes']
+        # ---------------------------------------------------------------------
+        # Analyses
+        # ---------------------------------------------------------------------
+        if not (step := self.project.read_step_if_in('04_AnalyseChloroplast')):
+            return text
 
-            def _annotation_summary(title, a, genes):
-                t = f"""
+        # s = step.select([])
+        s = step.get_summary_data()
+        ng = s['num_genomes']
+
+        def _annotation_summary(title, a, genes):
+            t = f"""
 {title}:
  * Number of annotations containing IRS         : {s[f'{a}_num_irs']}
  * Number of annotations without IRS            : {ng - s[f'{a}_num_irs']}
@@ -107,8 +117,8 @@ Set of genome to work:
  * Number of annotations with offset            : {s[f'{a}_wrong_offset']}
  * Number genomes to normalize                  : {s[f'{a}_num_to_fix']}
 """
-                if genes:
-                    t += f"""
+            if genes:
+                t += f"""
     Range of number of genes:
      * Annotated        : {s[f'{a}_genes_min_annotated']} - {s[f'{a}_genes_max_annotated']}
      * Disjunct         : {s[f'{a}_genes_min_disjunct']} - {s[f'{a}_genes_max_disjunct']}
@@ -122,19 +132,40 @@ Set of genome to work:
      * IRs : {s[f'{a}_part_min_length_ir']} - {s[f'{a}_part_max_length_ir']}
      * SSC : {s[f'{a}_part_min_length_ssc']} - {s[f'{a}_part_max_length_ssc']}
 """
-                return t
+            return t
 
-            text += f"""
+        text += f"""
 
 # Analyses
 
 Number of genomes: {ng}
-"""
-            text += _annotation_summary('GeSeq annotation', 'ge_seq', True)
-            text += _annotation_summary('NCBI annotation', 'ncbi', True)
-            text += _annotation_summary('Sum annotation', 'sum', False)
 
-        # ToDo: Alignments
+{_annotation_summary('GeSeq annotation', 'ge_seq', True)}
+{_annotation_summary('NCBI annotation', 'ncbi', True)}
+{_annotation_summary('Sum of annotations', 'sum', False)}
+"""
+
+        # ---------------------------------------------------------------------
+        # Alignments
+        # ---------------------------------------------------------------------
+        has_A = self.has_A_branch()
+        lines = []
+        for sa in ('SA' if has_A else 'S'):
+            for on in 'on':
+                step_name = f'{sa}{on}_03_MAFFT'
+                alignment_length = '-'
+                if step := self.project.read_step_if_in(f'{sa}{on}_03_MAFFT'):
+                    if s := step.get_summary_data():
+                        alignment_length = f"{s['alignment_length']:,}"
+                lines.append(f'  {step_name} : {alignment_length}')
+        lines = '\n'.join(lines)
+        text += f"""
+
+# Alignment
+
+{lines}
+"""
+
         # ToDo: Trees
 
         return dict(text=text)
