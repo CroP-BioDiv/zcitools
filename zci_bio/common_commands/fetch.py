@@ -18,6 +18,10 @@ def fetch_common_db_data(step_data, table_step, step_type, common_db):
 
 
 def create_subset(step_data, input_step, args):
+    assert not args.analyses_subset or args.analyses_subset in ('sum', 'ge_seq'), args.analyses_subset
+    if args.analyses_with_irs and not args.analyses_subset:
+        raise ZCItoolsValueError('Error: analyses subset was not set!')
+
     project = input_step.project
     step = project.new_step_by_type(input_step.step_data_type, step_data, remove_data=True)
 
@@ -25,9 +29,15 @@ def create_subset(step_data, input_step, args):
     wo_re = [re.compile(r) for r in (args.without_seq_idents_re or [])]
     seqs = set(args.seq_idents or [])
     seqs_re = [re.compile(r) for r in (args.seq_idents_re or [])]
+
     if args.analyses_with_irs:
         analyses_step = project.read_step(args.analyses_with_irs, check_data_type='table', no_check=True)
-        seqs.update(s for s, _ps in analyses_step.select(['AccesionNumber', 'Part starts']) if _ps)
+        if args.analyses_subset == 'sum':
+            seqs.update(s for s, g, n in analyses_step.select(
+                ['AccesionNumber', 'GeSeq part starts', 'NCBI part starts']) if g or n)
+        elif args.analyses_subset == 'ge_seq':
+            seqs.update(s for s, g in analyses_step.select(['AccesionNumber', 'GeSeq part starts']) if g)
+
     seqs.difference_update(wo)
     use_all = all(not x for x in (seqs, seqs_re, wo, wo_re))
 

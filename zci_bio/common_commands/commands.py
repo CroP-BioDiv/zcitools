@@ -43,6 +43,9 @@ class SequencesSubset(CreateStepFromStepCommand):
         parser.add_argument(
             '--analyses-with-irs',
             help='Chloroplast analyses step where to check for chloroplast sequences that have IRs')
+        parser.add_argument(
+            '--analyses-subset', choice=('sum', 'ge_seq'),
+            help='Subset of chloroplast analyses genomes.')
 
     def run(self, step_data):
         from .fetch import create_subset

@@ -14,7 +14,7 @@ class ChloroplastNormalization(BaseWorkflow):
         if not int(self.parameters.get('calc_all', 0)):
             return False
         if step := self.project.read_step_if_in('04_AnalyseChloroplast', check_data_type='table'):
-            if all(step.get_column_values('Part starts')):
+            if all(g or n for g, n in step.select(['GeSeq part starts', 'NCBI part starts'])):
                 return False
         return True
 
@@ -29,14 +29,14 @@ class ChloroplastNormalization(BaseWorkflow):
             ('03_GeSeq', 'ge_seq 02_seqs'),
             ('04_AnalyseChloroplast', 'analyse_chloroplast 03_GeSeq'),
             #
-            ('Sn_01_seq', 'fix_by_analysis parts 04_AnalyseChloroplast'),
+            ('Sn_01_seq', 'fix_by_analysis parts sum 04_AnalyseChloroplast'),
             ('Sn_02_GeSeq', 'ge_seq Sn_01_seq'),
             #
-            ('So_02_GeSeq', 'seq_subset 03_GeSeq --analyses-with-irs 04_AnalyseChloroplast'),
+            ('So_02_GeSeq', 'seq_subset 03_GeSeq --analyses-with-irs 04_AnalyseChloroplast --analyses-subset sum'),
         ]
         if has_A:
             actions += [
-                ('An_01_seq', 'fix_by_analysis parts 04_AnalyseChloroplast -a'),
+                ('An_01_seq', 'fix_by_analysis parts all 04_AnalyseChloroplast'),
                 # Note: Additional dependency added since same sequences are annotated,
                 # and there is no need to have 2 steps pending for finishing.
                 ('An_02_GeSeq', 'ge_seq An_01_seq', 'Sn_02_GeSeq'),

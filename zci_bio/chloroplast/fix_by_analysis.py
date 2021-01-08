@@ -12,7 +12,8 @@ def _copy_from_origin(step, annotation_step, seq_ident):
     step.add_sequence_file(os.path.basename(an_filename))
 
 
-def fix_by_parts(step_data, analyse_step, keep_offset, force_fix_all, sequences_db):
+def fix_by_parts(step_data, analyse_step, subset, keep_offset, sequences_db):
+    assert subset in ('all', 'sum', 'ge_seq'), subset
     step = SequencesStep(analyse_step.project, step_data, remove_data=True)
     analyse_step.propagate_step_name_prefix(step)
     annotation_step = analyse_step.project.find_previous_step_of_type(analyse_step, 'annotations')
@@ -20,15 +21,20 @@ def fix_by_parts(step_data, analyse_step, keep_offset, force_fix_all, sequences_
     #
     for row in analyse_step.rows_as_dicts():
         seq_ident = row['AccesionNumber']
-        if not (starts := row['Part starts']):
-            if force_fix_all:
+        starts = row['GeSeq part starts']
+        orientation = row['GeSeq orientation']
+        if not starts and subset != 'ge_seq':
+            starts = row['NCBI part starts']
+            orientation = row['NCBI orientation']
+
+        if not starts:
+            if subset == 'all':
                 print(f"Warning: sequence {seq_ident} doesn't have parts!")
                 _copy_from_origin(step, annotation_step, seq_ident)
             continue
 
         starts = [int(f.strip()) for f in starts.split(',')]
         lsc_offset = starts[0]
-        orientation = row['Orientation']
 
         # If there is no need to orient parts or to do offseting, than copy some previous record
         if not orientation and (abs(lsc_offset) <= keep_offset):
@@ -64,21 +70,28 @@ def fix_by_parts(step_data, analyse_step, keep_offset, force_fix_all, sequences_
     return step
 
 
-def fix_by_trnF_GAA(step_data, analyse_step, keep_offset, force_fix_all, sequences_db):
+def fix_by_trnF_GAA(step_data, analyse_step, subset, keep_offset, sequences_db):
     step = SequencesStep(analyse_step.project, step_data, remove_data=True)
     analyse_step.propagate_step_name_prefix(step)
     annotation_step = analyse_step.project.find_previous_step_of_type(analyse_step, 'annotations')
 
     for row in analyse_step.rows_as_dicts():
         seq_ident = row['AccesionNumber']
-        if (offset := row['trnF-GAA']) in (None, ''):
-            if force_fix_all:
+        starts = row['GeSeq part starts']
+        offset = row['GeSeq trnF-GAA']
+        orientation = row['GeSeq orientation']
+        if not starts and subset != 'ge_seq':
+            starts = row['NCBI part starts']
+            offset = row['NCBI trnF-GAA']
+            orientation = row['NCBI orientation']
+
+        if offset in (None, ''):
+            if subset == 'all':
                 print(f"Warning: sequence {seq_ident} doesn't have trnF-GAA gene!")
                 _copy_from_origin(step, annotation_step, seq_ident)  # ???
             continue
 
-        orientation = row['Orientation']
-        if starts := row['Part starts']:
+        if starts:
             starts = [int(f.strip()) for f in starts.split(',')]
             # Nothing to do!
             if abs(starts[0]) <= keep_offset and \

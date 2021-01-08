@@ -87,19 +87,20 @@ class AnalyseGenomes:
 
             # GeSeq annotation
             ('ge_seq.num_genes_stat', 'GeSeq genes', 'str'),
-            ('ge_seq.part_starts', 'Part starts', 'str'),
-            ('ge_seq.part_lengths', 'Part lengths', 'str'),
-            ('ge_seq.part_num_genes', 'Part genes', 'str'),
-            ('ge_seq.part_orientation', 'Orientation', 'str'),
-            # ('ge_seq.trnF_GAA', 'trnF-GAA', 'int'),
+            ('ge_seq.part_starts', 'GeSeq part starts', 'str'),
+            ('ge_seq.part_lengths', 'GeSeq part lengths', 'str'),
+            ('ge_seq.part_num_genes', 'GeSeq part genes', 'str'),
+            ('ge_seq.part_orientation', 'GeSeq orientation', 'str'),
+            ('ge_seq.trnF_GAA', 'GeSeq trnF-GAA', 'int'),
             # ('ge_seq.trnH_GUG', 'trnH-GUG', 'str'),
 
             # NCBI annotation
             ('ncbi.num_genes_stat', 'NCBI genes', 'str'),
-            ('ncbi.part_starts', 'Part starts', 'str'),
-            ('ncbi.part_lengths', 'Part lengths', 'str'),
-            ('ncbi.part_num_genes', 'Part genes', 'str'),
-            ('ncbi.part_orientation', 'Orientation', 'str'),
+            ('ncbi.part_starts', 'NCBI part starts', 'str'),
+            ('ncbi.part_lengths', 'NCBI part lengths', 'str'),
+            ('ncbi.part_num_genes', 'NCBI part genes', 'str'),
+            ('ncbi.part_orientation', 'NCBI orientation', 'str'),
+            ('ncbi.trnF_GAA', 'NCBI trnF-GAA', 'int'),
 
             #
             ('artcle_title', 'Article', 'str'),

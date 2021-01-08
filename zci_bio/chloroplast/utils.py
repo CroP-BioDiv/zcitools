@@ -167,7 +167,7 @@ def trnF_GAA_start(seq_rec, partition):
     l_seq = len(seq_rec.seq)
     all_genes = [f for f in seq_rec.features if f.type == 'gene' and f.qualifiers['gene'][0] == 'trnF-GAA']
     if not all_genes:
-        print(f'Warning: no trnF-GAA found in sequence {seq_rec.name}!')
+        # print(f'Warning: no trnF-GAA found in sequence {seq_rec.name}!')
         return
 
     if partition and (lsc := partition['lsc']):
