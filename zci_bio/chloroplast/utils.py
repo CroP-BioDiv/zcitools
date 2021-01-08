@@ -1,6 +1,7 @@
 from Bio.SeqFeature import FeatureLocation, CompoundLocation
 from common_utils.exceptions import ZCItoolsValueError
 from ..utils.features import Feature, Partition
+from ..utils.helpers import feature_qualifiers_to_desc
 
 
 def find_chloroplast_irs(seq, check_length=True):
@@ -165,7 +166,7 @@ def orient_chloroplast_parts(seq_rec):
 def trnF_GAA_start(seq_rec, partition):
     # Returns offset of trnF-GAA gene regarding start of LSC region
     l_seq = len(seq_rec.seq)
-    all_genes = [f for f in seq_rec.features if f.type == 'gene' and f.qualifiers['gene'][0] == 'trnF-GAA']
+    all_genes = [f for f in seq_rec.features if f.type == 'gene' and feature_qualifiers_to_desc(f) == 'trnF-GAA']
     if not all_genes:
         # print(f'Warning: no trnF-GAA found in sequence {seq_rec.name}!')
         return

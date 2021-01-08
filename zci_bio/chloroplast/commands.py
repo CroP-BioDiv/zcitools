@@ -26,7 +26,7 @@ class ChloroplastFixByAnalyse(CreateStepFromStepCommand):
     def set_arguments(parser):
         # Note: method than step
         parser.add_argument('method', help='Fix method. Options: parts, trnF-GAA. Only first character is needed.')
-        parser.add_argument('subset', choice=('all', 'sum', 'ge_seq'),
+        parser.add_argument('subset', choices=('all', 'sum', 'ge_seq'),
                             help='Subset to work with')
         CreateStepFromStepCommand.set_arguments(parser)
         parser.add_argument('-o', '--keep-offset', default=DEFAULT_KEEP_OFFSET, type=int,

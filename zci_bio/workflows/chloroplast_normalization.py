@@ -3,6 +3,16 @@ from common_utils.file_utils import read_csv
 from common_utils.exceptions import ZCItoolsValueError
 
 
+def workflow_branches(wf_settings, analyses_step):
+    branches = ['G']
+    parts = analyses_step.select(['GeSeq part starts', 'NCBI part starts'])
+    if any(bool(g) != bool(n) for g, n in parts):
+        branches.append('S')
+    if int(wf_settings.get('calc_all', 0)) and not all(g or n for g, n in parts):
+        branches.append('A')
+    return branches
+
+
 class ChloroplastNormalization(BaseWorkflow):
     _WORKFLOW = 'chloroplast_normalization'
 
@@ -10,18 +20,11 @@ class ChloroplastNormalization(BaseWorkflow):
     def required_parameters():
         return ('family', 'outgroup')
 
-    def has_A_branch(self):
-        if not int(self.parameters.get('calc_all', 0)):
-            return False
-        if step := self.project.read_step_if_in('04_AnalyseChloroplast', check_data_type='table'):
-            if all(g or n for g, n in step.select(['GeSeq part starts', 'NCBI part starts'])):
-                return False
-        return True
-
     def _actions(self):
         family = self.parameters['family']
         outgroup = self.parameters['outgroup']
-        has_A = self.has_A_branch()
+        analyses_branches = workflow_branches(
+            self.parameters, self.project.read_step_if_in('04_AnalyseChloroplast', check_data_type='table'))
 
         actions = [
             ('01_chloroplast_list', f"ncbi_chloroplast_list -f {family} -o {outgroup}"),
@@ -29,22 +32,32 @@ class ChloroplastNormalization(BaseWorkflow):
             ('03_GeSeq', 'ge_seq 02_seqs'),
             ('04_AnalyseChloroplast', 'analyse_chloroplast 03_GeSeq'),
             #
-            ('Sn_01_seq', 'fix_by_analysis parts sum 04_AnalyseChloroplast'),
-            ('Sn_02_GeSeq', 'ge_seq Sn_01_seq'),
+            ('Gn_01_seq', 'fix_by_analysis parts ge_seq 04_AnalyseChloroplast'),
+            ('Gn_02_GeSeq', 'ge_seq Gn_01_seq'),
             #
-            ('So_02_GeSeq', 'seq_subset 03_GeSeq --analyses-with-irs 04_AnalyseChloroplast --analyses-subset sum'),
+            ('Go_02_GeSeq', 'seq_subset 03_GeSeq --analyses-with-irs 04_AnalyseChloroplast --analyses-subset ge_seq'),
         ]
-        if has_A:
+        if 'S' in analyses_branches:
+            actions += [
+                ('Sn_01_seq', 'fix_by_analysis parts sum 04_AnalyseChloroplast'),
+                # Note: Additional dependency added since same sequences are annotated,
+                # and there is no need to have 2 steps pending for finishing.
+                ('Sn_02_GeSeq', 'ge_seq Sn_01_seq', 'Gn_02_GeSeq'),
+                #
+                ('So_02_GeSeq', 'seq_subset 03_GeSeq --analyses-with-irs 04_AnalyseChloroplast --analyses-subset sum'),
+            ]
+        if 'A' in analyses_branches:
             actions += [
                 ('An_01_seq', 'fix_by_analysis parts all 04_AnalyseChloroplast'),
                 # Note: Additional dependency added since same sequences are annotated,
                 # and there is no need to have 2 steps pending for finishing.
+                #
                 ('An_02_GeSeq', 'ge_seq An_01_seq', 'Sn_02_GeSeq'),
                 ('Ao_02_GeSeq', 'seq_subset 03_GeSeq'),  # All
             ]
 
         tree_steps = []
-        for sa in ('SA' if has_A else 'S'):
+        for sa in analyses_branches:
             for on in 'on':
                 ab = f'{sa}{on}'
                 s2 = f'{ab}_02_GeSeq'
