@@ -7,6 +7,11 @@ import subprocess
 import argparse
 pattern = re.compile(r'run_.*\.py')
 
+
+def _run(_dir, py_module, num_threads):
+    subprocess.run(['python3', py_module, num_threads], cwd=_dir)
+
+
 #
 parser = argparse.ArgumentParser(description="Finds bin paths")
 parser.add_argument('directories', nargs='*', help='Directories to run. Default all subdirectories.')
@@ -31,7 +36,3 @@ else:
     with ThreadPoolExecutor(max_workers=params.runs) as executor:
         for d, py_module in to_run:
             executor.submit(_run, d, py_module, num_threads)
-
-
-def _run(_dir, py_module, num_threads):
-    subprocess.run(['python3', py_module, num_threads], cwd=d)
