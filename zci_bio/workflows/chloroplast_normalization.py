@@ -23,12 +23,13 @@ class ChloroplastNormalization(BaseWorkflow):
 
     def _actions(self):
         family = self.parameters['family']
-        outgroup = self.parameters['outgroup']
+        outgroup = self.parameters.get('outgroup')
         analyses_branches = workflow_branches(
             self.parameters, self.project.read_step_if_in('04_AnalyseChloroplast', check_data_type='table'))
+        o_o = f' -o {outgroup}' if outgroup else ''
 
         actions = [
-            ('01_chloroplast_list', f"ncbi_chloroplast_list -f {family} -o {outgroup}"),
+            ('01_chloroplast_list', f"ncbi_chloroplast_list -f {family}{o_o}"),
             ('02_seqs', 'fetch_seqs 01_chloroplast_list'),
             ('03_GeSeq', 'ge_seq 02_seqs'),
             ('04_AnalyseChloroplast', 'analyse_chloroplast 03_GeSeq'),

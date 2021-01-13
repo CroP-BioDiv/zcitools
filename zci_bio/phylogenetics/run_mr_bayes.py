@@ -114,6 +114,7 @@ def get_cluster_run_desc(step):
         run_dir, f = os.path.split(d['filename'])
         jobs.append(dict(
             directory=run_dir,
+            result_prefix=d['result_prefix'],
             single=f,
             threads='mpirun -np {num_threads} {exe} ' + f))
     return dict(program='mr_bayes', jobs=jobs)
