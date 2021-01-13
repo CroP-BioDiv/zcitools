@@ -108,6 +108,17 @@ def run(locale=True, threads=None, use_mpi=True):
                               cwd=step_dir, skip_missing=True)
 
 
+def get_cluster_run_desc(step):
+    jobs = []
+    for d in step.get_finish_data():
+        run_dir, f = os.path.split(d['filename'])
+        jobs.append(dict(
+            directory=run_dir,
+            single=f,
+            threads='mpirun -np {num_threads} {exe} ' + f))
+    return dict(program='mr_bayes', jobs=jobs)
+
+
 if __name__ == '__main__':
     import sys
     threads = int(sys.argv[1]) if len(sys.argv) > 1 else None

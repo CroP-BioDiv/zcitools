@@ -87,7 +87,7 @@ def get_cluster_run_desc(step):
             (_ps_args if step.is_file(run_dir, 'partitions.ind') else []) + \
             _stat_args
         s_cmd = ' '.join(s_cmd)
-        jobs.append(dict(directory=run_dir, single=s_cmd + ' -T 1', threads=s_cmd + ' -T {num_threads}'))
+        jobs.append(dict(directory=run_dir, num_iterations=1000, single=s_cmd, threads=s_cmd + ' -T {num_threads}'))
     return dict(program='raxml', jobs=jobs)
 
 
