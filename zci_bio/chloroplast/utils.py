@@ -82,7 +82,7 @@ def chloroplast_parts_orientation(seq_rec, partition, genes=None):
     # Default orientation is same as one uses in Fast-Plast. Check:
     #  - source file orientate_plastome_v.2.0.pl
     #    (https://github.com/mrmckain/Fast-Plast/blob/master/bin/orientate_plastome_v.2.0.pl)
-    #  - explanation https://github.com/mrmckain/Fast-Plast/issues/22
+    #  - explanation https://github.com/mrmckain/Fast-Plast/issues/22#issuecomment-389302606
     # Consitent with Wikipedia image:
     #  - https://en.wikipedia.org/wiki/Chloroplast_DNA#/media/File:Plastomap_of_Arabidopsis_thaliana.svg
 

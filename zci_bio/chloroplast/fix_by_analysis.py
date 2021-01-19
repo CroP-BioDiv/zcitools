@@ -13,19 +13,24 @@ def _copy_from_origin(step, annotation_step, seq_ident):
 
 
 def fix_by_parts(step_data, analyse_step, subset, keep_offset, sequences_db):
-    assert subset in ('all', 'sum', 'ge_seq'), subset
+    assert subset in ('all', 'sum', 'ge_seq', 'ncbi'), subset
     step = SequencesStep(analyse_step.project, step_data, remove_data=True)
     analyse_step.propagate_step_name_prefix(step)
     annotation_step = analyse_step.project.find_previous_step_of_type(analyse_step, 'annotations')
+    fix_seq_prefix = 'n' if (subset == 'ncbi') else 'p'
 
     #
     for row in analyse_step.rows_as_dicts():
         seq_ident = row['AccesionNumber']
-        starts = row['GeSeq part starts']
-        orientation = row['GeSeq orientation']
-        if not starts and subset != 'ge_seq':
+        if subset == 'ncbi':
             starts = row['NCBI part starts']
             orientation = row['NCBI orientation']
+        else:
+            starts = row['GeSeq part starts']
+            orientation = row['GeSeq orientation']
+            if not starts and subset != 'ge_seq':
+                starts = row['NCBI part starts']
+                orientation = row['NCBI orientation']
 
         if not starts:
             if subset == 'all':
@@ -42,7 +47,7 @@ def fix_by_parts(step_data, analyse_step, subset, keep_offset, sequences_db):
             continue
 
         # Check is sequence already in the CommonDB
-        new_seq_ident = step.seq_ident_of_our_change(seq_ident, 'p')
+        new_seq_ident = step.seq_ident_of_our_change(seq_ident, fix_seq_prefix)
         if sequences_db and (f := sequences_db.get_record(new_seq_ident, step.directory, info=True)):
             step.add_sequence_file(os.path.basename(f))
             continue

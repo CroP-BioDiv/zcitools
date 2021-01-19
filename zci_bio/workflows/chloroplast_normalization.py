@@ -5,7 +5,7 @@ from common_utils.exceptions import ZCItoolsValueError
 
 
 def workflow_branches(wf_settings, analyses_step):
-    branches = ['G']
+    branches = ['G', 'N']
     parts = analyses_step.select(['GeSeq part starts', 'NCBI part starts'])
     if any(bool(g) != bool(n) for g, n in parts):
         branches.append('S')
@@ -33,11 +33,18 @@ class ChloroplastNormalization(BaseWorkflow):
             ('02_seqs', 'fetch_seqs 01_chloroplast_list'),
             ('03_GeSeq', 'ge_seq 02_seqs'),
             ('04_AnalyseChloroplast', 'analyse_chloroplast 03_GeSeq'),
-            #
+
+            # G(eSeq) branch
             ('Gn_01_seq', 'fix_by_analysis parts ge_seq 04_AnalyseChloroplast'),
             ('Gn_02_GeSeq', 'ge_seq Gn_01_seq'),
             #
             ('Go_02_GeSeq', 'seq_subset 03_GeSeq --analyses-with-irs 04_AnalyseChloroplast --analyses-subset ge_seq'),
+
+            # N(CBI) branch
+            ('Nn_01_seq', 'fix_by_analysis parts ncbi 04_AnalyseChloroplast'),
+            ('Nn_02_GeSeq', 'ge_seq Nn_01_seq'),
+            #
+            ('No_02_GeSeq', 'seq_subset 03_GeSeq --analyses-with-irs 04_AnalyseChloroplast --analyses-subset ncbi'),
         ]
         if 'S' in analyses_branches:
             actions += [
