@@ -130,10 +130,11 @@ class BaseWorkflow:
                 re_run = False
 
         if to_finish:
+            to_finish = '\n'.join(f' - {s}' for s in sorted(to_finish))
             print(f"""
 There are steps to finish!
 Check for INSTRUCTION.txt and calculate.zip in step(s):
-{', '.join(sorted(to_finish))}
+{to_finish}
 """)
 
     def cmd_graph(self):

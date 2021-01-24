@@ -168,7 +168,7 @@ Number of genomes: {ng}
         # Alignments
         # ---------------------------------------------------------------------
         analyses_branches = workflow_branches(self.parameters, analyses_step)
-        gas_2_text = dict(G='GeSeq', S='Sum', A='All')
+        gas_2_text = dict(G='GeSeq', S='Sum', A='All', N='NCBI')
         text += f"""
 
 # Alignment

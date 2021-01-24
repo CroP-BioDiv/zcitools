@@ -27,8 +27,9 @@ for d in (params.directories or os.listdir('.')):
             to_run.append((d, py_files[0]))
 
 if params.runs <= 1 or not params.threads:
+    num_threads = [str(params.threads)] if params.threads else []
     for d, py_module in to_run:
-        subprocess.run(['python3', py_module], cwd=d)
+        subprocess.run(['python3', py_module] + num_threads, cwd=d)
 else:
     from concurrent.futures import ThreadPoolExecutor
 
