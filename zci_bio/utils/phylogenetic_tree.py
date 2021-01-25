@@ -62,7 +62,7 @@ class PhylogeneticTree:
         # Return iterable of pairs (node of a branch split, tuple of sorted node names containing outgroup)
         # Note: for implementation check ete3 method TreeNode.iter_edges()
         orient_node = tree.get_leaves_by_name(self.outgroup)
-        assert len(orient_node) == 1
+        assert len(orient_node) == 1, (self.outgroup, orient_node, self.newick_filename)
         orient_node = orient_node[0]
         cached_content = tree.get_cached_content()
         all_leaves = cached_content[tree]

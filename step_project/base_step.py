@@ -171,7 +171,7 @@ class Step:
         if os.path.isfile(f := self.step_file('summary.yml')):
             return read_yaml(f)
         # 'Cached' version
-        if d := self.make_summary_data():
+        if self.is_completed() and (d := self.make_summary_data()):
             self.save_summary_data(d)
             return d
 

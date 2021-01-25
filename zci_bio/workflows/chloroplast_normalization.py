@@ -6,11 +6,13 @@ from common_utils.exceptions import ZCItoolsValueError
 
 def workflow_branches(wf_settings, analyses_step):
     branches = ['G', 'N']
-    parts = analyses_step.select(['GeSeq part starts', 'NCBI part starts'])
-    if any(bool(g) != bool(n) for g, n in parts):
-        branches.append('S')
-    if int(wf_settings.get('calc_all', 0)) and not all(g or n for g, n in parts):
-        branches.append('A')
+    if not analyses_step:
+        return branches
+    # parts = analyses_step.select(['GeSeq part starts', 'NCBI part starts'])
+    # if any(bool(g) != bool(n) for g, n in parts):
+    #     branches.append('S')
+    # if int(wf_settings.get('calc_all', 0)) and not all(g or n for g, n in parts):
+    #     branches.append('A')
     return branches
 
 

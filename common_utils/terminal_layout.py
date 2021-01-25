@@ -183,3 +183,4 @@ def fill_rows(rows):
     for r in rows:
         if len(r) < max_l:
             r.extend([''] * (max_l - len(r)))
+    return rows
