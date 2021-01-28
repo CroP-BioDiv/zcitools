@@ -141,9 +141,69 @@ def read_csv(filename):
 
 
 # YAML
+class _Dumper(yaml.CDumper):
+    def check_short_list(self, l):
+        s = (1 <= len(l) < 5) and \
+            all(isinstance(e, (int, float, str)) for e in l)
+        return self.represent_sequence("tag:yaml.org,2002:seq", l, flow_style=s)
+
+    def set_representer(self, l):
+        s = (1 <= len(l) < 5) and \
+            all(isinstance(e, (int, float, str)) for e in l)
+        return self.represent_sequence("tag:yaml.org,2002:seq", sorted(l), flow_style=s)
+
+    def str_representer(self, data):
+        if len(data) > 100:  # check for multiline string
+            return self.represent_scalar('tag:yaml.org,2002:str', data, style='|')
+        return self.represent_scalar('tag:yaml.org,2002:str', data)
+
+    # def dict_representer(self, d):
+    #     return self.represent_dict(d)
+
+    # def ordereddict_represent(self, data):
+    #     # https://stackoverflow.com/questions/16782112/can-pyyaml-dump-dict-items-in-non-alphabetical-order
+    #     value = []
+    #     for item_key, item_value in data.items():
+    #         node_key = self.represent_data(item_key)
+    #         node_value = self.represent_data(item_value)
+    #         value.append((node_key, node_value))
+    #     return yaml.nodes.MappingNode(u'tag:yaml.org,2002:map', value)
+
+    # # Numpy
+    # def numpy_array(self, l):
+    #     return self.represent_sequence("tag:yaml.org,2002:seq", l.tolist(),
+    #                                    flow_style=(len(l) < 5))
+
+    # def bool_representer(self, data):
+    #     return self.represent_bool(data)
+
+    # def int_representer(self, data):
+    #     return self.represent_int(data)
+
+    # def float_representer(self, data):
+    #     return self.represent_float(data)
+
+
+_Dumper.add_representer(list, _Dumper.check_short_list)
+_Dumper.add_representer(tuple, _Dumper.check_short_list)
+_Dumper.add_representer(set, _Dumper.set_representer)
+_Dumper.add_representer(frozenset, _Dumper.check_short_list)
+_Dumper.add_representer(str, _Dumper.str_representer)
+# _Dumper.add_representer(defaultdict, _Dumper.dict_representer)
+# _Dumper.add_representer(OrderedDict, _Dumper.ordereddict_represent)
+
+# # numpy stuff
+# _Dumper.add_representer(numpy.ndarray, _Dumper.numpy_array)
+# _Dumper.add_representer(numpy.bool_, _Dumper.bool_representer)
+# _Dumper.add_representer(numpy.int32, _Dumper.int_representer)
+# _Dumper.add_representer(numpy.int64, _Dumper.int_representer)
+# _Dumper.add_representer(numpy.float32, _Dumper.float_representer)
+# _Dumper.add_representer(numpy.float64, _Dumper.float_representer)
+
+
 def write_yaml(data, filename, mode='w'):
-    with open(filename, mode, encoding='utf-8') as r:
-        r.write(yaml.dump(data, default_flow_style=False))
+    with open(filename, mode, encoding='utf-8') as _out:
+        yaml.dump(data, _out, Dumper=_Dumper, default_flow_style=False)
 
 
 def read_yaml(filename):

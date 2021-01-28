@@ -92,7 +92,10 @@ class PhylogeneticTree:
     # Distances
     @_distance
     def distance_robinson_foulds(self, et1, et2, rooted):
-        return et1.compare(et2, unrooted=not rooted)
+        # Keys: rf, max_rf, ref_edges_in_source, source_edges_in_ref, effective_tree_size,
+        #       norm_rf, treeko_dist, source_subtrees, common_edges, source_edges, ref_edges
+        r = et1.compare(et2, unrooted=not rooted)
+        return [r['rf'], r['max_rf']]  # These values are all we need
 
     @_distance
     def distance_branche_score(self, et1, et2, rooted):
@@ -112,6 +115,12 @@ class PhylogeneticTree:
         kc1 = self.kendall_colijn_lambda(lambda_factor)
         kc2 = t2.kendall_colijn_lambda(lambda_factor)
         return sum((a - b)**2 for a, b in zip(kc1, kc2))**0.5
+
+    def distance_kendall_colijn_topo(self, t2):
+        # Kendall-Colijn with lambda = 0
+        ms1, _ = self.kendall_colijn_vectors()
+        ms2, _ = t2.kendall_colijn_vectors()
+        return sum((a - b)**2 for a, b in zip(ms1, ms2))**0.5
 
     def kendall_colijn_lambda(self, _l):
         # vλ(T) = (1−λ)m(T) + λM(T)⁠

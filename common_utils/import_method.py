@@ -46,3 +46,17 @@ Short: pip install pandas
 def import_pandas():
     import pandas
     return pandas
+
+
+_matplotlib_desc = """
+Matplotlib library is missing.
+
+For installation instruction check web page:
+https://matplotlib.org/users/installing.html
+
+Short: pip install matplotlib
+"""
+@import_method(_matplotlib_desc)
+def import_matplotlib_pylot():
+    import matplotlib.pyplot as pyplot
+    return pyplot

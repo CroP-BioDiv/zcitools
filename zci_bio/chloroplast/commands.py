@@ -74,6 +74,22 @@ class ChloroplastNormalizationResult(CreateStepCommand):
         return NormalizationResult(self.project).run(step_data)
 
 
+class ChloroplastNormalizationResultGraph(ProjectCommand):
+    _COMMAND = 'normalization_result_graph'
+    _HELP = "Create graph from results of chloroplast normalization."
+    _COMMAND_GROUP = 'Chloroplast'
+    _STEP_BASE_NAME = 'normalization_result_graph'
+
+    @staticmethod
+    def set_arguments(parser):
+        parser.add_argument('step', help='Input step')
+
+    def run(self):
+        from .normalization_result import NormalizationResult
+        step = self.project.read_step(self.args.step, check_data_type='table', no_check=True)
+        return NormalizationResult(self.project).create_graph(step, show=True)
+
+
 class ChloroplastAlign(CreateStepFromStepCommand):
     _COMMAND = 'align_chloroplast'
     _HELP = "Align chloroplast genomes, by specifics."

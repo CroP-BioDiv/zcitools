@@ -114,9 +114,10 @@ Outgroup:
  * Update date       : {s['outgroup_max_update_date']}
 
 Set of genome to work:
- * Length range      : {s['all_min_length']:,} - {s['all_max_length']:,}
- * Date first range  : {s['all_min_create_date']} - {s['all_max_create_date']}
- * Date update range : {s['all_min_update_date']} - {s['all_max_update_date']}
+ * Length range family : {s['family_min_length']:,} - {s['family_max_length']:,}
+ * Length range all    : {s['all_min_length']:,} - {s['all_max_length']:,}
+ * Date first range    : {s['all_min_create_date']} - {s['all_max_create_date']}
+ * Date update range   : {s['all_min_update_date']} - {s['all_max_update_date']}
 """
 
         # ---------------------------------------------------------------------
