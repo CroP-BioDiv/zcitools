@@ -231,6 +231,18 @@ class NormalizationResult:
             raise ZCItoolsValueError(f"Normalization result input step is not completed!")
         self.load_diffs_from_step(step_obj)
 
+        plt = self._create_graph(False)
+        plt.savefig('tree_comparisons_no_labels.svg')
+        plt.savefig('tree_comparisons_no_labels.png', dpi=150)
+
+        plt = self._create_graph(True)
+        plt.savefig('tree_comparisons.svg')
+        plt.savefig('tree_comparisons.png', dpi=150)
+
+        if show:
+            plt.show()
+
+    def _create_graph(self, with_x_labels):
         rf_color = 'blue'
         kct_color = 'orange'
         kc_color = 'red'
@@ -239,9 +251,9 @@ class NormalizationResult:
         # Bars
         x_offset = 2  # Offset from x=0
         d_bar = 1     # Distance between neighbouring bars is 1
-        d_gap_1 = 1
-        d_gap_2 = 2
-        d_gap_3 = 4
+        d_gap_1 = 1.5
+        d_gap_2 = 3
+        d_gap_3 = 6
         bar_width = 0.8
 
         # Y tick
@@ -257,19 +269,12 @@ class NormalizationResult:
         group_gap = g_starts[-1] + _b4 + d_gap_3
 
         starts = dict()
-        x_labels_1 = []
-        x_labels_2 = []
-        x_labels_3 = []
         for group in range(3):
             gd = group * group_gap + x_offset
             for idx, x in enumerate(g_starts):
                 x_group = x + gd
                 for bar in range(4):
                     starts[(group, idx, bar)] = x_group + bar
-                x_labels_1.append(x_group + _b_2)
-            x_labels_2.append((x_labels_1[-4] + x_labels_1[-3]) / 2)
-            x_labels_2.append((x_labels_1[-2] + x_labels_1[-1]) / 2)
-            x_labels_3.append((x_labels_2[-2] + x_labels_2[-1]) / 2)
 
         # Collect data into lists of tuples (x, y)
         gtd = self.G_tree_diffs
@@ -291,23 +296,13 @@ class NormalizationResult:
         plt = import_matplotlib_pylot()
         fig, ax = plt.subplots()
 
-        fig.subplots_adjust(right=0.6, bottom=0.2)
+        fig.subplots_adjust(right=0.75, bottom=0.18)
 
         # Remove default labels
         ax.set_yticks([])
         ax.set_xticks([])
-
-        ax.spines['left'].set_visible(False)
-        ax.spines['right'].set_visible(False)
-        ax.spines['top'].set_visible(False)
-
-        # # Add labels
-        for idx, label in enumerate(('O', 'N', 'O', 'N', 'BI', 'ML', 'BI', 'ML', 'NP', 'P', 'NP', 'P')):
-            ax.text(x_labels_1[idx], x_label_y[0], label, ha='center', va='center', fontsize=8)
-        for idx, label in enumerate(('NP', 'P', 'O', 'N', 'BI', 'ML')):
-            ax.text(x_labels_2[idx], x_label_y[1], label, ha='center', va='center', fontsize=10)
-        for idx, label in enumerate(('BI-ML', 'NP-P', 'O-N')):
-            ax.text(x_labels_3[idx], x_label_y[2], label, ha='center', va='center', fontsize=12)
+        for side in ('left', 'right', 'top'):
+            ax.spines[side].set_visible(False)
 
         #
         rf_ax = ax.twinx()
@@ -316,36 +311,43 @@ class NormalizationResult:
         bs_ax = ax.twinx()
 
         # Offset the right spines
-        kct_ax.spines['right'].set_position(('axes', 1.2))
-        kc_ax.spines['right'].set_position(('axes', 1.4))
-        bs_ax.spines['right'].set_position(('axes', 1.6))
+        kct_ax.spines['right'].set_position(('axes', 1.1))
+        kc_ax.spines['right'].set_position(('axes', 1.2))
+        bs_ax.spines['right'].set_position(('axes', 1.3))
 
+        lines = []
         for _ax, vals, label, c in ((rf_ax, rf, 'RF', rf_color),
                                     (kct_ax, kct, 'KCT', kct_color),
                                     (kc_ax, kc, 'KC', kc_color),
                                     (bs_ax, bs, 'BS', bs_color)):
             fix_patch_spines(_ax)
+            #
             mv = _max_val(max(y for x, y in vals))
             _ax.set_ylim(0, mv)
             _ax.set_yticks([mv])
-            _ax.set_ylabel(label, loc='bottom')  # , position=(0, -1))  # Font ...
+            _ax.set_yticklabels(_ax.get_yticks(), rotation=90)
+            _ax.set_ylabel(label, labelpad=-10)  # font size? loc='bottom',
             _ax.yaxis.label.set_color(c)
             _ax.spines['right'].set_color(c)
             _ax.tick_params(axis='y', colors=c, **tick_kw)
+            #
+            lines.append(_ax.bar([x for x, y in vals], [y for x, y in vals], bar_width, label=label, color=c))
 
-        #
-        rf_rects = rf_ax.bar([x for x, y in rf], [y for x, y in rf], bar_width, label='RF', color=rf_color)
-        kct_rects = kct_ax.bar([x for x, y in kct], [y for x, y in kct], bar_width, label='KCT', color=kct_color)
-        kc_rects = kc_ax.bar([x for x, y in kc], [y for x, y in kc], bar_width, label='KC', color=kc_color)
-        bs_rects = bs_ax.bar([x for x, y in bs], [y for x, y in bs], bar_width, label='BS', color=bs_color)
+        if with_x_labels:
+            ax.legend(lines, [l.get_label() for l in lines], loc='upper left', frameon=False)
+            # Add labels on X axis
+            x_labels_1 = list(chain.from_iterable(
+                [group * group_gap + x_offset + x for x in g_starts] for group in range(3)))
+            x_labels_2 = [(a + b) / 2 for a, b in zip(x_labels_1[::2], x_labels_1[1::2])]
+            x_labels_3 = [(a + b) / 2 for a, b in zip(x_labels_2[::2], x_labels_2[1::2])]
+            for idx, label in enumerate(('O', 'N', 'O', 'N', 'BI', 'ML', 'BI', 'ML', 'NP', 'P', 'NP', 'P')):
+                ax.text(x_labels_1[idx], x_label_y[0], label, ha='center', va='center', fontsize=8)
+            for idx, label in enumerate(('NP', 'P', 'O', 'N', 'BI', 'ML')):
+                ax.text(x_labels_2[idx], x_label_y[1], label, ha='center', va='center', fontsize=10)
+            for idx, label in enumerate(('BI-ML', 'NP-P', 'O-N')):
+                ax.text(x_labels_3[idx], x_label_y[2], label, ha='center', va='center', fontsize=12)
 
-        # lines = [rf_rects, kct_rects, kc_rects, bs_rects]
-        # ax.legend(lines, [l.get_label() for l in lines])
-
-        if show:
-            plt.show()
-
-        # plt.savefig('tree_comparisons.svg')
+        return plt
 
 
 def _max_val(value):
