@@ -234,6 +234,7 @@ class NormalizationResult:
         plt = self._create_graph(False)
         plt.savefig('tree_comparisons_no_labels.svg')
         plt.savefig('tree_comparisons_no_labels.png', dpi=150)
+        plt.close()
 
         plt = self._create_graph(True)
         plt.savefig('tree_comparisons.svg')
@@ -243,28 +244,37 @@ class NormalizationResult:
             plt.show()
 
     def _create_graph(self, with_x_labels):
+        plt = import_matplotlib_pylot()
+
         rf_color = 'blue'
         kct_color = 'orange'
         kc_color = 'red'
         bs_color = 'green'
 
+        # In inches. A4 is 8-1/4 * 11-3/4.
+        # Note: figsize is value used to calibrate all other values
+        fig, ax = plt.subplots(figsize=(7, 3))
+
+        # Adjust plot, because labels on X-axis and right Y axis
+        right_axis_space = 0.05
+        fig.subplots_adjust(right=(1 - 3 * right_axis_space), bottom=0.18)
+
         # Bars
         x_offset = 2  # Offset from x=0
         d_bar = 1     # Distance between neighbouring bars is 1
-        d_gap_1 = 1.5
-        d_gap_2 = 3
-        d_gap_3 = 6
-        bar_width = 0.8
+        d_gap_1 = 1
+        d_gap_2 = 2
+        d_gap_3 = 4
+        bar_width = 0.9
 
         # Y tick
-        tick_kw = dict(size=4, width=1)
+        tick_kw = dict(size=0, width=1)
 
         # X axis
         x_label_y = [-0.04, -0.1, -0.17]
 
         #
         _b4 = d_bar * 4
-        _b_2 = d_bar * 1.5
         g_starts = [0, _b4 + d_gap_1, 2 * _b4 + d_gap_1 + d_gap_2, 3 * _b4 + 2 * d_gap_1 + d_gap_2]
         group_gap = g_starts[-1] + _b4 + d_gap_3
 
@@ -292,12 +302,6 @@ class NormalizationResult:
         bs = [(starts[(1, b, 3)], _bs_v(gtd.whole_2_genes_BS[t])) for b, t in enumerate(('oM', 'oR', 'nM', 'nR'))]
         bs += [(starts[(2, b, 3)], _bs_v(gtd.orig_2_norm_BS[t])) for b, t in enumerate(('WM', 'GM', 'WR', 'GR'))]
 
-        #
-        plt = import_matplotlib_pylot()
-        fig, ax = plt.subplots()
-
-        fig.subplots_adjust(right=0.75, bottom=0.18)
-
         # Remove default labels
         ax.set_yticks([])
         ax.set_xticks([])
@@ -311,9 +315,9 @@ class NormalizationResult:
         bs_ax = ax.twinx()
 
         # Offset the right spines
-        kct_ax.spines['right'].set_position(('axes', 1.1))
-        kc_ax.spines['right'].set_position(('axes', 1.2))
-        bs_ax.spines['right'].set_position(('axes', 1.3))
+        kct_ax.spines['right'].set_position(('axes', 1 + right_axis_space))
+        kc_ax.spines['right'].set_position(('axes', 1 + 2 * right_axis_space))
+        bs_ax.spines['right'].set_position(('axes', 1 + 3 * right_axis_space))
 
         lines = []
         for _ax, vals, label, c in ((rf_ax, rf, 'RF', rf_color),
@@ -336,8 +340,8 @@ class NormalizationResult:
         if with_x_labels:
             ax.legend(lines, [l.get_label() for l in lines], loc='upper left', frameon=False)
             # Add labels on X axis
-            x_labels_1 = list(chain.from_iterable(
-                [group * group_gap + x_offset + x for x in g_starts] for group in range(3)))
+            l_o = d_bar * 0.5
+            x_labels_1 = [l_o + starts[(group, idx, 1)] for group, idx in product(range(3), range(4))]
             x_labels_2 = [(a + b) / 2 for a, b in zip(x_labels_1[::2], x_labels_1[1::2])]
             x_labels_3 = [(a + b) / 2 for a, b in zip(x_labels_2[::2], x_labels_2[1::2])]
             for idx, label in enumerate(('O', 'N', 'O', 'N', 'BI', 'ML', 'BI', 'ML', 'NP', 'P', 'NP', 'P')):
@@ -351,6 +355,8 @@ class NormalizationResult:
 
 
 def _max_val(value):
+    if value == 0:
+        return 1
     nd_1 = int(floor(log10(abs(value))))
     f_d = value / 10 ** nd_1
     if f_d > 5:
