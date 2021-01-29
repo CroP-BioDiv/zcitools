@@ -249,11 +249,11 @@ class RunCommand:
         return sn
 
     # Read step method
-    def read_step(self, step_name, check_data_type=None, update_mode=False, no_check=False):
+    def read_step(self, step_name, check_data_type=None, update_mode=False, no_check=False, outside_of_project=False):
         if isinstance(step_name, str):
             desc_data = read_yaml(os.path.join(step_name, 'description.yml'))
         else:
-            assert isinstance(step_name, list), type(step_name)
+            assert isinstance(step_name, (list, tuple)), type(step_name)
             desc_data = read_yaml(os.path.join(*step_name, 'description.yml'))
         if not desc_data:
             raise ZCItoolsValueError(f"'{step_name}' is not a step!")
@@ -272,6 +272,8 @@ class RunCommand:
         if not cls:
             raise ZCItoolsValueError(f"No step class for data type {data_type}!")
 
+        if outside_of_project and isinstance(step_name, (list, tuple)):
+            return cls(self, desc_data['project'], update_mode=update_mode, no_check=no_check, step_directory=step_name)
         return cls(self, desc_data['project'], update_mode=update_mode, no_check=no_check)
 
     def read_step_if_in(self, step_name, check_data_type=None, update_mode=False, no_check=False):

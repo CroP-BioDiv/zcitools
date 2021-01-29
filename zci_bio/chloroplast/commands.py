@@ -1,4 +1,4 @@
-from step_project.base_commands import ProjectCommand, CreateStepCommand, CreateStepFromStepCommand
+from step_project.base_commands import ProjectCommand, NonProjectCommand, CreateStepCommand, CreateStepFromStepCommand
 from common_utils.exceptions import ZCItoolsValueError
 from .constants import DEFAULT_KEEP_OFFSET
 
@@ -78,7 +78,6 @@ class ChloroplastNormalizationResultGraph(ProjectCommand):
     _COMMAND = 'normalization_result_graph'
     _HELP = "Create graph from results of chloroplast normalization."
     _COMMAND_GROUP = 'Chloroplast'
-    _STEP_BASE_NAME = 'normalization_result_graph'
 
     @staticmethod
     def set_arguments(parser):
@@ -88,6 +87,23 @@ class ChloroplastNormalizationResultGraph(ProjectCommand):
         from .normalization_result import NormalizationResult
         step = self.project.read_step(self.args.step, check_data_type='table', no_check=True)
         return NormalizationResult(self.project).create_graph(step, show=True)
+
+
+class ChloroplastNormalizationResultGraphJoin(NonProjectCommand):
+    _COMMAND = 'normalization_result_graph_join'
+    _HELP = "Create chloroplast normalization result graphs and join them from"
+    _COMMAND_GROUP = 'Chloroplast'
+
+    @staticmethod
+    def set_arguments(parser):
+        parser.add_argument('steps', nargs='+', help='Input steps')
+
+    def run(self):
+        from os.path import sep
+        from .normalization_result import NormalizationResult
+        steps = [self.project.read_step(s.split(sep), check_data_type='table', no_check=True, outside_of_project=True)
+                 for s in self.args.steps]
+        return NormalizationResult.create_graphs(self.project, steps, show=True)
 
 
 class ChloroplastAlign(CreateStepFromStepCommand):

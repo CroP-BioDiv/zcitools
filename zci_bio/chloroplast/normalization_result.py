@@ -8,6 +8,15 @@ from common_utils.terminal_layout import StringColumns, fill_rows
 from common_utils.import_method import import_matplotlib_pylot
 from ..utils.phylogenetic_tree import PhylogeneticTree
 
+# In inches. A4 is 8-1/4 * 11-3/4.
+# Note: figsize is value used to calibrate all other values
+figsize_x = 7
+figsize_y = 3
+bottom_space = 0.2
+figsize_y_no_x = figsize_y * (1 - bottom_space)
+right_axis_space = 0.05
+x_label_y = [-0.03, -0.08, -0.14]
+
 
 def _rename_seq_name(name):
     if name.startswith('p_') or name.startswith('n_'):
@@ -165,9 +174,10 @@ class NormalizationResult:
 
     def load_diffs_from_step(self, step_obj):
         data = step_obj.get_summary_data()
-        assert data
+        assert data, step_obj.directory
         self.G_tree_diffs = _TreeDiffs(self, data=data['G'])
         # self.N_tree_diffs = _TreeDiffs(self, data=data['N'])
+        return self
 
     def run(self, step_data):
         self._find_project_data()
@@ -189,7 +199,7 @@ class NormalizationResult:
         print(text)
         step.to_excel('normalization_result.xls', header=False)
         #
-        self.create_graph(step)
+        self._create_graph(step)
 
         return step
 
@@ -225,39 +235,63 @@ class NormalizationResult:
         if (no_steps := [k for k, v in self.tree_steps.items() if not v]):
             raise ZCItoolsValueError(f"No tree step(s): {', '.join(sorted(no_steps))}!")
 
-    #
+    # One graph
     def create_graph(self, step_obj, show=False):
         if not step_obj.is_completed():
             raise ZCItoolsValueError(f"Normalization result input step is not completed!")
         self.load_diffs_from_step(step_obj)
+        self._create_graph(show=show)
 
-        plt = self._create_graph(False)
+    def _create_graph(self, show=False):
+        plt = self._create_one_graph(False)
         plt.savefig('tree_comparisons_no_labels.svg')
         plt.savefig('tree_comparisons_no_labels.png', dpi=150)
         plt.close()
 
-        plt = self._create_graph(True)
+        plt = self._create_one_graph(True)
         plt.savefig('tree_comparisons.svg')
         plt.savefig('tree_comparisons.png', dpi=150)
 
         if show:
             plt.show()
 
-    def _create_graph(self, with_x_labels):
+    def _create_one_graph(self, with_x_labels):
         plt = import_matplotlib_pylot()
+        fig, ax = plt.subplots(figsize=(figsize_x, figsize_y), constrained_layout=True)
+        # fig.subplots_adjust(right=(1 - 3 * right_axis_space), bottom=bottom_space)
 
-        rf_color = 'blue'
-        kct_color = 'orange'
-        kc_color = 'red'
-        bs_color = 'green'
+        self._create_figure(fig, ax, with_x_labels, with_x_labels)
+        return plt
 
+    # More graph
+    @classmethod
+    def create_graphs(cls, project, step_objects, show=False):
+        assert len(step_objects) > 1, len(step_objects)
+        if any(not s.is_completed() for s in step_objects):
+            raise ZCItoolsValueError(f"Some of normalization result input step are not completed!")
+        nrs = [NormalizationResult(project).load_diffs_from_step(s) for s in step_objects]
+
+        plt = import_matplotlib_pylot()
         # In inches. A4 is 8-1/4 * 11-3/4.
         # Note: figsize is value used to calibrate all other values
-        fig, ax = plt.subplots(figsize=(7, 3))
+        fig, axes = plt.subplots(len(nrs), figsize=(figsize_x, figsize_y + figsize_y_no_x * (len(nrs) - 1)), constrained_layout=True)
+        # # Adjust plot, because labels on X-axis and right Y axis
+        # fig.subplots_adjust(right=(1 - 3 * right_axis_space), bottom=bottom_space / len(nrs), wspace=50)
 
-        # Adjust plot, because labels on X-axis and right Y axis
-        right_axis_space = 0.05
-        fig.subplots_adjust(right=(1 - 3 * right_axis_space), bottom=0.18)
+        nrs[0]._create_figure(fig, axes[0], False, True)
+        for nr, ax in zip(nrs[1:-1], axes[1:-1]):
+            nr._create_figure(fig, ax, False, False)
+        nrs[-1]._create_figure(fig, axes[-1], True, False)
+
+        plt.savefig('all_tree_comparisons.svg')
+        plt.savefig('all_tree_comparisons.png', dpi=150)
+
+        if show:
+            plt.show()
+
+    # Figure
+    def _create_figure(self, fig, ax, with_x_labels, with_legend):
+        colors = dict(rf='blue', kct='orange', kc='red', bs='green')
 
         # Bars
         x_offset = 2  # Offset from x=0
@@ -269,9 +303,6 @@ class NormalizationResult:
 
         # Y tick
         tick_kw = dict(size=0, width=1)
-
-        # X axis
-        x_label_y = [-0.04, -0.1, -0.17]
 
         #
         _b4 = d_bar * 4
@@ -320,10 +351,10 @@ class NormalizationResult:
         bs_ax.spines['right'].set_position(('axes', 1 + 3 * right_axis_space))
 
         lines = []
-        for _ax, vals, label, c in ((rf_ax, rf, 'RF', rf_color),
-                                    (kct_ax, kct, 'KCT', kct_color),
-                                    (kc_ax, kc, 'KC', kc_color),
-                                    (bs_ax, bs, 'BS', bs_color)):
+        for _ax, vals, label, c in ((rf_ax, rf, 'RF', colors['rf']),
+                                    (kct_ax, kct, 'KCT', colors['kct']),
+                                    (kc_ax, kc, 'KC', colors['kc']),
+                                    (bs_ax, bs, 'BS', colors['bs'])):
             fix_patch_spines(_ax)
             #
             mv = _max_val(max(y for x, y in vals))
@@ -337,21 +368,21 @@ class NormalizationResult:
             #
             lines.append(_ax.bar([x for x, y in vals], [y for x, y in vals], bar_width, label=label, color=c))
 
-        if with_x_labels:
+        if with_legend:
             ax.legend(lines, [l.get_label() for l in lines], loc='upper left', frameon=False)
+
+        if with_x_labels:
             # Add labels on X axis
             l_o = d_bar * 0.5
             x_labels_1 = [l_o + starts[(group, idx, 1)] for group, idx in product(range(3), range(4))]
             x_labels_2 = [(a + b) / 2 for a, b in zip(x_labels_1[::2], x_labels_1[1::2])]
             x_labels_3 = [(a + b) / 2 for a, b in zip(x_labels_2[::2], x_labels_2[1::2])]
             for idx, label in enumerate(('O', 'N', 'O', 'N', 'BI', 'ML', 'BI', 'ML', 'NP', 'P', 'NP', 'P')):
-                ax.text(x_labels_1[idx], x_label_y[0], label, ha='center', va='center', fontsize=8)
+                ax.text(x_labels_1[idx], x_label_y[0], label, ha='center', va='top', fontsize=8)
             for idx, label in enumerate(('NP', 'P', 'O', 'N', 'BI', 'ML')):
-                ax.text(x_labels_2[idx], x_label_y[1], label, ha='center', va='center', fontsize=10)
+                ax.text(x_labels_2[idx], x_label_y[1], label, ha='center', va='top', fontsize=10)
             for idx, label in enumerate(('BI-ML', 'NP-P', 'O-N')):
-                ax.text(x_labels_3[idx], x_label_y[2], label, ha='center', va='center', fontsize=12)
-
-        return plt
+                ax.text(x_labels_3[idx], x_label_y[2], label, ha='center', va='top', fontsize=12)
 
 
 def _max_val(value):

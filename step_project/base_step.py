@@ -26,17 +26,14 @@ class Step:
     _CACHE_PREFIX = '_c_'  # Cache files are prefixed with '_c_'
     _IS_COLLECTION = False
 
-    def __init__(self, project, step_data, remove_data=False, update_mode=False, no_check=False):
+    def __init__(self, project, step_data, remove_data=False, update_mode=False, no_check=False, step_directory=None):
         assert project.__class__.__name__ == 'RunCommand', self.__class__.__name__  # For now
         self.project = project
         self._step_data = step_data
         # step_data['step_name'] is string or list of strings for substeps
-        if isinstance(step_data['step_name'], str):
-            self._step_name_list = [step_data['step_name']]
-            self.directory = step_data['step_name']
-        else:
-            self._step_name_list = step_data['step_name']
-            self.directory = os.path.join(*step_data['step_name'])
+        self._step_name_list = step_directory or \
+            ([step_data['step_name']] if isinstance(step_data['step_name'], str) else step_data['step_name'])
+        self.directory = os.path.join(*self._step_name_list)
         self._update_mode = update_mode
 
         # Call init data method
