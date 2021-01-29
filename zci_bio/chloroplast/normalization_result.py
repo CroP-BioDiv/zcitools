@@ -17,6 +17,27 @@ figsize_y_no_x = figsize_y * (1 - bottom_space)
 right_axis_space = 0.05
 x_label_y = [-0.03, -0.08, -0.14]
 
+#
+x_offset = 2  # Offset from x=0
+d_bar = 1     # Distance between neighbouring bars is 1
+d_gap_1 = 1
+d_gap_2 = 2
+d_gap_3 = 4
+
+#
+_b4 = d_bar * 4
+g_starts = [0, _b4 + d_gap_1, 2 * _b4 + d_gap_1 + d_gap_2, 3 * _b4 + 2 * d_gap_1 + d_gap_2]
+group_gap = g_starts[-1] + _b4 + d_gap_3
+
+starts = dict()
+for group in range(3):
+    gd = group * group_gap + x_offset
+    for idx, x in enumerate(g_starts):
+        x_group = x + gd
+        for bar in range(4):
+            starts[(group, idx, bar)] = x_group + bar
+xs_no_data = [starts[(0, idx, bar)] for idx, bar in product(range(4), range(2, 4))]
+
 
 def _rename_seq_name(name):
     if name.startswith('p_') or name.startswith('n_'):
@@ -52,13 +73,27 @@ def _bs(d):
 
 
 def _bs_v(d):
-    av_l = (d['stat_1']['average_length'] + d['stat_2']['average_length']) / 2
-    return d['bs'] / av_l
+    d1 = d['stat_1']
+    d2 = d['stat_2']
+    av_l = (d1['average_length'] + d1['average_length']) / 2
+    return (d['bs'] / av_l) / d1['num_edges']
 
 
 # Kendall-Colijn distance
 def _kc(d):
-    return _most_sign(d, 3)
+    return f"{_most_sign(d[0], 3)} / {d[1]}"
+
+
+def _kc_v(d):
+    return d[0] / d[1]
+
+
+def _kct(d):
+    return f"{_most_sign(d[0], 3)} / {d[1]}"
+
+
+def _kct_v(d):
+    return d[0] / d[1]
 
 
 class _TreeDiffs:
@@ -130,34 +165,34 @@ class _TreeDiffs:
             ['', ''] + cc([lab_2_text[t.seq_type], ''] for t in tds),
             ['MrBayes-RAxML'],
             ['', 'Distance'] + ['Non-partitioned', 'Partitioned'] * nt,
-            ['original', 'RF'] + cc([_rf(t.mr_bayes_2_raxml_RF['oW']), _rf(t.mr_bayes_2_raxml_RF['oG'])] for t in tds),
-            ['', 'KCT'] + cc([_kc(t.mr_bayes_2_raxml_KCT['oW']), _kc(t.mr_bayes_2_raxml_KCT['oG'])] for t in tds),
-            ['normalized', 'RF'] + cc([_rf(t.mr_bayes_2_raxml_RF['nW']), _rf(t.mr_bayes_2_raxml_RF['nG'])] for t in tds),
-            ['', 'KCT'] + cc([_kc(t.mr_bayes_2_raxml_KCT['nW']), _kc(t.mr_bayes_2_raxml_KCT['nG'])] for t in tds),
+            ['Original', 'RF'] + cc([_rf(t.mr_bayes_2_raxml_RF['oW']), _rf(t.mr_bayes_2_raxml_RF['oG'])] for t in tds),
+            ['', 'KCT'] + cc([_kct(t.mr_bayes_2_raxml_KCT['oW']), _kct(t.mr_bayes_2_raxml_KCT['oG'])] for t in tds),
+            ['Normalized', 'RF'] + cc([_rf(t.mr_bayes_2_raxml_RF['nW']), _rf(t.mr_bayes_2_raxml_RF['nG'])] for t in tds),
+            ['', 'KCT'] + cc([_kct(t.mr_bayes_2_raxml_KCT['nW']), _kct(t.mr_bayes_2_raxml_KCT['nG'])] for t in tds),
             #
             [],
             ['Non-partitioned-Partitioned'],
-            ['', 'Distance'] + ['MrBayes', 'RAxML'] * nt,
-            ['original', 'RF'] + cc([_rf(t.whole_2_genes_RF['oM']), _rf(t.whole_2_genes_RF['oR'])] for t in tds),
-            ['', 'BS'] + cc([_bs(t.whole_2_genes_BS['oM']), _bs(t.whole_2_genes_BS['oR'])] for t in tds),
-            ['', 'KC'] + cc([_kc(t.whole_2_genes_KC['oM']), _kc(t.whole_2_genes_KC['oR'])] for t in tds),
-            ['', 'KCT'] + cc([_kc(t.whole_2_genes_KCT['oM']), _kc(t.whole_2_genes_KCT['oR'])] for t in tds),
-            ['normalized', 'RF'] + cc([_rf(t.whole_2_genes_RF['nM']), _rf(t.whole_2_genes_RF['nR'])] for t in tds),
-            ['', 'BS'] + cc([_bs(t.whole_2_genes_BS['nM']), _bs(t.whole_2_genes_BS['nR'])] for t in tds),
-            ['', 'KC'] + cc([_kc(t.whole_2_genes_KC['nM']), _kc(t.whole_2_genes_KC['nR'])] for t in tds),
-            ['', 'KCT'] + cc([_kc(t.whole_2_genes_KCT['nM']), _kc(t.whole_2_genes_KCT['nR'])] for t in tds),
+            ['', 'Distance'] + ['Original', 'Normalized'] * nt,
+            ['MrBayes', 'RF'] + cc([_rf(t.whole_2_genes_RF['oM']), _rf(t.whole_2_genes_RF['nM'])] for t in tds),
+            ['', 'KCT'] + cc([_kct(t.whole_2_genes_KCT['oM']), _kct(t.whole_2_genes_KCT['nM'])] for t in tds),
+            ['', 'KC'] + cc([_kc(t.whole_2_genes_KC['oM']), _kc(t.whole_2_genes_KC['nM'])] for t in tds),
+            ['', 'BS'] + cc([_bs(t.whole_2_genes_BS['oM']), _bs(t.whole_2_genes_BS['nM'])] for t in tds),
+            ['RAxML', 'RF'] + cc([_rf(t.whole_2_genes_RF['oR']), _rf(t.whole_2_genes_RF['nR'])] for t in tds),
+            ['', 'KCT'] + cc([_kct(t.whole_2_genes_KCT['oR']), _kct(t.whole_2_genes_KCT['nR'])] for t in tds),
+            ['', 'KC'] + cc([_kc(t.whole_2_genes_KC['oR']), _kc(t.whole_2_genes_KC['nR'])] for t in tds),
+            ['', 'BS'] + cc([_bs(t.whole_2_genes_BS['oR']), _bs(t.whole_2_genes_BS['nR'])] for t in tds),
             #
             [],
-            ['original-normalized'],
+            ['Original-Normalized'],
             ['', 'Distance'] + ['MrBayes', 'RAxML'] * nt,
             ['Non-partitioned', 'RF'] + cc([_rf(t.orig_2_norm_RF['WM']), _rf(t.orig_2_norm_RF['WR'])] for t in tds),
-            ['', 'BS'] + cc([_bs(t.orig_2_norm_BS['WM']), _bs(t.orig_2_norm_BS['WR'])] for t in tds),
+            ['', 'KCT'] + cc([_kct(t.orig_2_norm_KCT['WM']), _kct(t.orig_2_norm_KCT['WR'])] for t in tds),
             ['', 'KC'] + cc([_kc(t.orig_2_norm_KC['WM']), _kc(t.orig_2_norm_KC['WR'])] for t in tds),
-            ['', 'KCT'] + cc([_kc(t.orig_2_norm_KCT['WM']), _kc(t.orig_2_norm_KCT['WR'])] for t in tds),
+            ['', 'BS'] + cc([_bs(t.orig_2_norm_BS['WM']), _bs(t.orig_2_norm_BS['WR'])] for t in tds),
             ['Partitioned', 'RF'] + cc([_rf(t.orig_2_norm_RF['GM']), _rf(t.orig_2_norm_RF['GR'])] for t in tds),
-            ['', 'BS'] + cc([_bs(t.orig_2_norm_BS['GM']), _bs(t.orig_2_norm_BS['GR'])] for t in tds),
+            ['', 'KCT'] + cc([_kct(t.orig_2_norm_KCT['GM']), _kct(t.orig_2_norm_KCT['GR'])] for t in tds),
             ['', 'KC'] + cc([_kc(t.orig_2_norm_KC['GM']), _kc(t.orig_2_norm_KC['GR'])] for t in tds),
-            ['', 'KCT'] + cc([_kc(t.orig_2_norm_KCT['GM']), _kc(t.orig_2_norm_KCT['GR'])] for t in tds),
+            ['', 'BS'] + cc([_bs(t.orig_2_norm_BS['GM']), _bs(t.orig_2_norm_BS['GR'])] for t in tds),
         ])
 
 
@@ -177,6 +212,7 @@ class NormalizationResult:
         assert data, step_obj.directory
         self.G_tree_diffs = _TreeDiffs(self, data=data['G'])
         # self.N_tree_diffs = _TreeDiffs(self, data=data['N'])
+        self._set_graph_values()
         return self
 
     def run(self, step_data):
@@ -199,7 +235,8 @@ class NormalizationResult:
         print(text)
         step.to_excel('normalization_result.xls', header=False)
         #
-        self._create_graph(step)
+        self._set_graph_values()
+        self._create_graph(show=True)
 
         return step
 
@@ -234,6 +271,28 @@ class NormalizationResult:
 
         if (no_steps := [k for k, v in self.tree_steps.items() if not v]):
             raise ZCItoolsValueError(f"No tree step(s): {', '.join(sorted(no_steps))}!")
+
+    # Graph data
+    def _set_graph_values(self):
+        gtd = self.G_tree_diffs
+        g1 = ('oW', 'nW', 'oG', 'nG')
+        g2 = ('oM', 'oR', 'nM', 'nR')
+        g3 = ('WM', 'GM', 'WR', 'GR')
+
+        # Collect data into lists of tuples (x, y)
+        self._rf = [(starts[(0, b, 0)], _rf_v(gtd.mr_bayes_2_raxml_RF[t])) for b, t in enumerate(g1)]
+        self._rf += [(starts[(1, b, 0)], _rf_v(gtd.whole_2_genes_RF[t])) for b, t in enumerate(g2)]
+        self._rf += [(starts[(2, b, 0)], _rf_v(gtd.orig_2_norm_RF[t])) for b, t in enumerate(g3)]
+
+        self._kct = [(starts[(0, b, 1)], _kct_v(gtd.mr_bayes_2_raxml_KCT[t])) for b, t in enumerate(g1)]
+        self._kct += [(starts[(1, b, 1)], _kct_v(gtd.whole_2_genes_KCT[t])) for b, t in enumerate(g2)]
+        self._kct += [(starts[(2, b, 1)], _kct_v(gtd.orig_2_norm_KCT[t])) for b, t in enumerate((g3))]
+
+        self._kc = [(starts[(1, b, 2)], _kc_v(gtd.whole_2_genes_KC[t])) for b, t in enumerate(g2)]
+        self._kc += [(starts[(2, b, 2)], _kc_v(gtd.orig_2_norm_KC[t])) for b, t in enumerate(g3)]
+
+        self._bs = [(starts[(1, b, 3)], _bs_v(gtd.whole_2_genes_BS[t])) for b, t in enumerate(g2)]
+        self._bs += [(starts[(2, b, 3)], _bs_v(gtd.orig_2_norm_BS[t])) for b, t in enumerate(g3)]
 
     # One graph
     def create_graph(self, step_obj, show=False):
@@ -278,10 +337,15 @@ class NormalizationResult:
         # # Adjust plot, because labels on X-axis and right Y axis
         # fig.subplots_adjust(right=(1 - 3 * right_axis_space), bottom=bottom_space / len(nrs), wspace=50)
 
-        nrs[0]._create_figure(fig, axes[0], False, True)
+        max_vs = dict(rf=max(max(y for _, y in n._rf) for n in nrs),
+                      kct=max(max(y for _, y in n._kct) for n in nrs),
+                      kc=max(max(y for _, y in n._kc) for n in nrs),
+                      bs=max(max(y for _, y in n._bs) for n in nrs))
+
+        nrs[0]._create_figure(fig, axes[0], False, True, max_vs=max_vs)
         for nr, ax in zip(nrs[1:-1], axes[1:-1]):
-            nr._create_figure(fig, ax, False, False)
-        nrs[-1]._create_figure(fig, axes[-1], True, False)
+            nr._create_figure(fig, ax, False, False, max_vs=max_vs)
+        nrs[-1]._create_figure(fig, axes[-1], True, False, max_vs=max_vs)
 
         plt.savefig('all_tree_comparisons.svg')
         plt.savefig('all_tree_comparisons.png', dpi=150)
@@ -290,52 +354,22 @@ class NormalizationResult:
             plt.show()
 
     # Figure
-    def _create_figure(self, fig, ax, with_x_labels, with_legend):
+    def _create_figure(self, fig, ax, with_x_labels, with_legend, max_vs=dict()):
         colors = dict(rf='blue', kct='orange', kc='red', bs='green')
 
         # Bars
-        x_offset = 2  # Offset from x=0
-        d_bar = 1     # Distance between neighbouring bars is 1
-        d_gap_1 = 1
-        d_gap_2 = 2
-        d_gap_3 = 4
         bar_width = 0.9
 
         # Y tick
         tick_kw = dict(size=0, width=1)
 
-        #
-        _b4 = d_bar * 4
-        g_starts = [0, _b4 + d_gap_1, 2 * _b4 + d_gap_1 + d_gap_2, 3 * _b4 + 2 * d_gap_1 + d_gap_2]
-        group_gap = g_starts[-1] + _b4 + d_gap_3
-
-        starts = dict()
-        for group in range(3):
-            gd = group * group_gap + x_offset
-            for idx, x in enumerate(g_starts):
-                x_group = x + gd
-                for bar in range(4):
-                    starts[(group, idx, bar)] = x_group + bar
-
-        # Collect data into lists of tuples (x, y)
-        gtd = self.G_tree_diffs
-        rf = [(starts[(0, b, 0)], _rf_v(gtd.mr_bayes_2_raxml_RF[t])) for b, t in enumerate(('oW', 'nW', 'oG', 'nG'))]
-        rf += [(starts[(1, b, 0)], _rf_v(gtd.whole_2_genes_RF[t])) for b, t in enumerate(('oM', 'oR', 'nM', 'nR'))]
-        rf += [(starts[(2, b, 0)], _rf_v(gtd.orig_2_norm_RF[t])) for b, t in enumerate(('WM', 'GM', 'WR', 'GR'))]
-
-        kct = [(starts[(0, b, 1)], gtd.mr_bayes_2_raxml_KCT[t]) for b, t in enumerate(('oW', 'nW', 'oG', 'nG'))]
-        kct += [(starts[(1, b, 1)], gtd.whole_2_genes_KCT[t]) for b, t in enumerate(('oM', 'oR', 'nM', 'nR'))]
-        kct += [(starts[(2, b, 1)], gtd.orig_2_norm_KCT[t]) for b, t in enumerate(('WM', 'GM', 'WR', 'GR'))]
-
-        kc = [(starts[(1, b, 2)], gtd.whole_2_genes_KC[t]) for b, t in enumerate(('oM', 'oR', 'nM', 'nR'))]
-        kc += [(starts[(2, b, 2)], gtd.orig_2_norm_KC[t]) for b, t in enumerate(('WM', 'GM', 'WR', 'GR'))]
-
-        bs = [(starts[(1, b, 3)], _bs_v(gtd.whole_2_genes_BS[t])) for b, t in enumerate(('oM', 'oR', 'nM', 'nR'))]
-        bs += [(starts[(2, b, 3)], _bs_v(gtd.orig_2_norm_BS[t])) for b, t in enumerate(('WM', 'GM', 'WR', 'GR'))]
-
         # Remove default labels
         ax.set_yticks([])
-        ax.set_xticks([])
+        # ax.set_xticks([])
+        ax.set_xticks(xs_no_data)
+        ax.set_xticklabels([r'$^\times$'] * len(xs_no_data))
+        ax.tick_params(axis='x', direction='in', length=0, pad=-5)
+
         for side in ('left', 'right', 'top'):
             ax.spines[side].set_visible(False)
 
@@ -351,15 +385,16 @@ class NormalizationResult:
         bs_ax.spines['right'].set_position(('axes', 1 + 3 * right_axis_space))
 
         lines = []
-        for _ax, vals, label, c in ((rf_ax, rf, 'RF', colors['rf']),
-                                    (kct_ax, kct, 'KCT', colors['kct']),
-                                    (kc_ax, kc, 'KC', colors['kc']),
-                                    (bs_ax, bs, 'BS', colors['bs'])):
+        for _ax, vals, label, c, max_v in (
+                (rf_ax, self._rf, 'RF', colors['rf'], max_vs.get('rf')),
+                (kct_ax, self._kct, 'KCT', colors['kct'], max_vs.get('kct')),
+                (kc_ax, self._kc, 'KC', colors['kc'], max_vs.get('kc')),
+                (bs_ax, self._bs, 'BS', colors['bs'], max_vs.get('bs'))):
             fix_patch_spines(_ax)
             #
-            mv = _max_val(max(y for x, y in vals))
-            _ax.set_ylim(0, mv)
-            _ax.set_yticks([mv])
+            mv = _max_val(max_v if max_v else max(y for x, y in vals))
+            _ax.set_ylim(0, mv or 1)
+            _ax.set_yticks([mv] if mv else [])
             _ax.set_yticklabels(_ax.get_yticks(), rotation=90)
             _ax.set_ylabel(label, labelpad=-10)  # font size? loc='bottom',
             _ax.yaxis.label.set_color(c)
@@ -371,14 +406,15 @@ class NormalizationResult:
         if with_legend:
             ax.legend(lines, [l.get_label() for l in lines], loc='upper left', frameon=False)
 
+        # Add labels on X axis
+        l_o = d_bar * 0.5
+        x_labels_1 = [l_o + starts[(group, idx, 1)] for group, idx in product(range(3), range(4))]
+        for idx, label in enumerate(('O', 'N', 'O', 'N', 'BI', 'ML', 'BI', 'ML', 'NP', 'P', 'NP', 'P')):
+            ax.text(x_labels_1[idx], x_label_y[0], label, ha='center', va='top', fontsize=8)
+
         if with_x_labels:
-            # Add labels on X axis
-            l_o = d_bar * 0.5
-            x_labels_1 = [l_o + starts[(group, idx, 1)] for group, idx in product(range(3), range(4))]
             x_labels_2 = [(a + b) / 2 for a, b in zip(x_labels_1[::2], x_labels_1[1::2])]
             x_labels_3 = [(a + b) / 2 for a, b in zip(x_labels_2[::2], x_labels_2[1::2])]
-            for idx, label in enumerate(('O', 'N', 'O', 'N', 'BI', 'ML', 'BI', 'ML', 'NP', 'P', 'NP', 'P')):
-                ax.text(x_labels_1[idx], x_label_y[0], label, ha='center', va='top', fontsize=8)
             for idx, label in enumerate(('NP', 'P', 'O', 'N', 'BI', 'ML')):
                 ax.text(x_labels_2[idx], x_label_y[1], label, ha='center', va='top', fontsize=10)
             for idx, label in enumerate(('BI-ML', 'NP-P', 'O-N')):
@@ -387,16 +423,21 @@ class NormalizationResult:
 
 def _max_val(value):
     if value == 0:
-        return 1
+        return None
     nd_1 = int(floor(log10(abs(value))))
     f_d = value / 10 ** nd_1
     if f_d > 5:
         return 10 ** (nd_1 + 1)
-    if ceil(f_d) > 2:
-        return ceil(f_d) * 10 ** nd_1
-    if f_d > 1.5:
-        return 2 * 10 ** nd_1
-    return 1.5 * 10 ** nd_1
+    c = int(ceil(f_d))
+    if c > 2:
+        d = c
+    elif f_d > 1.5:
+        d = 2
+    else:
+        d = 1.5
+    if nd_1 < 0:  # 3 * 10 ** -1 = 0.30000000000000004
+        return d / 10 ** (-nd_1)
+    return d * 10 ** nd_1
 
 
 def fix_patch_spines(ax):

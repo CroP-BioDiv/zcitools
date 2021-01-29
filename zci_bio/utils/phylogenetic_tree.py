@@ -39,6 +39,7 @@ class PhylogeneticTree:
     def __init__(self, newick_filename, outgroup, rename_nodes=None):
         self.newick_filename = newick_filename
         self.outgroup = outgroup
+        self.num_leaves = 0
         self.rename_nodes = rename_nodes  # Callable that returns new name
 
     def _load_tree(self):
@@ -46,6 +47,8 @@ class PhylogeneticTree:
         if self.rename_nodes:
             for node in tree.traverse():
                 node.name = self.rename_nodes(node.name)
+                if node.name:
+                    self.num_leaves += 1
         return tree
 
     @cache
@@ -114,13 +117,15 @@ class PhylogeneticTree:
         # dλ(Ta, Tb) = ||vλ(Ta) - vλ(Tb)||
         kc1 = self.kendall_colijn_lambda(lambda_factor)
         kc2 = t2.kendall_colijn_lambda(lambda_factor)
-        return sum((a - b)**2 for a, b in zip(kc1, kc2))**0.5
+        # Returns tuple (distance, num_ms, num_leaves)
+        return (sum((a - b)**2 for a, b in zip(kc1, kc2))**0.5, self.num_leaves * (self.num_leaves - 1) // 2, self.num_leaves)
 
     def distance_kendall_colijn_topo(self, t2):
         # Kendall-Colijn with lambda = 0
         ms1, _ = self.kendall_colijn_vectors()
         ms2, _ = t2.kendall_colijn_vectors()
-        return sum((a - b)**2 for a, b in zip(ms1, ms2))**0.5
+        # Returns tuple (distance, num_ms)
+        return (sum((a - b)**2 for a, b in zip(ms1, ms2))**0.5, self.num_leaves * (self.num_leaves - 1) // 2)
 
     def kendall_colijn_lambda(self, _l):
         # vλ(T) = (1−λ)m(T) + λM(T)⁠
