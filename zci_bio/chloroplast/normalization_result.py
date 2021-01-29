@@ -49,23 +49,24 @@ def _most_sign(num, digits):
     if num == 0:
         return 0
     if num >= 10 ** (digits - 1):
-        return int(num)
+        return int(round(num))
     return str(round(num, digits - int(floor(log10(abs(num)))) - 1))
 
 
 # Distance result format methods
 # Robinson-Foulds distance
-# Keys: rf, max_rf, ref_edges_in_source, source_edges_in_ref, effective_tree_size,
-#       norm_rf, treeko_dist, source_subtrees, common_edges, source_edges, ref_edges
+# Attrs: rf, max_rf
 def _rf(d):
-    return f"{_most_sign(d[0] / d[1], 3)} ({int(d[0])}/{int(d[1])})"
+    return f"{_most_sign(d['rf'] / d['max_rf'], 3)} ({int(d['rf'])})"
 
 
 def _rf_v(d):
-    return d[0] / d[1]
+    return d['rf'] / d['max_rf']
 
 
 # Branch score distance
+# Attrs: bs, stat_1, stat_2
+# Stat attrs: num_edges, min_length, max_length, average_length, sum_length
 def _bs(d):
     av_l = (d['stat_1']['average_length'] + d['stat_2']['average_length']) / 2
     num_edges = d['bs'] / av_l
@@ -80,20 +81,21 @@ def _bs_v(d):
 
 
 # Kendall-Colijn distance
+# Attrs: l_1, l_2, num_ms, num_leaves
 def _kc(d):
-    return f"{_most_sign(d[0], 3)} / {d[1]}"
+    return _most_sign(d['l_1'], 3)
 
 
 def _kc_v(d):
-    return d[0] / d[1]
+    return d['l_1'] / (d['num_ms'] + d['num_leaves'])
 
 
 def _kct(d):
-    return f"{_most_sign(d[0], 3)} / {d[1]}"
+    return _most_sign(d['l_1'], 3)
 
 
 def _kct_v(d):
-    return d[0] / d[1]
+    return d['l_1'] / d['num_ms']
 
 
 class _TreeDiffs:
@@ -154,15 +156,24 @@ class _TreeDiffs:
     def from_dict(self, data):
         self.__dict__.update(data)
 
-    def get_rows(self, *tree_diffs):
+    def get_rows(self, norm_result, *tree_diffs):
         assert all(isinstance(t, _TreeDiffs) for t in tree_diffs), tree_diffs
         tds = (self,) + tree_diffs
         nt = len(tds)
         cc = lambda x: list(chain(*x))
         lab_2_text = dict(G='GeSeq', S='Sum', A='All', N='NCBI')
+        #
+        some_tree = norm_result.trees['Go_04_W_MrBayes']
+        num_leaves = some_tree.num_leaves[0]
+        # num_edges = some_tree.unrooted_tree().
 
         return fill_rows([
             ['', ''] + cc([lab_2_text[t.seq_type], ''] for t in tds),
+            [],
+            ['Num leaves', ''] + cc([num_leaves, ''] for t in tds),
+            ['Num inner edges (unrooted)', ''] + cc([some_tree.unrooted_num_edges(), ''] for t in tds),
+            ['Num ms', ''] + cc([num_leaves * (num_leaves - 1) // 2, ''] for t in tds),
+            [],
             ['MrBayes-RAxML'],
             ['', 'Distance'] + ['Non-partitioned', 'Partitioned'] * nt,
             ['Original', 'RF'] + cc([_rf(t.mr_bayes_2_raxml_RF['oW']), _rf(t.mr_bayes_2_raxml_RF['oG'])] for t in tds),
@@ -221,7 +232,7 @@ class NormalizationResult:
         self.G_tree_diffs = _TreeDiffs(self, seq_type='G')
         # self.N_tree_diffs = _TreeDiffs(self, seq_type='N')
 
-        rows = self.G_tree_diffs.get_rows()  # self.N_tree_diffs)
+        rows = self.G_tree_diffs.get_rows(self)  # self.N_tree_diffs)
         text = str(StringColumns(rows)) + '\n'
 
         # Create step and collect data
@@ -426,15 +437,15 @@ def _max_val(value):
         return None
     nd_1 = int(floor(log10(abs(value))))
     f_d = value / 10 ** nd_1
-    if f_d > 5:
-        return 10 ** (nd_1 + 1)
+    # if f_d > 5:
+    #     return 10 ** (nd_1 + 1)
     c = int(ceil(f_d))
-    if c > 2:
+    if c > 4:
         d = c
-    elif f_d > 1.5:
-        d = 2
+    elif f_d - floor(f_d) < 0.5:
+        d = c - 0.5
     else:
-        d = 1.5
+        d = c
     if nd_1 < 0:  # 3 * 10 ** -1 = 0.30000000000000004
         return d / 10 ** (-nd_1)
     return d * 10 ** nd_1
