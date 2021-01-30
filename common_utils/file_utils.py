@@ -20,9 +20,9 @@ settings_defaults = dict(
 )
 
 
-def get_settings():
+def get_settings(project_directory=None):
     settings = dict((k, None) for k in settings_defaults.keys())
-    s = read_yaml('settings.yml')
+    s = read_yaml(os.path.join(project_directory, 'settings.yml') if project_directory else 'settings.yml')
     if s:
         settings.update(s)
     return settings

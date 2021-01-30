@@ -71,7 +71,7 @@ class ChloroplastNormalizationResult(CreateStepCommand):
 
     def run(self, step_data):
         from .normalization_result import NormalizationResult
-        return NormalizationResult(self.project).run(step_data)
+        return NormalizationResult(self.project, '.').run(step_data)
 
 
 class ChloroplastNormalizationResultGraph(ProjectCommand):
@@ -86,7 +86,7 @@ class ChloroplastNormalizationResultGraph(ProjectCommand):
     def run(self):
         from .normalization_result import NormalizationResult
         step = self.project.read_step(self.args.step, check_data_type='table', no_check=True)
-        return NormalizationResult(self.project).create_graph(step, show=True)
+        return NormalizationResult(self.project, '.').create_graph(step, show=True)
 
 
 class ChloroplastNormalizationResultGraphJoin(NonProjectCommand):
@@ -97,13 +97,14 @@ class ChloroplastNormalizationResultGraphJoin(NonProjectCommand):
     @staticmethod
     def set_arguments(parser):
         parser.add_argument('steps', nargs='+', help='Input steps')
+        parser.add_argument('-t', '--two-columns', action='store_true', help='Graphs in two columns')
 
     def run(self):
         from os.path import sep
         from .normalization_result import NormalizationResult
         steps = [self.project.read_step(s.split(sep), check_data_type='table', no_check=True, outside_of_project=True)
                  for s in self.args.steps]
-        return NormalizationResult.create_graphs(self.project, steps, show=True)
+        return NormalizationResult.create_graphs(self.project, steps, self.args.two_columns, show=True)
 
 
 class ChloroplastAlign(CreateStepFromStepCommand):

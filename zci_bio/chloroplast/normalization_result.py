@@ -1,3 +1,4 @@
+import os.path
 from math import floor, ceil, log10
 from itertools import product, chain
 from step_project.common.table.steps import TableStep
@@ -16,6 +17,10 @@ bottom_space = 0.2
 figsize_y_no_x = figsize_y * (1 - bottom_space)
 right_axis_space = 0.05
 x_label_y = [-0.03, -0.08, -0.14]
+col_2_wspace = 0.15
+title_x_1c = 0.03
+title_x_2c = 0.05
+
 
 #
 x_offset = 2  # Offset from x=0
@@ -208,8 +213,12 @@ class _TreeDiffs:
 
 
 class NormalizationResult:
-    def __init__(self, project):
+    def __init__(self, project, project_directory):
         self.project = project
+        self.title = None
+        if _s := get_settings(project_directory=project_directory):
+            if _wf := _s.get('workflow_parameters'):
+                self.title = _wf.get('family')
         self.outgroup = None
         self.analyses_step = None
         self.tree_steps = dict()  # step_name -> step object
@@ -335,28 +344,60 @@ class NormalizationResult:
 
     # More graph
     @classmethod
-    def create_graphs(cls, project, step_objects, show=False):
+    def create_graphs(cls, project, step_objects, two_columns, show=False):
         assert len(step_objects) > 1, len(step_objects)
         if any(not s.is_completed() for s in step_objects):
             raise ZCItoolsValueError(f"Some of normalization result input step are not completed!")
-        nrs = [NormalizationResult(project).load_diffs_from_step(s) for s in step_objects]
 
-        plt = import_matplotlib_pylot()
-        # In inches. A4 is 8-1/4 * 11-3/4.
-        # Note: figsize is value used to calibrate all other values
-        fig, axes = plt.subplots(len(nrs), figsize=(figsize_x, figsize_y + figsize_y_no_x * (len(nrs) - 1)), constrained_layout=True)
-        # # Adjust plot, because labels on X-axis and right Y axis
-        # fig.subplots_adjust(right=(1 - 3 * right_axis_space), bottom=bottom_space / len(nrs), wspace=50)
-
+        nrs = [NormalizationResult(project, os.path.join(*s._step_name_list[:-1])).load_diffs_from_step(s)
+               for s in step_objects]
         max_vs = dict(rf=max(max(y for _, y in n._rf) for n in nrs),
                       kct=max(max(y for _, y in n._kct) for n in nrs),
                       kc=max(max(y for _, y in n._kc) for n in nrs),
                       bs=max(max(y for _, y in n._bs) for n in nrs))
 
-        nrs[0]._create_figure(fig, axes[0], False, True, max_vs=max_vs)
-        for nr, ax in zip(nrs[1:-1], axes[1:-1]):
-            nr._create_figure(fig, ax, False, False, max_vs=max_vs)
-        nrs[-1]._create_figure(fig, axes[-1], True, False, max_vs=max_vs)
+        plt = import_matplotlib_pylot()
+        if not two_columns:
+            # In inches. A4 is 8-1/4 * 11-3/4.
+            # Note: figsize is value used to calibrate all other values
+            fig, axes = plt.subplots(len(nrs), figsize=(figsize_x, figsize_y + figsize_y_no_x * (len(nrs) - 1)), constrained_layout=True)
+            # # Adjust plot, because labels on X-axis and right Y axis
+            # fig.subplots_adjust(right=(1 - 3 * right_axis_space), bottom=bottom_space / len(nrs), wspace=50)
+
+            nrs[0]._create_figure(fig, axes[0], False, True, max_vs=max_vs)
+            for nr, ax in zip(nrs[1:-1], axes[1:-1]):
+                nr._create_figure(fig, ax, False, False, max_vs=max_vs)
+            nrs[-1]._create_figure(fig, axes[-1], True, False, max_vs=max_vs)
+        else:
+            num_rows = int(ceil(len(nrs) / 2))
+            fig, axes = plt.subplots(nrows=num_rows, ncols=2, figsize=(2 * figsize_x, figsize_y + figsize_y_no_x * (num_rows - 1)), constrained_layout=True)
+
+            nrs[0]._create_figure(fig, axes[0][0], False, True, max_vs=max_vs)
+            row = 0
+            col = 1
+            for nr in nrs[1:-1]:
+                nr._create_figure(fig, axes[row, col], False, False, max_vs=max_vs, y_labels=not col)
+                col += 1
+                if col > 1:
+                    col = 0
+                    row += 1
+            nrs[-1]._create_figure(fig, axes[row, col], True, False, max_vs=max_vs, y_labels=not col)
+            if len(nrs) % 2:
+                axes[-1, -1].axis('off')
+
+            # # Draw line to connect
+            # import matplotlib
+            # transFigure = fig.transFigure.inverted()
+            # for row in range(num_rows - (len(nrs) % 2)):
+            #     ax_left, ax_right = axes[row]
+            #     left_max = ax_left.get_xlim()[1]
+            #     c1_x, c1_y = transFigure.transform(ax_left.transData.transform([left_max * 1.13, 0.03]))
+            #     c2_x, c2_y = transFigure.transform(ax_right.transData.transform([ax_right.get_xlim()[0], 0.03]))
+            #     lw = ax_left.get_xgridlines()[0].get_linewidth()
+            #     line_l = ax_left.get_xgridlines()[0]
+            #     # for l in ax_left.get_xgridlines():
+            #     #     print(l.get_data())
+            #     fig.lines.append(matplotlib.lines.Line2D((c1_x, c2_x), (c1_y, c2_y), transform=fig.transFigure, color='black', linewidth=lw))
 
         plt.savefig('all_tree_comparisons.svg')
         plt.savefig('all_tree_comparisons.png', dpi=150)
@@ -365,7 +406,7 @@ class NormalizationResult:
             plt.show()
 
     # Figure
-    def _create_figure(self, fig, ax, with_x_labels, with_legend, max_vs=dict()):
+    def _create_figure(self, fig, ax, with_x_labels, with_legend, max_vs=dict(), y_labels=True, title_x=title_x_1c):
         colors = dict(rf='blue', kct='orange', kc='red', bs='green')
 
         # Bars
@@ -391,9 +432,10 @@ class NormalizationResult:
         bs_ax = ax.twinx()
 
         # Offset the right spines
-        kct_ax.spines['right'].set_position(('axes', 1 + right_axis_space))
-        kc_ax.spines['right'].set_position(('axes', 1 + 2 * right_axis_space))
-        bs_ax.spines['right'].set_position(('axes', 1 + 3 * right_axis_space))
+        if y_labels:
+            kct_ax.spines['right'].set_position(('axes', 1 + right_axis_space))
+            kc_ax.spines['right'].set_position(('axes', 1 + 2 * right_axis_space))
+            bs_ax.spines['right'].set_position(('axes', 1 + 3 * right_axis_space))
 
         lines = []
         for _ax, vals, label, c, max_v in (
@@ -401,21 +443,30 @@ class NormalizationResult:
                 (kct_ax, self._kct, 'KCT', colors['kct'], max_vs.get('kct')),
                 (kc_ax, self._kc, 'KC', colors['kc'], max_vs.get('kc')),
                 (bs_ax, self._bs, 'BS', colors['bs'], max_vs.get('bs'))):
-            fix_patch_spines(_ax)
+            fix_patch_spines(_ax, y_labels)
             #
             mv = _max_val(max_v if max_v else max(y for x, y in vals))
             _ax.set_ylim(0, mv or 1)
-            _ax.set_yticks([mv] if mv else [])
-            _ax.set_yticklabels(_ax.get_yticks(), rotation=90)
-            _ax.set_ylabel(label, labelpad=-10)  # font size? loc='bottom',
-            _ax.yaxis.label.set_color(c)
+            _ax.set_yticks([mv] if (mv and y_labels) else [])
+            if y_labels:
+                _ax.set_yticklabels(_ax.get_yticks(), rotation=90)
+                _ax.set_ylabel(label, labelpad=-10)  # font size? loc='bottom',
+                _ax.yaxis.label.set_color(c)
             _ax.spines['right'].set_color(c)
             _ax.tick_params(axis='y', colors=c, **tick_kw)
             #
             lines.append(_ax.bar([x for x, y in vals], [y for x, y in vals], bar_width, label=label, color=c))
 
+        # Set title
+        if self.title:
+            ax.set_title(self.title, loc='left', x=title_x, y=0.9, va='top')  # Inside the figure
+
+        # Legends
         if with_legend:
-            ax.legend(lines, [l.get_label() for l in lines], loc='upper left', frameon=False)
+            if self.title:
+                ax.legend(lines, [l.get_label() for l in lines], loc='center left', frameon=False, borderaxespad=0, borderpad=0, bbox_to_anchor=(title_x, 0.5))
+            else:
+                ax.legend(lines, [l.get_label() for l in lines], loc='upper left', frameon=False)
 
         # Add labels on X axis
         l_o = d_bar * 0.5
@@ -451,7 +502,7 @@ def _max_val(value):
     return d * 10 ** nd_1
 
 
-def fix_patch_spines(ax):
+def fix_patch_spines(ax, y_labels):
     # Having been created by twinx, par2 has its frame off, so the line of its
     # detached spine is invisible. First, activate the frame but make the patch
     # and spines invisible.
@@ -460,4 +511,5 @@ def fix_patch_spines(ax):
     for sp in ax.spines.values():
         sp.set_visible(False)
     # Second, show the right spine.
-    ax.spines['right'].set_visible(True)
+    if y_labels:
+        ax.spines['right'].set_visible(True)
