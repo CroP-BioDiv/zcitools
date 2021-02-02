@@ -137,6 +137,7 @@ Set of genome to work:
  * Number of annotations with wrong orientation : {s[f'{a}_wrong_orientations']}
  * Description wrong orientations               : {s[f'{a}_desc_wrong_orientations']}
  * Number of annotations with offset            : {s[f'{a}_wrong_offset']}
+ * List of wrong offsets                        : {", ".join(str(x) for x in s[f'{a}_wrong_offset_list'] or [])}
  * Number genomes to normalize                  : {s[f'{a}_num_to_fix']}
 """
             if genes:

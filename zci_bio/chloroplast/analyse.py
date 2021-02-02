@@ -134,26 +134,18 @@ class AnalyseGenomes:
             num_genomes=len(data),
             # min_sequence_length=min(len(seq) for _, seq in sequences_step._iterate_records()),
             # max_sequence_length=max(len(seq) for _, seq in sequences_step._iterate_records()),
-            #
-            ge_seq_num_irs=sum(1 for d in data.values() if d.ge_seq.has_irs),
-            ge_seq_wrong_orientations=sum(1 for d in data.values() if d.ge_seq.part_orientation),
-            ge_seq_desc_wrong_orientations=_desc_wrong_orientations('ge_seq'),
-            ge_seq_wrong_offset=sum(1 for d in data.values() if offset_off(d.ge_seq.part_offset)),
-            ge_seq_num_to_fix=sum(1 for d in data.values()
-                                  if d.ge_seq.part_orientation or offset_off(d.ge_seq.part_offset)),
-            #
-            ncbi_num_irs=sum(1 for d in data.values() if d.ncbi.has_irs),
-            ncbi_wrong_orientations=sum(1 for d in data.values() if d.ncbi.part_orientation),
-            ncbi_desc_wrong_orientations=_desc_wrong_orientations('ncbi'),
-            ncbi_wrong_offset=sum(1 for d in data.values() if offset_off(d.ncbi.part_offset)),
-            ncbi_num_to_fix=sum(1 for d in data.values() if d.ncbi.part_orientation or offset_off(d.ncbi.part_offset)),
-            #
-            sum_num_irs=sum(1 for d in data.values() if d.sum.has_irs),
-            sum_wrong_orientations=sum(1 for d in data.values() if d.sum.part_orientation),
-            sum_desc_wrong_orientations=_desc_wrong_orientations('sum'),
-            sum_wrong_offset=sum(1 for d in data.values() if offset_off(d.sum.part_offset)),
-            sum_num_to_fix=sum(1 for d in data.values() if d.sum.part_orientation or offset_off(d.sum.part_offset)),
         )
+        for a_attr in ('ge_seq', 'ncbi', 'sum'):
+            summary_data[f'{a_attr}_num_irs'] = sum(1 for d in data.values() if getattr(d, a_attr).has_irs)
+            summary_data[f'{a_attr}_wrong_orientations'] = sum(1 for d in data.values() if getattr(d, a_attr).part_orientation)
+            summary_data[f'{a_attr}_desc_wrong_orientations'] = _desc_wrong_orientations(a_attr)
+            summary_data[f'{a_attr}_wrong_offset'] = sum(1 for d in data.values() if offset_off(getattr(d, a_attr).part_offset))
+            if summary_data[f'{a_attr}_wrong_offset']:
+                summary_data[f'{a_attr}_wrong_offset_list'] = sorted(o for d in data.values() if offset_off(o := getattr(d, a_attr).part_offset))
+            else:
+                summary_data[f'{a_attr}_wrong_offset_list'] = None
+            summary_data[f'{a_attr}_num_to_fix'] = sum(
+                1 for d in data.values() if getattr(d, a_attr).part_orientation or offset_off(getattr(d, a_attr).part_offset))
 
         for a_attr in ('ge_seq', 'ncbi'):
             gks = list(getattr(some_data, a_attr).genes_stat.keys())
