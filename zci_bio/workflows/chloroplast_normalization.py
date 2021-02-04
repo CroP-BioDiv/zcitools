@@ -5,7 +5,8 @@ from common_utils.exceptions import ZCItoolsValueError
 
 
 def workflow_branches(wf_settings, analyses_step):
-    branches = ['G', 'N']
+    branches = ['G']
+    # branches = ['G', 'N']
     if not analyses_step:
         return branches
     # parts = analyses_step.select(['GeSeq part starts', 'NCBI part starts'])
@@ -130,6 +131,12 @@ Set of genome to work:
         ng = s['num_genomes']
 
         def _annotation_summary(title, a, genes):
+            w_offset = s[f'{a}_wrong_offset_list'] or []
+            if w_offset:
+                w_offset_mm = f'{min(map(abs, w_offset))} - {max(map(abs, w_offset))} '
+            else:
+                w_offset_mm = ''
+
             t = f"""
 {title}:
  * Number of annotations containing IRS         : {s[f'{a}_num_irs']}
@@ -137,7 +144,7 @@ Set of genome to work:
  * Number of annotations with wrong orientation : {s[f'{a}_wrong_orientations']}
  * Description wrong orientations               : {s[f'{a}_desc_wrong_orientations']}
  * Number of annotations with offset            : {s[f'{a}_wrong_offset']}
- * List of wrong offsets                        : {", ".join(str(x) for x in s[f'{a}_wrong_offset_list'] or [])}
+ * List of wrong offsets                        : {w_offset_mm}[{", ".join(map(str, w_offset))}]
  * Number genomes to normalize                  : {s[f'{a}_num_to_fix']}
 """
             if genes:

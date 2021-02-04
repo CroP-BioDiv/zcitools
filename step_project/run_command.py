@@ -276,11 +276,14 @@ class RunCommand:
             return cls(self, desc_data['project'], update_mode=update_mode, no_check=no_check, step_directory=step_name)
         return cls(self, desc_data['project'], update_mode=update_mode, no_check=no_check)
 
-    def read_step_if_in(self, step_name, check_data_type=None, update_mode=False, no_check=False):
-        if not os.path.isdir(step_name):
+    def read_step_if_in(self, step_name, check_data_type=None, update_mode=False, no_check=False,
+                        outside_of_project=False):
+        is_l = isinstance(step_name, (list, tuple))
+        if not os.path.isdir(os.path.join(*step_name) if is_l else step_name):
             return None
         try:
-            step = self.read_step(step_name, check_data_type=check_data_type, update_mode=update_mode, no_check=no_check)
+            step = self.read_step(step_name, check_data_type=check_data_type, update_mode=update_mode,
+                                  no_check=no_check, outside_of_project=outside_of_project)
         except ZCItoolsValueError:
             return None
         return step

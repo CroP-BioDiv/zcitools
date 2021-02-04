@@ -6,8 +6,8 @@ from decimal import Decimal
 from datetime import date
 from collections import defaultdict
 from step_project.common.table.steps import TableStep, Rows2Table
-from common_utils.file_utils import write_str_in_file, write_csv
-from common_utils.value_data_types import fromisoformat
+from common_utils.file_utils import write_str_in_file, write_csv, get_settings
+from common_utils.value_data_types import fromisoformat, table_data_2_excel
 from ...utils.ncbi_taxonomy import get_ncbi_taxonomy
 
 _instructions = """
@@ -298,3 +298,24 @@ def _filter_summary_data(data, max_taxid):
              _to_date(d['CreateDate']), _to_date(d['UpdateDate']),
              d['Title'], max_taxid]
             for d in data]
+
+
+def export_chloroplast_list(table_step, output_filename, num_columns):
+    outgroup = None
+    if _set := get_settings():
+        if wp := _set.get('workflow_parameters'):
+            outgroup = wp.get('outgroup')
+    rows = []
+    row = []
+    for idx, (ident, title) in enumerate(table_step.select(['ncbi_ident', 'title'])):
+        species = ' '.join(title.split(' ', 2)[:2])
+        species = species.replace('[', '')
+        species = species.replace(']', '')
+        row.extend([ident + (' (og)' if ident == outgroup else ''), species])
+        if (idx + 1) % num_columns == 0:
+            rows.append(row)
+            row = []
+    if row:
+        rows.append(row + ['', ''] * (num_columns - ((idx + 1) % num_columns)))
+
+    table_data_2_excel(output_filename, [('Accession number', 'str'), ('Species', 'str')] * num_columns, rows)

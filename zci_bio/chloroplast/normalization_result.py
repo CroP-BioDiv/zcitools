@@ -219,6 +219,13 @@ class NormalizationResult:
         if _s := get_settings(project_directory=project_directory):
             if _wf := _s.get('workflow_parameters'):
                 self.title = _wf.get('family')
+                outside_of_project = (bool(project_directory) and (project_directory != '.'))
+                if an_step := project.read_step_if_in(
+                        [project_directory, '04_AnalyseChloroplast'] if outside_of_project else '04_AnalyseChloroplast',
+                        outside_of_project=outside_of_project):
+                    if s_data := an_step.get_summary_data():
+                        if _num := s_data.get('ge_seq_num_irs'):
+                            self.title += f' (n={_num})'
         self.outgroup = None
         self.analyses_step = None
         self.tree_steps = dict()  # step_name -> step object
@@ -372,18 +379,26 @@ class NormalizationResult:
             num_rows = int(ceil(len(nrs) / 2))
             fig, axes = plt.subplots(nrows=num_rows, ncols=2, figsize=(2 * figsize_x, figsize_y + figsize_y_no_x * (num_rows - 1)), constrained_layout=True)
 
-            nrs[0]._create_figure(fig, axes[0][0], False, True, max_vs=max_vs)
+            nrs[0]._create_figure(fig, axes[0][0], True, True, max_vs=max_vs)
             row = 0
             col = 1
             for nr in nrs[1:-1]:
-                nr._create_figure(fig, axes[row, col], False, False, max_vs=max_vs, y_labels=not col)
+                nr._create_figure(fig, axes[row, col], True, False, max_vs=max_vs, y_labels=not col)
                 col += 1
                 if col > 1:
                     col = 0
                     row += 1
             nrs[-1]._create_figure(fig, axes[row, col], True, False, max_vs=max_vs, y_labels=not col)
+
             if len(nrs) % 2:
                 axes[-1, -1].axis('off')
+                # Add abbreviations
+                for idx, (abr, label) in enumerate((('O', 'Original'), ('N', 'Normalized'),
+                                                    ('NP', 'Non partitioned'), ('P', 'Partitioned'),
+                                                    ('BI', 'Bayesian inference (MrBayes)'), ('ML', 'Maximum likelihood (RAxML)'))):
+                    y = 0.28 - idx * 0.04
+                    fig.text(0.65, y, abr, ha='left', va='center', fontsize=12)
+                    fig.text(0.68, y, label, ha='left', va='center', fontsize=12)
 
             # # Draw line to connect
             # import matplotlib

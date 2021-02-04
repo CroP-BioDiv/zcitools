@@ -93,3 +93,21 @@ class NCBIChloroplastList(CreateStepCommand):
     def run(self, step_data):
         from .fetch_genome_assemblies import fetch_chloroplast_list
         return fetch_chloroplast_list(self.project, step_data, self.args)
+
+
+class NCBIChloroplastListToExcel(ProjectCommand):
+    _COMMAND = 'ncbi_chloroplast_list_to_excel'
+    _COMMAND_GROUP = 'NCBI'
+    _HELP = "Exports list of sequences into excel"
+
+    @staticmethod
+    def set_arguments(parser):
+        parser.add_argument('-s', '--step-name', default='01_chloroplast_list', help='Table step name with list of sequences.')
+        parser.add_argument('-o', '--output-filename', default='chloroplast_list.xls', help='Output excel filename')
+        parser.add_argument('-c', '--num-columns', default=2, help='Number of columns')
+
+    def run(self):
+        from .fetch_genome_assemblies import export_chloroplast_list
+        a = self.args
+        step = self.project.read_step(a.step_name, check_data_type='table', no_check=True)
+        return export_chloroplast_list(step, a.output_filename, a.num_columns)
