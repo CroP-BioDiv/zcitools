@@ -189,26 +189,26 @@ class _TreeDiffs:
             [],
             ['Non-partitioned-Partitioned'],
             ['', 'Distance'] + ['Original', 'Normalized'] * nt,
-            ['MrBayes', 'RF'] + cc([_rf(t.whole_2_genes_RF['oM']), _rf(t.whole_2_genes_RF['nM'])] for t in tds),
-            ['', 'KCT'] + cc([_kct(t.whole_2_genes_KCT['oM']), _kct(t.whole_2_genes_KCT['nM'])] for t in tds),
-            ['', 'KC'] + cc([_kc(t.whole_2_genes_KC['oM']), _kc(t.whole_2_genes_KC['nM'])] for t in tds),
-            ['', 'BS'] + cc([_bs(t.whole_2_genes_BS['oM']), _bs(t.whole_2_genes_BS['nM'])] for t in tds),
             ['RAxML', 'RF'] + cc([_rf(t.whole_2_genes_RF['oR']), _rf(t.whole_2_genes_RF['nR'])] for t in tds),
             ['', 'KCT'] + cc([_kct(t.whole_2_genes_KCT['oR']), _kct(t.whole_2_genes_KCT['nR'])] for t in tds),
             ['', 'KC'] + cc([_kc(t.whole_2_genes_KC['oR']), _kc(t.whole_2_genes_KC['nR'])] for t in tds),
             ['', 'BS'] + cc([_bs(t.whole_2_genes_BS['oR']), _bs(t.whole_2_genes_BS['nR'])] for t in tds),
+            ['MrBayes', 'RF'] + cc([_rf(t.whole_2_genes_RF['oM']), _rf(t.whole_2_genes_RF['nM'])] for t in tds),
+            ['', 'KCT'] + cc([_kct(t.whole_2_genes_KCT['oM']), _kct(t.whole_2_genes_KCT['nM'])] for t in tds),
+            ['', 'KC'] + cc([_kc(t.whole_2_genes_KC['oM']), _kc(t.whole_2_genes_KC['nM'])] for t in tds),
+            ['', 'BS'] + cc([_bs(t.whole_2_genes_BS['oM']), _bs(t.whole_2_genes_BS['nM'])] for t in tds),
             #
             [],
             ['Original-Normalized'],
-            ['', 'Distance'] + ['MrBayes', 'RAxML'] * nt,
-            ['Non-partitioned', 'RF'] + cc([_rf(t.orig_2_norm_RF['WM']), _rf(t.orig_2_norm_RF['WR'])] for t in tds),
-            ['', 'KCT'] + cc([_kct(t.orig_2_norm_KCT['WM']), _kct(t.orig_2_norm_KCT['WR'])] for t in tds),
-            ['', 'KC'] + cc([_kc(t.orig_2_norm_KC['WM']), _kc(t.orig_2_norm_KC['WR'])] for t in tds),
-            ['', 'BS'] + cc([_bs(t.orig_2_norm_BS['WM']), _bs(t.orig_2_norm_BS['WR'])] for t in tds),
-            ['Partitioned', 'RF'] + cc([_rf(t.orig_2_norm_RF['GM']), _rf(t.orig_2_norm_RF['GR'])] for t in tds),
-            ['', 'KCT'] + cc([_kct(t.orig_2_norm_KCT['GM']), _kct(t.orig_2_norm_KCT['GR'])] for t in tds),
-            ['', 'KC'] + cc([_kc(t.orig_2_norm_KC['GM']), _kc(t.orig_2_norm_KC['GR'])] for t in tds),
-            ['', 'BS'] + cc([_bs(t.orig_2_norm_BS['GM']), _bs(t.orig_2_norm_BS['GR'])] for t in tds),
+            ['', 'Distance'] + ['RAxML', 'MrBayes'] * nt,
+            ['Non-partitioned', 'RF'] + cc([_rf(t.orig_2_norm_RF['WR']), _rf(t.orig_2_norm_RF['WM'])] for t in tds),
+            ['', 'KCT'] + cc([_kct(t.orig_2_norm_KCT['WR']), _kct(t.orig_2_norm_KCT['WM'])] for t in tds),
+            ['', 'KC'] + cc([_kc(t.orig_2_norm_KC['WR']), _kc(t.orig_2_norm_KC['WM'])] for t in tds),
+            ['', 'BS'] + cc([_bs(t.orig_2_norm_BS['WR']), _bs(t.orig_2_norm_BS['WM'])] for t in tds),
+            ['Partitioned', 'RF'] + cc([_rf(t.orig_2_norm_RF['GR']), _rf(t.orig_2_norm_RF['GM'])] for t in tds),
+            ['', 'KCT'] + cc([_kct(t.orig_2_norm_KCT['GR']), _kct(t.orig_2_norm_KCT['GM'])] for t in tds),
+            ['', 'KC'] + cc([_kc(t.orig_2_norm_KC['GR']), _kc(t.orig_2_norm_KC['GM'])] for t in tds),
+            ['', 'BS'] + cc([_bs(t.orig_2_norm_BS['GR']), _bs(t.orig_2_norm_BS['GM'])] for t in tds),
         ])
 
 
@@ -303,8 +303,8 @@ class NormalizationResult:
     def _set_graph_values(self):
         gtd = self.G_tree_diffs
         g1 = ('oW', 'nW', 'oG', 'nG')
-        g2 = ('oM', 'oR', 'nM', 'nR')
-        g3 = ('WM', 'GM', 'WR', 'GR')
+        g2 = ('oR', 'oM', 'nR', 'nM')
+        g3 = ('WR', 'GR', 'WM', 'GM')
 
         # Collect data into lists of tuples (x, y)
         self._rf = [(starts[(0, b, 0)], _rf_v(gtd.mr_bayes_2_raxml_RF[t])) for b, t in enumerate(g1)]
@@ -395,7 +395,7 @@ class NormalizationResult:
                 # Add abbreviations
                 for idx, (abr, label) in enumerate((('O', 'Original'), ('N', 'Normalized'),
                                                     ('NP', 'Non partitioned'), ('P', 'Partitioned'),
-                                                    ('BI', 'Bayesian inference (MrBayes)'), ('ML', 'Maximum likelihood (RAxML)'))):
+                                                    ('ML', 'Maximum likelihood (RAxML)'), ('BI', 'Bayesian inference (MrBayes)'))):
                     y = 0.28 - idx * 0.04
                     fig.text(0.65, y, abr, ha='left', va='center', fontsize=12)
                     fig.text(0.68, y, label, ha='left', va='center', fontsize=12)
@@ -455,7 +455,7 @@ class NormalizationResult:
         lines = []
         for _ax, vals, label, c, max_v in (
                 (rf_ax, self._rf, 'RF', colors['rf'], max_vs.get('rf')),
-                (kct_ax, self._kct, 'KCT', colors['kct'], max_vs.get('kct')),
+                (kct_ax, self._kct, 'KC$_T$', colors['kct'], max_vs.get('kct')),
                 (kc_ax, self._kc, 'KC', colors['kc'], max_vs.get('kc')),
                 (bs_ax, self._bs, 'BS', colors['bs'], max_vs.get('bs'))):
             fix_patch_spines(_ax, y_labels)
@@ -486,15 +486,15 @@ class NormalizationResult:
         # Add labels on X axis
         l_o = d_bar * 0.5
         x_labels_1 = [l_o + starts[(group, idx, 1)] for group, idx in product(range(3), range(4))]
-        for idx, label in enumerate(('O', 'N', 'O', 'N', 'BI', 'ML', 'BI', 'ML', 'NP', 'P', 'NP', 'P')):
+        for idx, label in enumerate(('O', 'N', 'O', 'N', 'ML', 'BI', 'ML', 'BI', 'NP', 'P', 'NP', 'P')):
             ax.text(x_labels_1[idx], x_label_y[0], label, ha='center', va='top', fontsize=8)
 
         if with_x_labels:
             x_labels_2 = [(a + b) / 2 for a, b in zip(x_labels_1[::2], x_labels_1[1::2])]
             x_labels_3 = [(a + b) / 2 for a, b in zip(x_labels_2[::2], x_labels_2[1::2])]
-            for idx, label in enumerate(('NP', 'P', 'O', 'N', 'BI', 'ML')):
+            for idx, label in enumerate(('NP', 'P', 'O', 'N', 'ML', 'BI')):
                 ax.text(x_labels_2[idx], x_label_y[1], label, ha='center', va='top', fontsize=10)
-            for idx, label in enumerate(('BI-ML', 'NP-P', 'O-N')):
+            for idx, label in enumerate(('ML-BI', 'NP-P', 'O-N')):
                 ax.text(x_labels_3[idx], x_label_y[2], label, ha='center', va='top', fontsize=12)
 
 

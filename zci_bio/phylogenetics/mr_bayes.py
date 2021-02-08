@@ -22,7 +22,7 @@ begin mrbayes;
     set autoclose=yes nowarn=yes autoreplace=no;
     lset nst=6 rates=gamma;
     mcmcp ngen={ngen} printfreq={printfreq} samplefreq={samplefreq} nchains={nchains}
-        savebrlens=no filename={filename_prefix};
+        savebrlens=yes filename={filename_prefix};
     mcmc;
     sumt filename={filename_prefix} {burnin} contype=halfcompat;
 end;
@@ -38,7 +38,7 @@ begin mrbayes;
     prset applyto=(all) ratepr=variable;
     prset applyto=(all) statefreqpr=dirichlet(1,1,1,1);
     mcmcp ngen={ngen} printfreq={printfreq} samplefreq={samplefreq} nchains={nchains}
-        savebrlens=no filename={filename_prefix};
+        savebrlens=yes filename={filename_prefix};
     mcmc;
     sumt filename={filename_prefix} {burnin} contype=halfcompat;
 end;
