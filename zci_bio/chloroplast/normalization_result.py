@@ -183,12 +183,12 @@ class _TreeDiffs:
             ['', 'Distance'] + ['Non-partitioned', 'Partitioned'] * nt,
             ['Original', 'RF'] + cc([_rf(t.mr_bayes_2_raxml_RF['oW']), _rf(t.mr_bayes_2_raxml_RF['oG'])] for t in tds),
             ['', 'KCT'] + cc([_kct(t.mr_bayes_2_raxml_KCT['oW']), _kct(t.mr_bayes_2_raxml_KCT['oG'])] for t in tds),
-            ['Normalized', 'RF'] + cc([_rf(t.mr_bayes_2_raxml_RF['nW']), _rf(t.mr_bayes_2_raxml_RF['nG'])] for t in tds),
+            ['Standardized', 'RF'] + cc([_rf(t.mr_bayes_2_raxml_RF['nW']), _rf(t.mr_bayes_2_raxml_RF['nG'])] for t in tds),
             ['', 'KCT'] + cc([_kct(t.mr_bayes_2_raxml_KCT['nW']), _kct(t.mr_bayes_2_raxml_KCT['nG'])] for t in tds),
             #
             [],
             ['Non-partitioned-Partitioned'],
-            ['', 'Distance'] + ['Original', 'Normalized'] * nt,
+            ['', 'Distance'] + ['Original', 'Standardized'] * nt,
             ['RAxML', 'RF'] + cc([_rf(t.whole_2_genes_RF['oR']), _rf(t.whole_2_genes_RF['nR'])] for t in tds),
             ['', 'KCT'] + cc([_kct(t.whole_2_genes_KCT['oR']), _kct(t.whole_2_genes_KCT['nR'])] for t in tds),
             ['', 'KC'] + cc([_kc(t.whole_2_genes_KC['oR']), _kc(t.whole_2_genes_KC['nR'])] for t in tds),
@@ -199,7 +199,7 @@ class _TreeDiffs:
             ['', 'BS'] + cc([_bs(t.whole_2_genes_BS['oM']), _bs(t.whole_2_genes_BS['nM'])] for t in tds),
             #
             [],
-            ['Original-Normalized'],
+            ['Original-Standardized'],
             ['', 'Distance'] + ['RAxML', 'MrBayes'] * nt,
             ['Non-partitioned', 'RF'] + cc([_rf(t.orig_2_norm_RF['WR']), _rf(t.orig_2_norm_RF['WM'])] for t in tds),
             ['', 'KCT'] + cc([_kct(t.orig_2_norm_KCT['WR']), _kct(t.orig_2_norm_KCT['WM'])] for t in tds),
@@ -393,7 +393,7 @@ class NormalizationResult:
             if len(nrs) % 2:
                 axes[-1, -1].axis('off')
                 # Add abbreviations
-                for idx, (abr, label) in enumerate((('O', 'Original'), ('N', 'Normalized'),
+                for idx, (abr, label) in enumerate((('O', 'Original'), ('S', 'Standardized'),
                                                     ('NP', 'Non partitioned'), ('P', 'Partitioned'),
                                                     ('ML', 'Maximum likelihood (RAxML)'), ('BI', 'Bayesian inference (MrBayes)'))):
                     y = 0.28 - idx * 0.04
@@ -486,15 +486,15 @@ class NormalizationResult:
         # Add labels on X axis
         l_o = d_bar * 0.5
         x_labels_1 = [l_o + starts[(group, idx, 1)] for group, idx in product(range(3), range(4))]
-        for idx, label in enumerate(('O', 'N', 'O', 'N', 'ML', 'BI', 'ML', 'BI', 'NP', 'P', 'NP', 'P')):
+        for idx, label in enumerate(('O', 'S', 'O', 'S', 'ML', 'BI', 'ML', 'BI', 'NP', 'P', 'NP', 'P')):
             ax.text(x_labels_1[idx], x_label_y[0], label, ha='center', va='top', fontsize=8)
 
         if with_x_labels:
             x_labels_2 = [(a + b) / 2 for a, b in zip(x_labels_1[::2], x_labels_1[1::2])]
             x_labels_3 = [(a + b) / 2 for a, b in zip(x_labels_2[::2], x_labels_2[1::2])]
-            for idx, label in enumerate(('NP', 'P', 'O', 'N', 'ML', 'BI')):
+            for idx, label in enumerate(('NP', 'P', 'O', 'S', 'ML', 'BI')):
                 ax.text(x_labels_2[idx], x_label_y[1], label, ha='center', va='top', fontsize=10)
-            for idx, label in enumerate(('ML-BI', 'NP-P', 'O-N')):
+            for idx, label in enumerate(('ML-BI', 'NP-P', 'O-S')):
                 ax.text(x_labels_3[idx], x_label_y[2], label, ha='center', va='top', fontsize=12)
 
 

@@ -42,13 +42,15 @@ class ChloroplastNormalization(BaseWorkflow):
             ('Gn_02_GeSeq', 'ge_seq Gn_01_seq'),
             #
             ('Go_02_GeSeq', 'seq_subset 03_GeSeq --analyses-with-irs 04_AnalyseChloroplast --analyses-subset ge_seq'),
-
-            # N(CBI) branch
-            ('Nn_01_seq', 'fix_by_analysis parts ncbi 04_AnalyseChloroplast'),
-            ('Nn_02_GeSeq', 'ge_seq Nn_01_seq'),
-            #
-            ('No_02_GeSeq', 'seq_subset 03_GeSeq --analyses-with-irs 04_AnalyseChloroplast --analyses-subset ncbi'),
         ]
+        if 'N' in analyses_branches:
+            actions += [
+                # N(CBI) branch
+                ('Nn_01_seq', 'fix_by_analysis parts ncbi 04_AnalyseChloroplast'),
+                ('Nn_02_GeSeq', 'ge_seq Nn_01_seq'),
+                #
+                ('No_02_GeSeq', 'seq_subset 03_GeSeq --analyses-with-irs 04_AnalyseChloroplast --analyses-subset ncbi'),
+            ]
         if 'S' in analyses_branches:
             actions += [
                 ('Sn_01_seq', 'fix_by_analysis parts sum 04_AnalyseChloroplast'),
