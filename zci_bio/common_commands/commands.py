@@ -35,7 +35,7 @@ class SequencesSubset(CreateStepFromStepCommand):
     @staticmethod
     def set_arguments(parser):
         CreateStepFromStepCommand.set_arguments(parser)
-        # parser.add_argument('-f', '--from-file', help='File with sequence identifiers to extract')
+        parser.add_argument('-t', '--data-type', choices=('sequences', 'annotations'), help='Set data type')
         parser.add_argument('-s', '--seq-idents', action='append', help='Sequences to take.')
         parser.add_argument('-S', '--seq-idents-re', action='append', help='Sequences to take (regexp)')
         parser.add_argument('-w', '--without-seq-idents', action='append', help='Sequences to omit')

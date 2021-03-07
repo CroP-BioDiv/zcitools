@@ -19,6 +19,7 @@ class IndexInAlignment:
             self.reverse_indices.append(self.seq_length)  # For end+
 
     def __getitem__(self, i):
+        assert 0 <= i < len(self.indices), (i, len(self.indices))
         return self.indices[i]
 
     def __len__(self):

@@ -1,5 +1,7 @@
 # Note: importing is done in run() methods to prevent crashes because of not used missing libraries!
-from step_project.base_commands import ProjectCommand, NonProjectCommand
+import os
+from step_project.base_commands import ProjectCommand, NonProjectCommand, CreateStepCommand
+from common_utils.exceptions import ZCItoolsValueError
 
 
 class InitProject(NonProjectCommand):
@@ -83,7 +85,6 @@ class Clean(ProjectCommand):
         parser.add_argument('step', nargs='*', help='Step name')
 
     def run(self):
-        import os
         steps = self.args.step if self.args.step else os.listdir('.')
         for step_name in steps:
             if os.path.isfile(os.path.join(step_name, 'description.yml')):
@@ -130,7 +131,6 @@ class ZipCalculate(ProjectCommand):
         parser.add_argument('step_names', nargs='*', help='Step names')
 
     def run(self):
-        import os
         to_zip = []
         for sn in sorted(self.args.step_names or os.listdir()):
             if (step := self.project.read_step_if_in(sn, no_check=True)) and \
@@ -142,6 +142,27 @@ class ZipCalculate(ProjectCommand):
             merge_zip_files('calculates_pending.zip', to_zip, info=True)
         else:
             print('No pending calculations!')
+
+
+class CopyStepDirectory(CreateStepCommand):
+    _COMMAND = 'copy_step'
+    _HELP = "Copies step directory into a step. Input step can be from other project"
+
+    @staticmethod
+    def set_arguments(parser):
+        parser.add_argument('step_directory', help='Step directory to copy from')
+        parser.add_argument('-t', '--data-type', help='Check step data type')
+
+    def run(self, step_data):
+        a = self.args
+        if not os.path.isdir(a.step_directory):
+            raise ZCItoolsValueError(f"Step directory {a.step_directory} is not an directory!")
+        if not (desc_data := read_yaml(os.path.join(a.step_directory, 'description.yml'))):
+            raise ZCItoolsValueError(f"Directory {a.step_directory} is not an step!")
+        if a.data_type and a.data_type != desc_data['data_type']:
+            raise ZCItoolsValueError(
+                f"Step {a.step_directory} is not of specified data type ({a.data_type} / {desc_data['data_type']})!")
+        assert False, 'ToDo'
 
 
 #

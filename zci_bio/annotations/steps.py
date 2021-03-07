@@ -62,7 +62,7 @@ Annotations are stored:
     def get_sequence_record(self, seq_ident):
         with open(self.get_sequence_filename(seq_ident), 'r') as in_s:
             seq_record = import_bio_seq_io().read(in_s, 'genbank')
-            assert seq_ident == seq_record.id, (seq_ident, seq_record.id)
+            assert seq_ident == seq_record.id.split('.', 1)[0], (seq_ident, seq_record.id)
             # Fix features!!!
             # Note: it can crash Bio/SeqRecord.py file also!!
             seq_record.features = [f for f in seq_record.features if f.location]

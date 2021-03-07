@@ -14,10 +14,10 @@ class Partitions:
         self.annotations_step = annotations_step
 
     def _partition_from_part_files(self, align_step):
-        assert False, 'Not tested yet!!!'
         # Collect data
         sequences = align_step.all_sequences()  # Of type set
-        partitions = dict((seq_ident, p) for seq_ident in sequences if (p := align_step.get_partition_from_file(seq_ident)))
+        partitions = dict((seq_ident, p) for seq_ident in sequences
+                          if (p := align_step.get_partition_from_file(seq_ident)))
         if (not_in := (sequences - set(partitions.keys()))):
             if len(not_in) == len(sequences):
                 raise ZCItoolsValueError('None of aligned sequences has partiotion file!')
@@ -26,29 +26,37 @@ class Partitions:
 
         # Check partitions
         ami = align_step.get_alignment_map_indices()
-        num_genes = len(next(iter(partitions.values())))
+        some_parts = next(iter(partitions.values()))
+        num_genes = len(some_parts)
         # All have to have same number of parts
         assert all(len(p) == num_genes for p in partitions.values()), [(s, len(p)) for s, p in partitions.items()]
         # All have to be indexed
-        assert not (not_in := (sequences - set(ami.all_sequence()))), not_in
+        assert not (not_in := (sequences - set(ami.all_sequences()))), not_in
 
         # Create list of parts
         alignment_length = ami.alignment_length
-        for i in range(num_genes):                       # For each gene
+        partition = []
+        last_end = 0
+        for i in range(num_genes - 1):                   # For each gene, except the last
             for seq_ident, parts in partitions.items():  # Check between all sequences
                 aligned = ami.seq_indices[seq_ident]     # Is there start/end pair aligned on neighbouring positions
                 end, gene = parts[i]
                 if end >= alignment_length:
-                    partition.append((gene, alignment_length))
+                    partition.append((gene, [(last_end, alignment_length)]))
                     assert i == (num_genes - 1), (i, num_genes)
                     break
                 p = aligned[end - 1]  # Index in current part
                 n = aligned[end]      # Index in next part
                 if n == p + 1:        # If positions are neighbouring than we have boundary
-                    partition.append((gene, n))
+                    partition.append((gene, [(last_end, n)]))
+                    last_end = n
                     break
             else:
                 raise ValueError(parts[i][1])
+
+        # Last partition
+        _, gene = some_parts[num_genes - 1]
+        partition.append((gene, [(last_end, alignment_length)]))
         return partition
 
     def _partition_from_part_annotations(self, align_step, min_nc_length=10):

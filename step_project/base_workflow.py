@@ -44,6 +44,10 @@ class BaseWorkflow:
     def required_parameters():
         raise NotImplementedError('')
 
+    @staticmethod
+    def format_parameters(params):
+        return params
+
     @cache
     def actions(self):
         # Returns list of WfAction objects

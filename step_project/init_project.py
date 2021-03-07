@@ -33,7 +33,7 @@ def init_project(project, dirname, project_desc, workflow, workflow_parameters):
                 raise ZCItoolsValueError(f"Workflow's parameters not specified: {', '.join(not_in)}!")
 
             settings['workflow'] = workflow
-            settings['workflow_parameters'] = w_pars
+            settings['workflow_parameters'] = wf_cls.format_parameters(w_pars)
         write_yaml(settings, os.path.join(dirname, 'settings.yml'))
 
         # Create empty project.log file

@@ -23,7 +23,7 @@ def create_subset(step_data, input_step, args):
         raise ZCItoolsValueError('Error: analyses subset was not set!')
 
     project = input_step.project
-    step = project.new_step_by_type(input_step.step_data_type, step_data, remove_data=True)
+    step = project.new_step_by_type(args.data_type or input_step.step_data_type, step_data, remove_data=True)
 
     wo = set(args.without_seq_idents or [])
     wo_re = [re.compile(r) for r in (args.without_seq_idents_re or [])]
