@@ -1,6 +1,7 @@
 import os.path
 from step_project.base_workflow import BaseWorkflow
 from common_utils.exceptions import ZCItoolsValueError
+from ..utils.phylogenetic_tree import PhylogeneticTree
 
 
 class PhylogeneticAnalysis(BaseWorkflow):
@@ -70,11 +71,56 @@ class PhylogeneticAnalysis(BaseWorkflow):
             raise ZCItoolsValueError(f'Not known phylogenetic method(s): {", ".join(not_r)}!')
         actions.extend((f'05_{m}', f'{m} 04_alignment') for m in methods)
 
-        # ToDo: summary step
-        # actions.append(('X_result', 'normalization_result', tree_steps))
-
         return actions
 
     def get_summary(self):
-        text = ''
-        return text
+        # ---------------------------------------------------------------------
+        # Collect sequence data
+        # ---------------------------------------------------------------------
+        if not (step := self.project.read_step_if_in('02_seqs')):
+            return dict(text='Project not started!')
+
+        outgroup = self.parameters.get('outgroup')
+
+        text = f"""
+# Input data
+
+Number of genomes   : {len(step.all_sequences())}
+Min sequence length : {min(len(seq) for _, seq in step._iterate_records())}
+Max sequence length : {max(len(seq) for _, seq in step._iterate_records())}
+Outgroup            : {outgroup or '-'}
+"""
+
+        # ---------------------------------------------------------------------
+        # Alignments
+        # ---------------------------------------------------------------------
+        if not (step := self.project.read_step_if_in('04_alignment')):
+            return dict(text=text)
+
+        alignment_length = s['alignment_length'] if (s := step.get_summary_data()) else '-'
+        text += f"""
+# Alignment
+
+Length : {alignment_length}
+"""
+
+        # ---------------------------------------------------------------------
+        # Trees
+        # ---------------------------------------------------------------------
+        methods = set(self.parameters['methods'].lower().split(','))
+        if len(methods) <= 1:
+            text += "\nNo trees to compare!"
+        else:
+            steps = [(m, self.project.read_step(f'05_{m}')) for m in sorted(methods)]
+            assert len(steps) == 2
+            assert outgroup
+            trees = [PhylogeneticTree(s.get_consensus_file(), outgroup) for _, s in steps]
+            rf = trees[0].distance_robinson_foulds(trees[1])
+
+            text += f"""
+# Phylogenetic trees
+
+Distance (RF) : {int(rf['rf'])} / {int(rf['max_rf'])}
+"""
+
+        return dict(text=text)

@@ -92,16 +92,14 @@ class ChloroplastNormalization(BaseWorkflow):
         return actions
 
     def get_summary(self):
-        text = ''
-
         # ---------------------------------------------------------------------
         # Collect sequence data
         # ---------------------------------------------------------------------
         if not (step := self.project.read_step_if_in('01_chloroplast_list')):
-            return text
+            return dict(text='Project not started!')
 
         s = step.get_summary_data()
-        text += f"""
+        text = f"""
 # Input data
 
 Family:
@@ -127,7 +125,7 @@ Set of genome to work:
         # Analyses
         # ---------------------------------------------------------------------
         if not (analyses_step := self.project.read_step_if_in('04_AnalyseChloroplast')):
-            return text
+            return dict(text=text)
 
         s = analyses_step.get_summary_data()
         ng = s['num_genomes']
