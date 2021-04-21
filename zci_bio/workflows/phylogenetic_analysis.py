@@ -80,6 +80,7 @@ class PhylogeneticAnalysis(BaseWorkflow):
         if not (step := self.project.read_step_if_in('02_seqs')):
             return dict(text='Project not started!')
 
+        seqs = '\n'.join(f"         {seq_ident:<10} : {seq.annotations['organism']}" for seq_ident, seq in step._iterate_records())
         outgroup = self.parameters.get('outgroup')
 
         text = f"""
@@ -89,6 +90,8 @@ Number of genomes   : {len(step.all_sequences())}
 Min sequence length : {min(len(seq) for _, seq in step._iterate_records())}
 Max sequence length : {max(len(seq) for _, seq in step._iterate_records())}
 Outgroup            : {outgroup or '-'}
+Sequences           :
+{seqs}
 """
 
         # ---------------------------------------------------------------------

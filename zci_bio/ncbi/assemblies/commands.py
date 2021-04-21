@@ -89,6 +89,7 @@ class NCBIChloroplastList(CreateStepCommand):
         parser.add_argument('-c', '--csv-filename', help='Filename of downloaded csv data.')
         parser.add_argument('-f', '--family', help='Family (ToDo)')
         parser.add_argument('-o', '--outgroup', action='append', help='Outgroup(s)')
+        parser.add_argument('-t', '--taxon', action='append', help='General taxon(s)')
 
     def run(self, step_data):
         from .fetch_genome_assemblies import fetch_chloroplast_list

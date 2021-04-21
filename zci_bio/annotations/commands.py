@@ -158,10 +158,13 @@ class GeSeq(CreateStepFromStepCommand):
     @staticmethod
     def set_arguments(parser):
         CreateStepFromStepCommand.set_arguments(parser)
+        parser.add_argument('-s', '--num-sequences-in-file', default=50, type=int,
+                            help='Number of sequences in upload files')
 
     def run(self, step_data):
         from .ge_seq import create_ge_seq_data
-        return create_ge_seq_data(step_data, self._input_step(), self.get_common_db_object())
+        return create_ge_seq_data(step_data, self._input_step(), self.get_common_db_object(),
+                                  self.args.num_sequences_in_file)
 
     def finish(self, step_obj):
         from .ge_seq import finish_ge_seq_data

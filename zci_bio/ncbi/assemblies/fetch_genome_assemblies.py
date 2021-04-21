@@ -173,6 +173,14 @@ def _to_date(d):
         return date(*map(int, d.split('/')))
 
 
+_fetch_columns = [
+    ('AccessionId', 'int'), ('ncbi_ident', 'seq_ident'),
+    ('tax_id', 'int'), ('length', 'int'),
+    ('create_date', 'date'), ('update_date', 'date'),
+    ('title', 'str'), ('max_taxid', 'int')
+]
+
+
 def fetch_chloroplast_list(project, step_data, args):
     # Create table step data
     step = TableStep(project, step_data, remove_data=True)
@@ -213,10 +221,6 @@ def fetch_chloroplast_list(project, step_data, args):
             term=f'"{args.family}"[Organism] AND ("complete genome"[Title] AND chloroplast[Title]) AND refseq')
         summary_data = dict()
 
-        columns = [('AccessionId', 'int'), ('ncbi_ident', 'seq_ident'),
-                   ('tax_id', 'int'), ('length', 'int'),
-                   ('create_date', 'date'), ('update_date', 'date'),
-                   ('title', 'str'), ('max_taxid', 'int')]
         family_rows = _filter_summary_data(data, max_taxid)
         _set_summary_data_for_genomes(family_rows, 'ncbi_family', summary_data)
 
@@ -246,7 +250,7 @@ def fetch_chloroplast_list(project, step_data, args):
             for idx in sorted(remove_idxs, reverse=True):
                 family_rows.pop(idx)
             write_csv(step.step_file('same_species.csv'),
-                      [('sp_tax_id', 'int'), ('sp_name', 'str')] + columns, same_sp_rows)
+                      [('sp_tax_id', 'int'), ('sp_name', 'str')] + _fetch_columns, same_sp_rows)
 
         # Add outgroup(s)
         outgroup_rows = []
@@ -264,11 +268,24 @@ def fetch_chloroplast_list(project, step_data, args):
 
         #
         all_rows = sorted(family_rows + outgroup_rows, key=lambda r: r[1])
-        step.set_table_data(all_rows, columns)
+        step.set_table_data(all_rows, _fetch_columns)
         #
         _set_summary_data_for_genomes(family_rows, 'family', summary_data)
         _set_summary_data_for_genomes(outgroup_rows, 'outgroup', summary_data)
         _set_summary_data_for_genomes(all_rows, 'all', summary_data)
+        step.save_summary_data(summary_data)
+
+    elif args.taxon:
+        from ...utils.entrez import Entrez
+        ts = ' OR '.join(f'"{t}"[Organism]' for t in args.taxon)
+        data = Entrez().search_summary(
+            'nucleotide',
+            term=f'({ts}) AND ("complete genome"[Title] AND chloroplast[Title]) AND refseq')
+        summary_data = dict()
+        rows = _filter_summary_data(data, 1)
+        step.set_table_data(rows, _fetch_columns)
+        #
+        _set_summary_data_for_genomes(rows, 'data', summary_data)
         step.save_summary_data(summary_data)
 
     step.save()  # Takes a care about complete status!

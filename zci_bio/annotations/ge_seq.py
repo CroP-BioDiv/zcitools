@@ -6,7 +6,6 @@ from common_utils.misc import split_list
 from common_utils.file_utils import extract_from_zip, write_str_in_file
 
 _re_zip_genbank = re.compile('GeSeqJob-[0-9]*-[0-9]*_(.*)_GenBank.gb')
-_max_sequences_to_send = 50
 
 _instructions = """
 Open web page: https://chlorobox.mpimp-golm.mpg.de/geseq.html
@@ -48,7 +47,7 @@ Documentation: https://chlorobox.mpimp-golm.mpg.de/gs_documentation.html
 """
 
 
-def create_ge_seq_data(step_data, sequences_step, common_db):
+def create_ge_seq_data(step_data, sequences_step, common_db, num_sequences_in_file):
     step = AnnotationsStep(sequences_step.project, step_data, remove_data=True)
     sequences_step.propagate_step_name_prefix(step)
     all_sequences = list(sequences_step.all_sequences())
@@ -58,7 +57,7 @@ def create_ge_seq_data(step_data, sequences_step, common_db):
 
     # Store sequence
     if to_fetch:
-        for i, d in enumerate(split_list(to_fetch, _max_sequences_to_send)):
+        for i, d in enumerate(split_list(to_fetch, num_sequences_in_file)):
             sequences_step.concatenate_seqs_fa(step.step_file(f'sequences_{i + 1}.fa'), d)
 
         # Store instructions
