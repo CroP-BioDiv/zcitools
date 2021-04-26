@@ -96,10 +96,11 @@ def finish_ge_seq_data(step_obj, common_db):
         for filename in job_files:
             added_seqs.extend(split_sequences(step_obj.step_file(filename), '.gb'))
 
-    step_obj._check_data()
-    step_obj.save(create=False)
-
     # Set into the common DB
+    # Note: step's check data can raise an exeption. It is better first to store into a cache
     if common_db:
         for seq_ident in added_seqs:
             common_db.set_record(seq_ident, step_obj.step_file(seq_ident + '.gb'))
+
+    step_obj._check_data()
+    step_obj.save(create=False)

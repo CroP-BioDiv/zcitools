@@ -36,7 +36,8 @@ class CommonDB:
 
     def _save_file(self, zip_f, f):
         # Note: step filenames are relative to project main directory. Zip filenames are stored without step_name.
-        zip_name = os.path.join(*(f.split(os.path.sep)[1:]))
+        parts = f.split(os.path.sep)
+        zip_name = f if len(parts) == 1 else os.path.join(*(f.split(os.path.sep)[1:]))
         zip_f.write(f, arcname=zip_name)
 
     def _save_directory(self, zip_f, d):
@@ -74,6 +75,7 @@ class CommonDB:
         if rec_filename:
             with ZipFile(rec_filename, mode='w', compression=ZIP_DEFLATED) as zip_f:
                 for f in step_files:
+                    print(f)
                     if os.path.isfile(f):
                         self._save_file(zip_f, f)
                     elif os.path.isdir(f):

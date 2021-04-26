@@ -90,6 +90,7 @@ class NCBIChloroplastList(CreateStepCommand):
         parser.add_argument('-f', '--family', help='Family (ToDo)')
         parser.add_argument('-o', '--outgroup', action='append', help='Outgroup(s)')
         parser.add_argument('-t', '--taxon', action='append', help='General taxon(s)')
+        parser.add_argument('--max-update-date', help='Set max update date. ISO format (yyyy-mm-dd)')
 
     def run(self, step_data):
         from .fetch_genome_assemblies import fetch_chloroplast_list

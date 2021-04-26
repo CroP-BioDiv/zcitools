@@ -125,7 +125,6 @@ class SequenceDesc:
 
 class _Annotation:
     def __init__(self, seq, check_length):
-        print(seq.name)
         self.seq = seq
         self.genes = [f.feature for f in find_disjunct_features_of_type(seq, 'gene')]
         self.genes_stat = find_features_stat(seq, 'gene')

@@ -163,6 +163,26 @@ class CommonDBDelete(CommonDBCommand):
             silent_remove_file(self._db_file(rel_dir, record))
 
 
+class CommonDBPut(CommonDBCommand):
+    _COMMAND = 'cdb_put'
+    _HELP = "Put CommonDB record"
+
+    @staticmethod
+    def set_arguments(parser):
+        parser.add_argument('path', help='CommonDB path. Format: <dir>(/<dir>)*')
+        parser.add_argument('-i', '--ident', help='Ident to save. Default is deduced from filename')
+        parser.add_argument('files', nargs='+', help='File(s) to add')
+
+    def _run(self):
+        args = self.args
+        if args.ident:
+            ident = args.ident
+        else:
+            ident = os.path.splitext(args.files[0])[0]
+            ident = os.path.basename(ident)
+        self._common_db.set_record((ident,), *args.files, force=True, info=True)
+
+
 # ToDo: ...
 # class CommonDBCopy(CommonDBCommand):
 #     _COMMAND = 'cdb_copy'
