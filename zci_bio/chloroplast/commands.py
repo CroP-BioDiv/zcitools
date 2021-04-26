@@ -107,6 +107,26 @@ class ChloroplastNormalizationResultGraphJoin(NonProjectCommand):
         return NormalizationResult.create_graphs(self.project, steps, self.args.two_columns, show=True)
 
 
+class ChloroplastNormalizationStatByTaxonomy(ProjectCommand):
+    _COMMAND = 'normalization_stat_by_taxonomy'
+    _HELP = "Create report of chloroplast normalization by grouping data in taxonomy lavels"
+    _COMMAND_GROUP = 'Chloroplast'
+
+    @staticmethod
+    def set_arguments(parser):
+        parser.add_argument('step', help='Input chloroplast analyses step')
+        parser.add_argument('taxa_ranks', nargs='+', help='Taxa ranks to group by')
+        parser.add_argument('-m', '--minimum-sequences', type=int, help='Minimum sequences to report')
+
+    def run(self):
+        from .fix_by_analysis import statistics_by_taxa
+        args = self.args
+        statistics_by_taxa(self.project,
+                           self.project.read_step(args.step, check_data_type='table'),
+                           args.taxa_ranks,
+                           args.minimum_sequences)
+
+
 class ChloroplastAlign(CreateStepFromStepCommand):
     _COMMAND = 'align_chloroplast'
     _HELP = "Align chloroplast genomes, by specifics."

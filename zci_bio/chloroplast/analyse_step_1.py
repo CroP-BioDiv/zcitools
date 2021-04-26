@@ -125,6 +125,7 @@ class SequenceDesc:
 
 class _Annotation:
     def __init__(self, seq, check_length):
+        print(seq.name)
         self.seq = seq
         self.genes = [f.feature for f in find_disjunct_features_of_type(seq, 'gene')]
         self.genes_stat = find_features_stat(seq, 'gene')
@@ -135,12 +136,13 @@ class _Annotation:
 
         if irs := find_chloroplast_irs(seq, check_length=check_length):
             length = len(seq)
-            self.partition = create_chloroplast_partition(length, *irs, in_interval=False)
-            self.parts_data = _PartsDesc(self.partition, self.genes, length)
-            #
-            orient = chloroplast_parts_orientation(seq, self.partition, self.genes)
-            if ppp := [p for p in ('lsc', 'ira', 'ssc') if not orient[p]]:
-                self.part_orientation = ','.join(ppp)
+            if _partition := create_chloroplast_partition(length, *irs, in_interval=False):
+                self.partition = _partition
+                self.parts_data = _PartsDesc(self.partition, self.genes, length)
+                #
+                orient = chloroplast_parts_orientation(seq, self.partition, self.genes)
+                if ppp := [p for p in ('lsc', 'ira', 'ssc') if not orient[p]]:
+                    self.part_orientation = ','.join(ppp)
         #
         self.has_irs = bool(self.parts_data)
 

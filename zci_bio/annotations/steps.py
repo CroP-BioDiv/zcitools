@@ -6,7 +6,7 @@ from common_utils.show import print_table
 from common_utils.cache import cache_args
 from common_utils.file_utils import silent_remove_file
 from ..utils.import_methods import import_bio_seq_io
-from ..utils.helpers import feature_qualifiers_to_desc, feature_location_desc, concatenate_sequences
+from ..utils.helpers import feature_qualifiers_to_desc, feature_location_desc, concatenate_sequences, fix_sequence
 
 
 class AnnotationsStep(Step):
@@ -63,10 +63,7 @@ Annotations are stored:
         with open(self.get_sequence_filename(seq_ident), 'r') as in_s:
             seq_record = import_bio_seq_io().read(in_s, 'genbank')
             assert seq_ident == seq_record.id.split('.', 1)[0], (seq_ident, seq_record.id)
-            # Fix features!!!
-            # Note: it can crash Bio/SeqRecord.py file also!!
-            seq_record.features = [f for f in seq_record.features if f.location]
-        return seq_record
+            return fix_sequence(seq_record)
 
     def get_sequence(self, seq_ident):
         return self.get_sequence_record(seq_ident).seq

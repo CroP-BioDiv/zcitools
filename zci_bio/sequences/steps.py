@@ -6,6 +6,7 @@ from common_utils.exceptions import ZCItoolsValueError
 from common_utils.show import print_table
 from common_utils.file_utils import write_fasta, silent_remove_file
 from ..utils.import_methods import import_bio_seq_io
+from ..utils.helpers import fix_sequence
 
 
 class SequencesStep(Step):
@@ -90,10 +91,7 @@ Each sequence can be stored in one or more files in different formats.
             if f in files:
                 with open(self.step_file(f), 'r') as in_s:
                     seq_record = import_bio_seq_io().read(in_s, st)
-                    # Fix features!!!
-                    # Note: it can crash Bio/SeqRecord.py file also!!
-                    seq_record.features = [f for f in seq_record.features if f.location]
-                    return seq_record
+                    return fix_sequence(seq_record)
 
     # def get_all_seqs_fa(self):
     #     f = self.cache_file('all_seqs.fa')

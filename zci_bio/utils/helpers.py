@@ -77,6 +77,14 @@ def read_sequences(filename, format=None):
         yield from import_bio_seq_io().parse(in_data, get_bio_io_type(filename, format))
 
 
+def fix_sequence(seq_record):
+    # Note: it can crash Bio/SeqRecord.py file also!!
+    seq_record.features = [f for f in seq_record.features if f.location]
+    # assert all(f.strand for f in seq_record.features if f.type == 'gene'), \
+    #     [feature_qualifiers_to_desc(f) for f in seq_record.features if f.type == 'gene' and not f.strand]
+    return seq_record
+
+
 def split_sequences(input_filename, output_ext):
     SeqIO = import_bio_seq_io()
     input_type = _bio_ext_2_type[os.path.splitext(input_filename)[1]]

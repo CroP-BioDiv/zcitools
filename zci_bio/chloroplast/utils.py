@@ -51,6 +51,10 @@ def create_chloroplast_partition(l_seq, ira, irb, in_interval=False):
     else:
         ps = [Feature(l_seq, name='ira', feature=ira), Feature(l_seq, name='irb', feature=irb)]
 
+    # IR with gap?!?! NCBI annotation of NC_031150
+    if any(not p.simple for p in ps):
+        return
+
     partition = Partition(ps, fill=True)
     n_parts = partition.not_named_parts()
     assert len(n_parts) == 2, len(n_parts)
@@ -91,9 +95,12 @@ def chloroplast_parts_orientation(seq_rec, partition, genes=None):
         genes = [f for f in seq_rec.features if f.type == 'gene']
     in_parts = partition.put_features_in_parts(Feature(l_seq, feature=f) for f in genes)
 
-    lsc_count = sum(f.feature.strand for f in in_parts.get('lsc', []) if any(x in f.name for x in ('rpl', 'rps')))
-    ssc_count = sum(f.feature.strand for f in in_parts.get('ssc', []))
-    ira_count = sum(f.feature.strand for f in in_parts.get('ira', []) if 'rrn' in f.name)
+    lsc_count = sum(f.feature.strand for f in in_parts.get('lsc', [])
+                    if any(x in f.name for x in ('rpl', 'rps')) and f.feature.strand)
+    ssc_count = sum(f.feature.strand for f in in_parts.get('ssc', [])
+                    if f.feature.strand)
+    ira_count = sum(f.feature.strand for f in in_parts.get('ira', [])
+                    if 'rrn' in f.name and f.feature.strand)
 
     return dict(lsc=(lsc_count <= 0),
                 ssc=(ssc_count <= 0),
