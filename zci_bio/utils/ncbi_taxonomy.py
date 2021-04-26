@@ -32,6 +32,11 @@ class NCBITaxonomy:
         #  down     : set of taxid down from this
         self._cache = dict()
 
+    # Proxy methods
+    get_lineage = property(lambda self: self._nt().get_lineage)
+    get_rank = property(lambda self: self._nt().get_rank)
+    get_taxid_translator = property(lambda self: self._nt().get_taxid_translator)
+
     @cache
     def _nt(self):
         return import_ete3_NCBITaxa()()  # Make an object

@@ -115,16 +115,18 @@ class ChloroplastNormalizationStatByTaxonomy(ProjectCommand):
     @staticmethod
     def set_arguments(parser):
         parser.add_argument('step', help='Input chloroplast analyses step')
-        parser.add_argument('taxa_ranks', nargs='+', help='Taxa ranks to group by')
+        parser.add_argument('-r', '--rank', action='append', help='Taxa ranks to group by')
+        parser.add_argument('-n', '--name', action='append', help='Taxa name to group by')
         parser.add_argument('-m', '--minimum-sequences', type=int, help='Minimum sequences to report')
+        parser.add_argument('-o', '--output-excel', help='Excel output filename')
 
     def run(self):
         from .fix_by_analysis import statistics_by_taxa
         args = self.args
         statistics_by_taxa(self.project,
                            self.project.read_step(args.step, check_data_type='table'),
-                           args.taxa_ranks,
-                           args.minimum_sequences)
+                           args.rank, args.name,
+                           args.minimum_sequences, args.output_excel)
 
 
 class ChloroplastAlign(CreateStepFromStepCommand):

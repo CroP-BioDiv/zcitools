@@ -219,31 +219,61 @@ class _Stat:
                             node[f'ge_seq_{p}'] += 1
             if ncbi_parts:
                 node['ncbi_irs'] += 1
-            # print('  ', taxid, node)
 
+    #
     def get(self, parent):
         # ToDo: more efficient
         return [(s, self.get(s['taxid'])) for s in self.taxid_2_stat.values() if s['parent'] == parent]
 
-    def print_all(self, taxid_translator, minimum_sequences):
-        self._print_all(taxid_translator, self.get(None), 0, minimum_sequences)
+    def _depth(self, stats):
+        return (max(self._depth(sub_s) for _, sub_s in stats) + 1) if stats else 0
 
-    def _print_all(self, taxid_translator, stats, ident, minimum_sequences):
+    def to_table(self, taxid_translator, minimum_sequences):
+        stats = self.get(None)
+        max_depth = self._depth(stats)
+        return max_depth, self._to_table(taxid_translator, stats, minimum_sequences, max_depth, 0)
+
+    def _to_table(self, taxid_translator, stats, minimum_sequences, max_depth, depth):
         names = taxid_translator([s['taxid'] for s, _ in stats])
-        if minimum_sequences:
-            rest = [s for s, _ in stats if s['num'] < minimum_sequences]
-            if rest:
-                stats = sorted(((s, sub_s) for s, sub_s in stats if s['num'] >= minimum_sequences),
-                               key=lambda x: names[x[0]['taxid']])
-                stats.append((self._sum(rest), []))
+        if minimum_sequences and (rest := [s for s, _ in stats if s['num'] < minimum_sequences]) and len(rest) > 1:
+            stats = sorted(((s, sub_s) for s, sub_s in stats if s['num'] >= minimum_sequences),
+                           key=lambda x: names[x[0]['taxid']])
+            stats.append((self._sum(rest), []))
         else:
             stats = sorted(stats, key=lambda x: names[x[0]['taxid']])
+
+        rows = []
         for s, sub_s in stats:
-            n = '  ' * ident + (names[s['taxid']] if s['taxid'] else f"...({s['num_groups']})")
-            parts = f"{s['ge_seq_ssc']}/{s['ge_seq_lsc']}/{s['ge_seq_ir']}"
-            print(f"{n:18} {s['num']:3} : {s['ncbi_irs']:3}, {s['ge_seq_irs']:3} {s['ge_seq_offset']:3} {parts:>8}")
+            row = [''] * max_depth + [s['num'], s['ncbi_irs'], s['ge_seq_irs'], s['ge_seq_offset'], s['ge_seq_ssc'], s['ge_seq_lsc'], s['ge_seq_ir']]
+            row[depth] = (names[s['taxid']] if s['taxid'] else f"...({s['num_groups']})")
+            rows.append(row)
             if sub_s:
-                self._print_all(taxid_translator, sub_s, ident + 1, minimum_sequences)
+                rows += self._to_table(taxid_translator, sub_s, minimum_sequences, max_depth, depth + 1)
+        # Add sum row
+        if depth == 0 and len(stats) > 1:
+            s = self._sum([s for s, _ in stats])
+            row = [''] * max_depth + [s['num'], s['ncbi_irs'], s['ge_seq_irs'], s['ge_seq_offset'], s['ge_seq_ssc'], s['ge_seq_lsc'], s['ge_seq_ir']]
+            row[0] = 'all'
+            rows.append(row)
+        #
+        return rows
+
+    #
+    def print_all(self, taxid_translator, minimum_sequences):
+        md, rows = self.to_table(taxid_translator, minimum_sequences)
+        for row in rows:
+            for ident, x in enumerate(row):
+                if x:
+                    break
+            n = '  ' * ident + row[ident]
+            parts = f"{row[md + 4]}/{row[md + 5]}/{row[md + 6]}"
+            print(f"{n:18} {row[md]:3} : {row[md + 1]:3}, {row[md + 2]:3} {row[md + 3]:3} {parts:>8}")
+
+    def export_excel(self, filename, taxid_translator, minimum_sequences):
+        from common_utils.value_data_types import rows_2_excel
+        md, rows = self.to_table(taxid_translator, minimum_sequences)
+        columns = [''] * md + ['Num sequences', 'NCBI IRs', 'GeSeq IRs', 'Offset', 'SSC', 'LSC', 'IRs']
+        rows_2_excel(filename, columns, rows, index=False)
 
     @staticmethod
     def _sum(stats):
@@ -257,12 +287,12 @@ class _Stat:
         return ss
 
 
-def statistics_by_taxa(project, analyse_step, taxa_ranks, minimum_sequences):
+def statistics_by_taxa(project, analyse_step, taxa_ranks, taxa_names, minimum_sequences, output_excel):
     from itertools import chain
-    from ..utils.import_methods import import_ete3_NCBITaxa
+    from ..utils.ncbi_taxonomy import get_ncbi_taxonomy
 
     # Collect taxonomy data
-    ncbi_taxonomy = import_ete3_NCBITaxa()()
+    ncbi_taxonomy = get_ncbi_taxonomy()
     table_step = project.find_previous_step_of_type(analyse_step, 'table')
     nc_2_taxid = table_step.mapping_between_columns('ncbi_ident', 'tax_id')
     all_taxids = set(nc_2_taxid.values())
@@ -275,8 +305,11 @@ def statistics_by_taxa(project, analyse_step, taxa_ranks, minimum_sequences):
     #     print([taxid_2_rank[t] for t in lin])
 
     # Extract only taxid of interest
-    taxid_2_rank = dict((t, r) for t, r in taxid_2_rank.items() if r in taxa_ranks)
-    print(taxid_2_rank)
+    group_taxids = set(t for t, r in taxid_2_rank.items() if r in taxa_ranks)
+    if taxa_names:
+        for name in taxa_names:
+            if n_taxid := ncbi_taxonomy.get_exact_name_translation(name):
+                group_taxids.add(n_taxid)
 
     # Collect stat data
     _parts = lambda ps: list(map(int, ps.split(','))) if ps else None
@@ -285,9 +318,11 @@ def statistics_by_taxa(project, analyse_step, taxa_ranks, minimum_sequences):
     for row in analyse_step.rows_as_dicts():
         seq_ident = row['AccesionNumber']
         taxid = nc_2_taxid[seq_ident]
-        parents = [t for t in taxid_2_lineage[taxid] if t in taxid_2_rank]
-        assert len(parents) == len(taxa_ranks), (len(parents), len(taxa_ranks), taxid, nc_2_taxid[seq_ident], parents)
+        parents = [t for t in taxid_2_lineage[taxid] if t in group_taxids]
         stat.add(parents, _parts(row['GeSeq part starts']), row['GeSeq orientation'], _parts(row['NCBI part starts']))
 
     #
-    stat.print_all(ncbi_taxonomy.get_taxid_translator, minimum_sequences)
+    if output_excel:
+        stat.export_excel(output_excel, ncbi_taxonomy.get_taxid_translator, minimum_sequences)
+    else:
+        stat.print_all(ncbi_taxonomy.get_taxid_translator, minimum_sequences)
