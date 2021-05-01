@@ -1,6 +1,6 @@
 from common_utils.terminal_layout import StringColumns
-from .utils import find_chloroplast_partition
-from ..utils.features import Feature
+from ..utils import find_chloroplast_partition
+from zci_bio.utils.features import Feature
 
 
 def chloroplast_annotation(annotations, num_genes=1, feature_type='gene', features=None, sequences=None):
