@@ -9,10 +9,10 @@ from common_utils.properties_db import PropertiesDB
 from common_utils.cache import cache
 from .analyse_step_1 import SequenceDesc
 from .analyse_step_calc import run_align_cmd  # , find_missing_partitions
-from .utils import find_chloroplast_irs
 from .constants import DEFAULT_KEEP_OFFSET
-from ..utils.features import Feature
-from ..utils.ncbi_taxonomy import get_ncbi_taxonomy
+from ..utils import find_chloroplast_irs
+from zci_bio.utils.features import Feature
+from zci_bio.utils.ncbi_taxonomy import get_ncbi_taxonomy
 
 
 # ---------------------------------------------------------

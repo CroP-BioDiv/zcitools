@@ -2,9 +2,9 @@ import os
 import multiprocessing
 from concurrent.futures import ThreadPoolExecutor
 from common_utils.file_utils import ensure_directory, write_fasta
-from .utils import find_chloroplast_irs
-from ..utils.mummer import MummerDelta
-from ..utils.ncbi_taxonomy import get_ncbi_taxonomy
+from ..utils import find_chloroplast_irs
+from zci_bio.utils.mummer import MummerDelta
+from zci_bio.utils.ncbi_taxonomy import get_ncbi_taxonomy
 
 
 def run_align_cmd(seq_fasta, qry_fasta, out_prefix):

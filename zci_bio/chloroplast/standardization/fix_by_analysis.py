@@ -1,9 +1,9 @@
 import shutil
 import os.path
 from common_utils.file_utils import write_fasta
-from .utils import orient_chloroplast_parts_by_data, orient_by_trnF_GAA_by_data  # , orient_by_trnH_GUG_by_data
 from .constants import DEFAULT_KEEP_OFFSET
-from ..utils.import_methods import import_bio_seq_io
+from ..utils import orient_chloroplast_parts_by_data, orient_by_trnF_GAA_by_data  # , orient_by_trnH_GUG_by_data
+from zci_bio.utils.import_methods import import_bio_seq_io
 from zci_bio.sequences.steps import SequencesStep
 
 

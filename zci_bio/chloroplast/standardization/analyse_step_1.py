@@ -1,9 +1,9 @@
 from datetime import datetime
-from .utils import find_chloroplast_irs, create_chloroplast_partition, cycle_distance_min, \
+from ..utils import find_chloroplast_irs, create_chloroplast_partition, cycle_distance_min, \
     chloroplast_parts_orientation, trnF_GAA_start, trnH_GUG_start
-from ..utils.entrez import Entrez
-from ..utils.helpers import fetch_from_properties_db, feature_qualifiers_to_desc
-from ..utils.features import Feature, find_disjunct_features_of_type, find_features_stat
+from zci_bio.utils.entrez import Entrez
+from zci_bio.utils.helpers import fetch_from_properties_db, feature_qualifiers_to_desc
+from zci_bio.utils.features import Feature, find_disjunct_features_of_type, find_features_stat
 from common_utils.cache import cache
 
 

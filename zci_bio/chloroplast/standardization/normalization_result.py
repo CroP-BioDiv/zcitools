@@ -7,7 +7,7 @@ from common_utils.exceptions import ZCItoolsValueError
 from common_utils.cache import cache_args
 from common_utils.terminal_layout import StringColumns, fill_rows
 from common_utils.import_method import import_matplotlib_pylot
-from ..utils.phylogenetic_tree import PhylogeneticTree
+from zci_bio.utils.phylogenetic_tree import PhylogeneticTree
 
 # In inches. A4 is 8-1/4 * 11-3/4.
 # Note: figsize is value used to calibrate all other values
@@ -268,7 +268,7 @@ class NormalizationResult:
         return step
 
     def _find_project_data(self):
-        from ..workflows.chloroplast_normalization import workflow_branches
+        from zci_bio.workflows.chloroplast_normalization import workflow_branches
 
         # Outgroup
         if (settings := get_settings()) and (wf := settings.get('workflow_parameters')):
