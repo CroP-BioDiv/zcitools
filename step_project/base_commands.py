@@ -151,8 +151,11 @@ class CreateStepFromStepCommand(CreateStepCommand, _InputStepMixin):
     @staticmethod
     def set_arguments(parser):
         parser.add_argument('step', help='Input step')
+        parser.add_argument('--no-common-db', action='store_true', help='Do not use common DB for ')
 
     def common_db_identifier(self):
+        if self.args.no_common_db:
+            return None
         return self._COMMON_DB_IDENT or self._input_step(no_data_check=True).common_db_identifier()
 
     def _prev_steps(self):

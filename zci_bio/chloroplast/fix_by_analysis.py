@@ -235,7 +235,11 @@ class _Stat:
 
     def _to_table(self, taxid_translator, stats, minimum_sequences, max_depth, depth):
         names = taxid_translator([s['taxid'] for s, _ in stats])
-        if minimum_sequences and (rest := [s for s, _ in stats if s['num'] < minimum_sequences]) and len(rest) > 1:
+        # Collaps groups with sequences less than given minimum
+        # Note: Single leaf is not collapsed. Single inner node is collapsed.
+        if minimum_sequences and \
+           (rest := [s for s, _ in stats if s['num'] < minimum_sequences]) \
+           and (len(rest) > 1 or depth < max_depth - 1):
             stats = sorted(((s, sub_s) for s, sub_s in stats if s['num'] >= minimum_sequences),
                            key=lambda x: names[x[0]['taxid']])
             stats.append((self._sum(rest), []))
@@ -245,7 +249,7 @@ class _Stat:
         rows = []
         for s, sub_s in stats:
             row = [''] * max_depth + [s['num'], s['ncbi_irs'], s['ge_seq_irs'], s['ge_seq_offset'], s['ge_seq_ssc'], s['ge_seq_lsc'], s['ge_seq_ir']]
-            row[depth] = (names[s['taxid']] if s['taxid'] else f"...({s['num_groups']})")
+            row[depth] = (names[s['taxid']] if s['taxid'] else f"... ({s['num_groups']})")
             rows.append(row)
             if sub_s:
                 rows += self._to_table(taxid_translator, sub_s, minimum_sequences, max_depth, depth + 1)
