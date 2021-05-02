@@ -10,7 +10,7 @@ class IRsStatistics(BaseWorkflow):
 
     def _actions(self):
         taxons = ' '.join(f'-t {t}' for t in self.parameters['taxons'].split(','))
-        methods = self.parameters['methods']
+        methods = ';'.join(self.parameters['methods'].split(','))
         return [
             ('01_chloroplast_list', f"ncbi_chloroplast_list {taxons}"),
             ('02_seqs', 'fetch_seqs 01_chloroplast_list'),

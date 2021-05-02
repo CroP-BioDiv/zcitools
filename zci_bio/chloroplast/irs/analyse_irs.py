@@ -67,17 +67,29 @@ class AnalyseIRs:
         for name, m_callable in zip(methods, self.get_method_callables(methods)):
             sheet_rows = []
             sheets.append((name, sheet_rows))
+            found_irs = 0
+            problematic = 0
             for seq_ident in seq_idents:
                 if irs := m_callable(seq_ident):
+                    found_irs += 1
                     # ToDo: moooooore
                     c = _Characterization(irs)
                     rows.append([name, seq_ident] + [c.len_ira, c.len_irb_x, c.len_diff])
-                    if export_all or c.is_problematic():
+                    if c.is_problematic():
+                        problematic += 1
+                        sheet_rows.append(rows[-1])
+                    elif export_all:
                         sheet_rows.append(rows[-1])
                 else:
                     rows.append([name, seq_ident] + [None] * 3)
                     if export_all:
                         sheet_rows.append(rows[-1])
+
+            # Add summary
+            sheet_rows.append([])
+            sheet_rows.append([None, 'Num sequences', len(seq_idents)])
+            sheet_rows.append([None, 'Num IRs annotated', found_irs])
+            sheet_rows.append([None, 'Num problematic', problematic])
 
         self.step.set_table_data(rows, _column_types)
         return sheets
