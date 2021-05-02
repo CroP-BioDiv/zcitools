@@ -15,7 +15,7 @@ class IRsStatistics(BaseWorkflow):
             ('01_chloroplast_list', f"ncbi_chloroplast_list {taxons}"),
             ('02_seqs', 'fetch_seqs 01_chloroplast_list'),
             ('03_GeSeq', 'ge_seq 02_seqs'),  # ?
-            ('04_AnalyseIRs', ('analyse_irs', '03_GeSeq', '-m', methods, '-p')),
+            ('04_AnalyseIRs', ('analyse_irs', '03_GeSeq', '-m', methods)),
             # ('04_AnalyseIRs', f'analyse_irs 03_GeSeq -m "{methods}"')]
         ]
 

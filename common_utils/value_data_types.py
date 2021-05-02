@@ -103,3 +103,13 @@ def table_data_2_excel(filename, column_data_types, rows):
 
 def rows_2_excel(filename, columns, rows, index=False):
     import_pandas().DataFrame(rows, columns=columns).to_excel(filename, index=index)
+
+
+def sheets_2_excel(filename, sheets, index=False):
+    # Sheets is iterable of tuples (sheet_name, columns, rows)
+    pandas = import_pandas()
+    writer = pandas.ExcelWriter(filename)
+    for sheet_name, columns, rows in sheets:
+        df = pandas.DataFrame(rows, columns=columns)
+        df.to_excel(writer, sheet_name=sheet_name, index=index)
+    writer.save()

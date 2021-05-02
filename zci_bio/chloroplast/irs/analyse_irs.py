@@ -3,10 +3,17 @@ from step_project.common.table.steps import TableStep
 from common_utils.exceptions import ZCItoolsValueError
 from zci_bio.chloroplast.utils import find_chloroplast_irs
 from zci_bio.utils.features import Feature
+from common_utils.value_data_types import sheets_2_excel
+
+_column_types = [
+    ('Method', 'str'), ('Accession', 'seq_ident'),
+    ('IRa_len', 'int'), ('IRb_len', 'int'), ('diff_len', 'int')]
 
 
 class _Characterization(namedtuple('_Characterization', 'len_ira, len_irb, len_diff')):
-    def __new__(cls, len_ira, len_irb):
+    def __new__(cls, irs):
+        ira, irb = irs
+        len_ira, len_irb = len(ira), len(irb)
         return super(_Characterization, cls).__new__(cls, len_ira, len_irb, abs(len_ira - len_irb))
 
     len_irb_x = property(lambda self: self.len_irb if self.len_ira != self.len_irb else None)
@@ -19,13 +26,14 @@ def get_methods():
     return AnalyseIRs.get_methods()
 
 
-def analyse_irs(step_data, annotations_step, methods, only_problematic):
+def analyse_irs(step_data, annotations_step, methods, export_all):
     step = TableStep(annotations_step.project, step_data, remove_data=True)
     annotations_step.propagate_step_name_prefix(step)
-    sheets = AnalyseIRs(step, annotations_step).run(methods, only_problematic)
+    sheets = AnalyseIRs(step, annotations_step).run(methods, export_all)
     step.save()
-    print(sheets)
-    # step.to_excel('chloroplast_irs_analysis.xls')  # Store data for a check
+    #
+    _excel_columns = [x for x, _ in _column_types[1:]]
+    sheets_2_excel('chloroplast_irs_analysis.xls', [(n, _excel_columns, [r[1:] for r in rows]) for n, rows in sheets])
     return step
 
 
@@ -51,32 +59,27 @@ class AnalyseIRs:
             methods_fs.append(getattr(self, method_name))
         return methods_fs
 
-    def run(self, methods, only_problematic):
+    def run(self, methods, export_all):
         seq_idents = sorted(self.annotations_step.all_sequences())
         # ToDo: Caching?
         rows = []
         sheets = []
         for name, m_callable in zip(methods, self.get_method_callables(methods)):
-            sheets.append((name, []))
-            sheet_rows = sheets[-1][1]
+            sheet_rows = []
+            sheets.append((name, sheet_rows))
             for seq_ident in seq_idents:
                 if irs := m_callable(seq_ident):
-                    ira, irb = irs
                     # ToDo: moooooore
-                    c = _Characterization(len(ira), len(irb))
+                    c = _Characterization(irs)
                     rows.append([name, seq_ident] + [c.len_ira, c.len_irb_x, c.len_diff])
-                    if not only_problematic or c.is_problematic():
+                    if export_all or c.is_problematic():
                         sheet_rows.append(rows[-1])
                 else:
                     rows.append([name, seq_ident] + [None] * 3)
-                    if not only_problematic:
+                    if export_all:
                         sheet_rows.append(rows[-1])
 
-        self.step.set_table_data(
-            rows,
-            [('Method', 'str'), ('seq_ident', 'seq_ident'),
-             ('IRa_len', 'int'), ('IRb_len', 'int'), ('diff_len', 'int')])
-
+        self.step.set_table_data(rows, _column_types)
         return sheets
 
     # Methods return IRs (tuple (ira, irb)) or None

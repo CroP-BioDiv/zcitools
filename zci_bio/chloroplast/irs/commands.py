@@ -18,8 +18,8 @@ class IRsAnalyse(CreateStepFromStepCommand):
             '-m', '--methods',
             help=f'Method(s) to check. Format "method1;method2;...". Available methods: {", ".join(choices)}')
         parser.add_argument(
-            '-p', '--only-problematic', action='store_true',
-            help='Output only problematic sequences into Excel.')
+            '-a', '--export-all', action='store_true',
+            help='Excel output to contain all data not only problematic.')
 
     def run(self, step_data):
         from .analyse_irs import analyse_irs
@@ -27,4 +27,4 @@ class IRsAnalyse(CreateStepFromStepCommand):
         return analyse_irs(step_data,
                            self._input_step(no_data_check=True),
                            args.methods.split(';'),
-                           args.only_problematic)
+                           args.export_all)
