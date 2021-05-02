@@ -1,5 +1,6 @@
 import os
 import itertools
+# import shlex
 from collections import namedtuple
 from common_utils.exceptions import ZCItoolsValueError
 from common_utils.cache import cache
@@ -57,6 +58,7 @@ class BaseWorkflow:
             sn, cmd = x[:2]
             a_prev = [] if len(x) == 2 else ([x[2]] if isinstance(x[2], str) else x[2])
             actions.append((sn, (cmd.split() if isinstance(cmd, str) else cmd), a_prev))
+            # actions.append((sn, (shlex.split(cmd) if isinstance(cmd, str) else cmd), a_prev))
 
         assert all(isinstance(cmd, (list, tuple)) for _, cmd, _ in actions), actions
         assert all(isinstance(prevs, (list, tuple)) for _, _, prevs in actions), actions

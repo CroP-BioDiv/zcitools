@@ -63,7 +63,7 @@ class ChloroplastFixByAnalyse(CreateStepFromStepCommand):
                           self.get_common_db_object())
 
 
-#
+# Normalization results
 class ChloroplastNormalizationResult(CreateStepCommand):
     _COMMAND = 'normalization_result'
     _HELP = "Analyses phylogeny results of chloroplast normalization."
@@ -108,7 +108,7 @@ class ChloroplastNormalizationResultGraphJoin(NonProjectCommand):
         return NormalizationResult.create_graphs(self.project, steps, self.args.two_columns, show=True)
 
 
-#
+# Stats
 class ChloroplastNormalizationStatByTaxonomy(ProjectCommand):
     _COMMAND = 'normalization_stat_by_taxonomy'
     _HELP = "Create report of chloroplast normalization by grouping data in taxonomy lavels"
@@ -129,4 +129,3 @@ class ChloroplastNormalizationStatByTaxonomy(ProjectCommand):
                            self.project.read_step(args.step, check_data_type='table'),
                            args.rank, args.name,
                            args.minimum_sequences, args.output_excel)
-

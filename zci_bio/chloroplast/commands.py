@@ -1,5 +1,6 @@
 from step_project.base_commands import CreateStepFromStepCommand
 from .standardization.commands import *  # Import commands
+from .irs.commands import *  # Import commands
 
 
 class ChloroplastAlign(CreateStepFromStepCommand):

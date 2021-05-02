@@ -284,7 +284,7 @@ def fetch_chloroplast_list(project, step_data, args):
 
 def _fetch_complete_chloroplasts(organisms, args, max_taxid):
     from ...utils.entrez import Entrez
-    ts = ' OR '.join(f'"{t}"[Organism]' for t in args.taxon)
+    ts = ' OR '.join(f'"{t}"[Organism]' for t in organisms)
     data = Entrez().search_summary(
         'nucleotide',
         term=f'({ts}) AND ("complete genome"[Title] AND chloroplast[Title]) AND refseq')
