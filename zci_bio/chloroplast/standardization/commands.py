@@ -123,7 +123,7 @@ class ChloroplastNormalizationStatByTaxonomy(ProjectCommand):
         parser.add_argument('-o', '--output-excel', help='Excel output filename')
 
     def run(self):
-        from .fix_by_analysis import statistics_by_taxa
+        from .stats import statistics_by_taxa
         args = self.args
         statistics_by_taxa(self.project,
                            self.project.read_step(args.step, check_data_type='table'),
