@@ -270,7 +270,7 @@ def _normalize_ratios(ratios, labels):
 def _save_chart(pyplot, output_filename):
     if output_filename:
         pyplot.savefig(f'{output_filename}.svg')
-        pyplot.savefig(f'{output_filename}.png', dpi=150)
+        pyplot.savefig(f'{output_filename}.png', dpi=150, pad_inches=0)
 
     pyplot.show()
 
@@ -283,10 +283,13 @@ def pie_chart_bar_of_pie(pie_data, explode=None, output_filename=None):
     #  - title : string
     #  - output_filename : string
     pyplot = import_matplotlib_pyplot()
+    pyplot.rc('font', size=16)          # controls default text sizes
+    pyplot.rc('legend', fontsize=16)    # legend fontsize
+
 
     # make figure and assign axis objects
     fig, (ax1, ax2) = pyplot.subplots(1, 2, figsize=(9, 5))
-    fig.subplots_adjust(wspace=0)
+    fig.subplots_adjust(wspace=0, left=0.08, right=1.03, top=0.95, bottom=0.05)
 
     _pie_chart_bar_of_pie(ax1, ax2, pie_data, explode=explode)
     _save_chart(pyplot, output_filename)
@@ -294,11 +297,12 @@ def pie_chart_bar_of_pie(pie_data, explode=None, output_filename=None):
 
 def pie_charts_bar_of_pie(pies_data, explode=None, output_filename=None):
     pyplot = import_matplotlib_pyplot()
+    num_pies = len(pies_data)
 
     # make figure and assign axis objects
-    fig, axis = pyplot.subplots(1, 3 * len(pies_data) - 1, figsize=(9, 3))
+    fig, axis = pyplot.subplots(1, 3 * num_pies - 1, figsize=(9 * num_pies, 5))
     fig.subplots_adjust(wspace=0)
-    for i in range(1, len(pies_data)):
+    for i in range(1, num_pies):
         axis[i * 3 - 1].axis('off')
 
     for i, pie_data in enumerate(pies_data):
