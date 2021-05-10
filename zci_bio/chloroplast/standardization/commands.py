@@ -117,15 +117,31 @@ class ChloroplastNormalizationStatByTaxonomy(ProjectCommand):
     @staticmethod
     def set_arguments(parser):
         parser.add_argument('step', help='Input chloroplast analyses step')
-        parser.add_argument('-r', '--rank', action='append', help='Taxa ranks to group by')
-        parser.add_argument('-n', '--name', action='append', help='Taxa name to group by')
+        parser.add_argument('-r', '--ranks', help='Taxa ranks to group by. Format "rank1:rank2".')
+        parser.add_argument('-n', '--names', help='Taxa names to group by. Format "name1:name2".')
         parser.add_argument('-m', '--minimum-sequences', type=int, help='Minimum sequences to report')
         parser.add_argument('-o', '--output-excel', help='Excel output filename')
+        parser.add_argument('-c', '--print-output', action='store_true',
+                            help='Print result into console')
+        parser.add_argument('-p', '--pie-chart-name', action='append',
+                            help='Taxa name to make pie chart. More charts are possible')
+        parser.add_argument('-P', '--pie-chart-all-names', action='store_true',
+                            help='Make pie charts of all taxa names.')
+        parser.add_argument('-M', '--merge-pie-charts', action='store_true',
+                            help='Make one figure with all pie charts')
 
     def run(self):
         from .stats import statistics_by_taxa
         args = self.args
+        taxa_names = args.names.split(':') if args.names else []
+        pie_chart_names = list(args.pie_chart_name) if args.pie_chart_name else []
+        if args.pie_chart_all_names:
+            pie_chart_names.extend(taxa_names)
         statistics_by_taxa(self.project,
                            self.project.read_step(args.step, check_data_type='table'),
-                           args.rank, args.name,
-                           args.minimum_sequences, args.output_excel)
+                           args.ranks.split(':') if args.ranks else None,
+                           taxa_names,
+                           args.minimum_sequences,
+                           args.output_excel,
+                           pie_chart_names, args.merge_pie_charts,
+                           args.print_output)

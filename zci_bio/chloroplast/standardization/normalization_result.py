@@ -6,7 +6,7 @@ from common_utils.file_utils import get_settings, write_str_in_file
 from common_utils.exceptions import ZCItoolsValueError
 from common_utils.cache import cache_args
 from common_utils.terminal_layout import StringColumns, fill_rows
-from common_utils.import_method import import_matplotlib_pylot
+from common_utils.import_method import import_matplotlib_pyplot
 from zci_bio.utils.phylogenetic_tree import PhylogeneticTree
 
 # In inches. A4 is 8-1/4 * 11-3/4.
@@ -342,7 +342,7 @@ class NormalizationResult:
             plt.show()
 
     def _create_one_graph(self, with_x_labels):
-        plt = import_matplotlib_pylot()
+        plt = import_matplotlib_pyplot()
         fig, ax = plt.subplots(figsize=(figsize_x, figsize_y), constrained_layout=True)
         # fig.subplots_adjust(right=(1 - 3 * right_axis_space), bottom=bottom_space)
 
@@ -363,7 +363,7 @@ class NormalizationResult:
                       kc=max(max(y for _, y in n._kc) for n in nrs),
                       bs=max(max(y for _, y in n._bs) for n in nrs))
 
-        plt = import_matplotlib_pylot()
+        plt = import_matplotlib_pyplot()
         if not two_columns:
             # In inches. A4 is 8-1/4 * 11-3/4.
             # Note: figsize is value used to calibrate all other values

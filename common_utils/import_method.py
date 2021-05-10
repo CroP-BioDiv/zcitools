@@ -57,6 +57,6 @@ https://matplotlib.org/users/installing.html
 Short: pip install matplotlib
 """
 @import_method(_matplotlib_desc)
-def import_matplotlib_pylot():
+def import_matplotlib_pyplot():
     import matplotlib.pyplot as pyplot
     return pyplot
