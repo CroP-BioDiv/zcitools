@@ -15,7 +15,8 @@ figsize_x = 7
 figsize_y = 3
 bottom_space = 0.2
 figsize_y_no_x = figsize_y * (1 - bottom_space)
-right_axis_space = 0.05
+right_axis_space = 0.07
+axis_linewidth = 0.4
 x_label_y = [-0.03, -0.08, -0.14]
 col_2_wspace = 0.15
 title_x_1c = 0.03
@@ -331,18 +332,18 @@ class NormalizationResult:
     def _create_graph(self, show=False):
         plt = self._create_one_graph(False)
         plt.savefig('tree_comparisons_no_labels.svg')
-        plt.savefig('tree_comparisons_no_labels.png', dpi=150)
+        plt.savefig('tree_comparisons_no_labels.png', dpi=300)
         plt.close()
 
         plt = self._create_one_graph(True)
         plt.savefig('tree_comparisons.svg')
-        plt.savefig('tree_comparisons.png', dpi=150)
+        plt.savefig('tree_comparisons.png', dpi=300)
 
         if show:
             plt.show()
 
     def _create_one_graph(self, with_x_labels):
-        plt = import_matplotlib_pyplot()
+        plt = import_matplotlib_pyplot(use_arial=True)
         fig, ax = plt.subplots(figsize=(figsize_x, figsize_y), constrained_layout=True)
         # fig.subplots_adjust(right=(1 - 3 * right_axis_space), bottom=bottom_space)
 
@@ -363,7 +364,7 @@ class NormalizationResult:
                       kc=max(max(y for _, y in n._kc) for n in nrs),
                       bs=max(max(y for _, y in n._bs) for n in nrs))
 
-        plt = import_matplotlib_pyplot()
+        plt = import_matplotlib_pyplot(use_arial=True)
         if not two_columns:
             # In inches. A4 is 8-1/4 * 11-3/4.
             # Note: figsize is value used to calibrate all other values
@@ -376,8 +377,12 @@ class NormalizationResult:
                 nr._create_figure(fig, ax, False, False, max_vs=max_vs)
             nrs[-1]._create_figure(fig, axes[-1], True, False, max_vs=max_vs)
         else:
+            plt.rc('font', size=6)          # controls default text sizes
+            plt.rc('legend', fontsize=6)    # legend fontsize
+
             num_rows = int(ceil(len(nrs) / 2))
-            fig, axes = plt.subplots(nrows=num_rows, ncols=2, figsize=(2 * figsize_x, figsize_y + figsize_y_no_x * (num_rows - 1)), constrained_layout=True)
+            # fig, axes = plt.subplots(nrows=num_rows, ncols=2, figsize=(2 * figsize_x, figsize_y + figsize_y_no_x * (num_rows - 1)), constrained_layout=True)
+            fig, axes = plt.subplots(nrows=num_rows, ncols=2, figsize=(5.6, 3.12), constrained_layout=True, dpi=300)
 
             nrs[0]._create_figure(fig, axes[0][0], True, True, max_vs=max_vs)
             row = 0
@@ -397,8 +402,8 @@ class NormalizationResult:
                                                     ('NP', 'Non partitioned'), ('P', 'Partitioned'),
                                                     ('ML', 'Maximum likelihood (RAxML)'), ('BI', 'Bayesian inference (MrBayes)'))):
                     y = 0.28 - idx * 0.04
-                    fig.text(0.65, y, abr, ha='left', va='center', fontsize=12)
-                    fig.text(0.68, y, label, ha='left', va='center', fontsize=12)
+                    fig.text(0.64, y, abr, ha='left', va='center', fontsize=6)
+                    fig.text(0.68, y, label, ha='left', va='center', fontsize=6)
 
             # # Draw line to connect
             # import matplotlib
@@ -435,10 +440,13 @@ class NormalizationResult:
         # ax.set_xticks([])
         ax.set_xticks(xs_no_data)
         ax.set_xticklabels([r'$^\times$'] * len(xs_no_data))
-        ax.tick_params(axis='x', direction='in', length=0, pad=-5)
+        ax.tick_params(axis='x', direction='in', length=0, pad=-3)
 
         for side in ('left', 'right', 'top'):
             ax.spines[side].set_visible(False)
+
+        for side in ('top', 'bottom', 'left', 'right'):
+            ax.spines[side].set_linewidth(axis_linewidth)
 
         #
         rf_ax = ax.twinx()
@@ -465,9 +473,10 @@ class NormalizationResult:
             _ax.set_yticks([mv] if (mv and y_labels) else [])
             if y_labels:
                 _ax.set_yticklabels(_ax.get_yticks(), rotation=90)
-                _ax.set_ylabel(label, labelpad=-10)  # font size? loc='bottom',
+                _ax.set_ylabel(label, labelpad=-6)  # font size? loc='bottom',
                 _ax.yaxis.label.set_color(c)
             _ax.spines['right'].set_color(c)
+            _ax.spines['right'].set_linewidth(axis_linewidth)
             _ax.tick_params(axis='y', colors=c, **tick_kw)
             #
             lines.append(_ax.bar([x for x, y in vals], [y for x, y in vals], bar_width, label=label, color=c))
@@ -487,15 +496,15 @@ class NormalizationResult:
         l_o = d_bar * 0.5
         x_labels_1 = [l_o + starts[(group, idx, 1)] for group, idx in product(range(3), range(4))]
         for idx, label in enumerate(('O', 'S', 'O', 'S', 'ML', 'BI', 'ML', 'BI', 'NP', 'P', 'NP', 'P')):
-            ax.text(x_labels_1[idx], x_label_y[0], label, ha='center', va='top', fontsize=8)
+            ax.text(x_labels_1[idx], x_label_y[0], label, ha='center', va='top', fontsize=4)
 
         if with_x_labels:
             x_labels_2 = [(a + b) / 2 for a, b in zip(x_labels_1[::2], x_labels_1[1::2])]
             x_labels_3 = [(a + b) / 2 for a, b in zip(x_labels_2[::2], x_labels_2[1::2])]
             for idx, label in enumerate(('NP', 'P', 'O', 'S', 'ML', 'BI')):
-                ax.text(x_labels_2[idx], x_label_y[1], label, ha='center', va='top', fontsize=10)
+                ax.text(x_labels_2[idx], x_label_y[1], label, ha='center', va='top', fontsize=5)
             for idx, label in enumerate(('ML-BI', 'NP-P', 'O-S')):
-                ax.text(x_labels_3[idx], x_label_y[2], label, ha='center', va='top', fontsize=12)
+                ax.text(x_labels_3[idx], x_label_y[2], label, ha='center', va='top', fontsize=6)
 
 
 def _max_val(value):

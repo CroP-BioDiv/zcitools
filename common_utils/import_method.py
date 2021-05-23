@@ -13,9 +13,9 @@ Methods receive *args as arguments and return:
 # Wrapper for import protocol
 def import_method(error_msg):
     def wrap(func):
-        def wrapped_f(*args):
+        def wrapped_f(*args, **kwargs):
             try:
-                lib = func()
+                lib = func(**kwargs)
             except ImportError:
                 print()
                 print('=' * 80)
@@ -57,6 +57,9 @@ https://matplotlib.org/users/installing.html
 Short: pip install matplotlib
 """
 @import_method(_matplotlib_desc)
-def import_matplotlib_pyplot():
+def import_matplotlib_pyplot(use_arial=False):
     import matplotlib.pyplot as pyplot
+    if use_arial:
+        pyplot.rcParams['font.family'] = 'sans-serif'
+        pyplot.rcParams['font.sans-serif'] = 'Arial'
     return pyplot
