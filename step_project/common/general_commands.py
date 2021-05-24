@@ -175,7 +175,9 @@ class Workflow(ProjectCommand):
     def set_arguments(parser):
         from ..base_workflow import BaseWorkflow
         parser.add_argument('command', choices=BaseWorkflow.all_commands(), help='Command to execute')
+        parser.add_argument('-r', '--run', action='store_true', help='Run alignment locale')
         # parser.add_argument('params', nargs='*', help='Additional format option (free format, depends on step type)')
 
     def run(self):
-        self.project.get_workflow().run_command(self.args.command)
+        args = self.args
+        self.project.get_workflow().run_command(args.command, args.run)

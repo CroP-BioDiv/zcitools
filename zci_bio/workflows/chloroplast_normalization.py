@@ -22,14 +22,18 @@ class ChloroplastNormalization(BaseWorkflow):
 
     @staticmethod
     def required_parameters():
-        return ('family', 'outgroup')
+        return ('family', 'outgroup')  # , 'max_update_date'
 
     def _actions(self):
         family = self.parameters['family']
         outgroup = self.parameters.get('outgroup')
+        max_date = self.parameters.get('max_update_date')
+        o_o = f' -o {outgroup}' if outgroup else ''
+        if max_date:
+            o_o += ' --max-update-date {max_date}'
+
         analyses_branches = workflow_branches(
             self.parameters, self.project.read_step_if_in('04_AnalyseChloroplast', check_data_type='table'))
-        o_o = f' -o {outgroup}' if outgroup else ''
 
         actions = [
             ('01_chloroplast_list', f"ncbi_chloroplast_list -f {family}{o_o}"),

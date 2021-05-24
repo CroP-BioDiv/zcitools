@@ -7,6 +7,8 @@ from common_utils.cache import cache
 from common_utils.file_utils import remove_directory, merge_zip_files, write_str_in_file
 from .common.graph.project_graph import create_graph_from_data
 
+_have_run_switch = ('align_genomes', 'mr_bayes', 'raxml')
+
 
 class WfAction(namedtuple('WfAction', 'step_name, prev_steps, cmd, additional_reqs')):
     def __new__(cls, step_name, prev_steps, cmd, additional_reqs):
@@ -27,6 +29,9 @@ class WfAction(namedtuple('WfAction', 'step_name, prev_steps, cmd, additional_re
 
     command = property(lambda self: self.cmd[0])
     all_prev_steps = property(lambda self: self.prev_steps + self.additional_reqs)
+
+    def has_run_switch(self):
+        return self.command in _have_run_switch
 
 
 class BaseWorkflow:
@@ -105,11 +110,14 @@ class BaseWorkflow:
                 remove_directory(sn)
 
     #
-    def run_command(self, cmd):
+    def run_command(self, cmd, run_step):
         self._remove_steps_with_error()
-        getattr(self, self._COMMAND_METHODS[cmd])()
+        if cmd == 'run':
+            self.cmd_run(run_step)
+        else:
+            getattr(self, self._COMMAND_METHODS[cmd])()
 
-    def cmd_run(self):
+    def cmd_run(self, run_step):
         # Run all that can be run:
         #  * finish not finished step with output.zip in it.
         #  * run not run process action that has all dependencies satisfied
@@ -128,7 +136,10 @@ class BaseWorkflow:
                 step_status = self.step_status(action.step_name)
                 if step_status == 'not_in':
                     if all(self.step_status(s) == 'completed' for s in action.all_prev_steps):
-                        self.project.run_command_with_args(*action.cmd, '--step-name', action.step_name)
+                        cmd_args = list(action.cmd) + ['--step-name', action.step_name]
+                        if run_step and action.has_run_switch():
+                            cmd_args.append('-r')
+                        self.project.run_command_with_args(*cmd_args)
                         break
                 if step_status in ('in_process', 'can_be_completed'):
                     to_finish.add(action.step_name)
