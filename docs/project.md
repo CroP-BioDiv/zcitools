@@ -7,7 +7,7 @@ Main intentions of the project are to:
 * learn about working on bioinformatic topics,
 * implement solutions in some organized way for simpler reusability, or at least to easier find what was done in the first place,
 * have functionalities that are possible to mix, to allow working on problem variations,
-* have possibility to run (demanding) calculation locally, on dedicated server, or on cluster.
+* have possibility to run (demanding) calculation locally, or on dedicated server, or on cluster.
 
 
 ## Command
@@ -35,7 +35,7 @@ Step depends on previous step(s) and/or human decisions.
 
 ### Research
 
-Research (project) is a directory. It is created with command `zcit.py init dirname`
+Research (project) is a directory. It is created with command `zcit.py init <dirname>`
 
 ### Steps
 
@@ -68,6 +68,19 @@ zcit.py graph
 zcit.py workflow summary
 
 ```
+
+## Running calculations
+
+Calculations can be demanding or not. When calculaction is not demanding, we probably want to run it locally.
+In case of demanding calculation, we want to run it in dedicated calculation server or on cluster.
+
+Scripts to run possible demanding calculations are implemented in a way to work in all cases.
+
+How to run demanding calculation:
+
+* locally: set switch `-r` to the command,
+* on dedicated server: run command, follow instructions in `<step>/INSTRUCTIONS.txt` file.
+* on cluster: run command, rest is not implemented in the nice way :-/
 
 
 ## Code structure
