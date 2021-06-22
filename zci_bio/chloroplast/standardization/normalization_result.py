@@ -420,7 +420,7 @@ class NormalizationResult:
             #     fig.lines.append(matplotlib.lines.Line2D((c1_x, c2_x), (c1_y, c2_y), transform=fig.transFigure, color='black', linewidth=lw))
 
         plt.savefig('all_tree_comparisons.svg')
-        plt.savefig('all_tree_comparisons.png', dpi=150)
+        plt.savefig('all_tree_comparisons.png', dpi=360)
 
         if show:
             plt.show()

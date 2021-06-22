@@ -33,6 +33,7 @@ def _save_chart(pyplot, output_filename, dpi=150):
     if output_filename:
         pyplot.savefig(f'{output_filename}.svg')
         pyplot.savefig(f'{output_filename}.png', dpi=dpi, pad_inches=0)
+        pyplot.savefig(f'{output_filename}.eps', format='eps', dpi=dpi)
 
     pyplot.show()
 
