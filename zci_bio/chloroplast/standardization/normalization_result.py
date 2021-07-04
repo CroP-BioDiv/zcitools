@@ -226,7 +226,7 @@ class NormalizationResult:
                         outside_of_project=outside_of_project):
                     if s_data := an_step.get_summary_data():
                         if _num := s_data.get('ge_seq_num_irs'):
-                            self.title += f' (n={_num})'
+                            self.title += f' (n = {_num})'
         self.outgroup = None
         self.analyses_step = None
         self.tree_steps = dict()  # step_name -> step object
