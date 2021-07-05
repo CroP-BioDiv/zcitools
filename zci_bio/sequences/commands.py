@@ -23,6 +23,7 @@ class FetchSequencesStep(CreateStepFromStepCommand):
 
 class UpdateCahcedSequencesStep(NonProjectCommand):
     _COMMAND = 'cdb_update_seqs'
+    _COMMAND_GROUP = 'NCBI'
     _HELP = "Update cached sequences"
 
     @staticmethod

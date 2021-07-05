@@ -285,14 +285,21 @@ def fetch_chloroplast_list(project, step_data, args):
 def _fetch_complete_chloroplasts(organisms, args, max_taxid):
     from ...utils.entrez import Entrez
     ts = ' OR '.join(f'"{t}"[Organism]' for t in organisms)
-    data = Entrez().search_summary(
-        'nucleotide',
-        term=f'({ts}) AND ("complete genome"[Title] AND chloroplast[Title]) AND refseq')
-    assert isinstance(data, list), type(data)
-    if args.max_update_date:
-        max_d = date(*map(int, args.max_update_date.split('-')))
-        data = [d for d in data if _to_date(d['UpdateDate']) <= max_d]
-    return _filter_summary_data(data, max_taxid)
+    titles = ['chloroplast']
+    if args.fetch_plastids:
+        titles.append('plastid')
+    #
+    rows = []
+    for title in titles:
+        data = Entrez().search_summary(
+            'nucleotide',
+            term=f'({ts}) AND ("complete genome"[Title] AND {title}[Title]) AND refseq')
+        assert isinstance(data, list), type(data)
+        if args.max_update_date:
+            max_d = date(*map(int, args.max_update_date.split('-')))
+            data = [d for d in data if _to_date(d['UpdateDate']) <= max_d]
+        rows.extend(data)
+    return _filter_summary_data(rows, max_taxid)
 
 
 def _set_summary_data_for_genomes(rows, desc, summary_data):
