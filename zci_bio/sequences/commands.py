@@ -21,6 +21,21 @@ class FetchSequencesStep(CreateStepFromStepCommand):
             step_data, self._input_step(), self.get_common_db_object(), column_name=self.args.column_name)
 
 
+class UpdateCahcedSequencesStep(NonProjectCommand):
+    _COMMAND = 'cdb_update_seqs'
+    _HELP = "Update cached sequences"
+
+    @staticmethod
+    def set_arguments(parser):
+        parser.add_argument('-s', '--start-seq-ident', help='Start with seq_ident')
+        parser.add_argument('-e', '--end-seq-ident', help='End with seq_ident')
+
+    def run(self):
+        from .fetch import update_cached_sequences
+        return update_cached_sequences(self.get_idents_common_db_object(tuple()),
+                                       self.args.start_seq_ident, self.args.end_seq_ident)
+
+
 class SequenceReadsStep(NonProjectCommand):
     _COMMAND = 'sequence_reads'
     _HELP = "Browse given directory and find default sequences reads data."

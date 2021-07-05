@@ -34,20 +34,23 @@ class CommonDB:
         db_dir = os.path.normpath(os.path.join(self.db_dir, *path))
         return CommonDB(db_dir, base_dir=self._base_dir)
 
-    def _save_file(self, zip_f, f):
+    def _save_file(self, zip_f, f, remove_directories=False):
         # Note: step filenames are relative to project main directory. Zip filenames are stored without step_name.
         parts = f.split(os.path.sep)
-        zip_name = f if len(parts) == 1 else os.path.join(*(f.split(os.path.sep)[1:]))
+        if remove_directories:
+            zip_name = parts[-1]
+        else:
+            zip_name = f if len(parts) == 1 else os.path.join(*(f.split(os.path.sep)[1:]))
         zip_f.write(f, arcname=zip_name)
 
-    def _save_directory(self, zip_f, d):
+    def _save_directory(self, zip_f, d, remove_directories=False):
         # ToDo: is it needed to save directory into the zip?
         for f in os.listdir(d):
             f = os.path.join(d, f)
             if os.path.isfile(f):
-                self._save_file(zip_f, f)
+                self._save_file(zip_f, f, remove_directories=remove_directories)
             elif os.path.isdir(f):
-                self._save_directory(zip_f, d)
+                self._save_directory(zip_f, d, remove_directories=remove_directories)
 
     def get_record_filename(self, record_ident):
         if isinstance(record_ident, (list, tuple)):
@@ -70,16 +73,17 @@ class CommonDB:
             self._dir_exists = True
         return rec_filename
 
-    def set_record(self, record_ident, *step_files, force=False, info=False):
+    def set_record(self, record_ident, *step_files, force=False, info=False, remove_directories=False):
         rec_filename = self._check_set_record(record_ident, force=force, info=info)
         if rec_filename:
             with ZipFile(rec_filename, mode='w', compression=ZIP_DEFLATED) as zip_f:
                 for f in step_files:
-                    print(f)
+                    if info:
+                        print(f"  CommonDB zipping: {f} -> {record_ident}")
                     if os.path.isfile(f):
-                        self._save_file(zip_f, f)
+                        self._save_file(zip_f, f, remove_directories=remove_directories)
                     elif os.path.isdir(f):
-                        self._save_directory(zip_f, d)
+                        self._save_directory(zip_f, d, remove_directories=remove_directories)
                     else:
                         raise ZCItoolsValueError(f"Common DB: file/directory to store ({f}) doesn't exist!")
 
