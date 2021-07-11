@@ -51,17 +51,18 @@ def analyse_irs(step_data, table_step, seqs_step, ge_seq_step, methods):
     seq_idents = sorted(table_step.get_column_values('ncbi_ident'))
     extract_data = ExtractData(properties_db=PropertiesDB(), sequences_step=seqs_step)
 
+    # Collect annotation data
     # seq_ident -> dict([annotation_method->data]+)
     acc_data = dict((s, dict()) for s in seq_idents)
-    gb_data = extract_data.cache_keys1_genbank_data(seq_idents, seqs_step)
-
     for method in methods:
         m_call = getattr(extract_data, f'cache_keys1_annotation_{method}')
         m_data = m_call(seq_idents, seq_step=(ge_seq_step if method == 'ge_seq' else seqs_step))
         for seq_ident, irs in m_data.items():
             acc_data[seq_ident][method] = irs
 
-    # Store step data
+    # Format data for storing in table step and Excel file(s)
+    # seq_ident -> dict with data from NCBI genbak file
+    gb_data = extract_data.cache_keys1_genbank_data(seq_idents, seqs_step)
     table_rows = []
     per_method = [[] for _ in methods]
     for seq_ident, data in acc_data.items():
@@ -73,18 +74,17 @@ def analyse_irs(step_data, table_step, seqs_step, ge_seq_step, methods):
             pm.append(row[:4] + ir_row)
         table_rows.append(row)
 
+    # Table data
     columns = []
     for method in methods:
         columns.extend([(f'{method}_{n}', t) for n, t in _column_types_method])
     step.set_table_data(table_rows, _column_types_acc + columns)
     step.save()
 
-    # Excel: sheet-ovi metode
+    # Excel: method sheets
     _excel_columns = [c for c, _ in (_column_types_acc + _column_types_method[1:])]
     sheets = [(m, _excel_columns, rows) for m, rows in zip(methods, per_method)]
     sheets_2_excel('chloroplast_irs_analysis.xls', sheets)
-
-    # Excel: Accession -> koje metode su uspjele
 
     return step
 
