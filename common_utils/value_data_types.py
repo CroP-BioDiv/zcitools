@@ -11,8 +11,7 @@ def _ident_cast(x):
 
 
 def fromisoformat(d):
-    # datetime.date.fromisoformat(data['Date']),  # In python 3.7 :-/
-    return date(*map(int, d.split('-')))
+    return datetime.date.fromisoformat(data['Date'])
 
 
 # Note: input value is string or None

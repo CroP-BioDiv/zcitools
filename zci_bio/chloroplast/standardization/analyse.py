@@ -103,7 +103,7 @@ class AnalyseGenomes:
             ('ncbi.trnF_GAA', 'NCBI trnF-GAA', 'int'),
 
             #
-            ('artcle_title', 'Article', 'str'),
+            ('article_title', 'Article', 'str'),
             ('journal', 'Journal', 'str'),
             ('pubmed_id', 'PubMed', 'int'),
             ('assembly_method', 'Assembly Method', 'str'),

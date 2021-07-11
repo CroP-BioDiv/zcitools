@@ -162,6 +162,11 @@ Table data is stored in table.csv with header, separator ;, quote character ".
         idx_to = self.column_index(to_column)
         return dict((r[idx_from], r[idx_to]) for r in self.get_rows())
 
+    def mapping_column_2_columns(self, idx_column, *to_columns):
+        idx_from = self.column_index(idx_column)
+        idx_to = [self.column_index(c) for c in to_columns]
+        return dict((r[idx_from], (r[x] for x in idx_to)) for r in self.get_rows())
+
     def index_on_table(self, *columns):
         return IndexOnTable(self.get_column_names(), self.get_rows(), *columns)
 

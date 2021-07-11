@@ -68,3 +68,31 @@ class PropertiesDB:
             data_type, data = rec
             m = self._from_db_methods.get(data_type)
             return m(data) if m else data
+
+    def fetch_property(self, key1, key2, _callable, *args, **kwargs):
+        if (vals := self.get_property(key1, key2)) is None:
+            if (vals := _callable(*args, **kwargs)) is not None:
+                self.set_property(key1, key2, vals)
+        return vals
+
+    #
+    def not_stored_keys1(self, keys1, key2):
+        k1 = ','.join(f"'{k}'" for k in keys1)
+        sql = f"SELECT key1 FROM properties WHERE key1 IN ({k1}) AND key2 = '{key2}'"
+        cursor = self.db().execute(sql)
+        return set(keys1) - set(r[0] for r in cursor.fetchall())
+
+    def get_properties_keys1(self, keys1, key2):
+        k1 = ','.join(f"'{k}'" for k in keys1)
+        sql = f"SELECT key1, data_type, data FROM properties WHERE key1 IN ({k1}) AND key2 = '{key2}'"
+        cursor = self.db().execute(sql)
+        return dict((k, (m(data) if (m := self._from_db_methods.get(data_type)) else data))
+                    for k, data_type, data in cursor.fetchall())
+
+    def fetch_properties_keys1(self, keys1, key2, _callable, *args, **kwargs):
+        data = self.get_properties_keys1(keys1, key2)
+        for k1 in (set(keys1) - set(data.keys())):
+            data[k1] = vals = _callable(k1, *args, **kwargs)
+            if vals is not None:
+                self.set_property(k1, key2, vals)
+        return data

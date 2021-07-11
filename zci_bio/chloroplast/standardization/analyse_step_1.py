@@ -32,7 +32,7 @@ class SequenceDesc:
     created_date = property(lambda self: self._table_data.get_cell(self.seq_ident, 'create_date'))
 
     _ncbi_comment_fields = dict(
-        (x, None) for x in ('artcle_title', 'journal', 'pubmed_id', 'first_date',
+        (x, None) for x in ('article_title', 'journal', 'pubmed_id', 'first_date',
                             'assembly_method', 'sequencing_technology', 'bio_project', 'sra_count'))
     _key_genbank_data = 'NCBI GenBank data'
     _key_sra_count = 'NCBI SRA count'
@@ -54,7 +54,7 @@ class SequenceDesc:
 
         refs = seq.annotations['references']
         if refs[0].title != 'Direct Submission':
-            vals['artcle_title'] = refs[0].title
+            vals['article_title'] = refs[0].title
             vals['journal'] = refs[0].journal
             if refs[0].pubmed_id:
                 vals['pubmed_id'] = int(refs[0].pubmed_id)

@@ -134,3 +134,24 @@ Each sequence can be stored in one or more files in different formats.
         print_table(['seq_ident', 'Record ID', 'Length', 'Num features'],
                     [[seq_ident, seq_record.id, len(seq_record.seq), len(seq_record.features)]
                      for seq_ident, seq_record in self._iterate_records()])
+
+    # Miscellaneous
+    def convert_format(self, into_format, transform_seq=None):
+        for ext, f in self._TYPE_LOAD_PRIORITY:
+            if f == into_format:
+                break
+        else:
+            raise ZCItoolsValueError(f'Not known format {into_format}!')
+
+        for seq_ident, files in self._sequences.items():
+            if not any(f.endswith(ext) for f in files):
+                files.append(seq_ident + ext)
+                seq_rec = self.get_sequence_record(seq_ident)
+                if transform_seq:
+                    seq_rec = transform_seq(seq_rec)
+                write_fasta(self.step_file(files[-1]), [(seq_ident, seq_rec.seq)])
+            # Remove all other files
+            for idx, f in reversed(list(enumerate(files))):
+                if not f.endswith(ext):
+                    silent_remove_file(self.step_file(f))
+                    files.pop(idx)

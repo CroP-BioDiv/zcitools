@@ -21,9 +21,25 @@ def fetch_sequences(step_data, table_step, common_db, column_name=None):
     step = SequencesStep(table_step.project, step_data, remove_data=True)
     table_step.propagate_step_name_prefix(step)
 
+    seq_idents = table_step.get_column_values_by_type('seq_ident', column_name=column_name)
+    to_fetch = do_fetch_sequences(step, seq_idents, common_db)
+
+    # ToDo: remove not referenced sequences
+
+    # Store step data
+    # step._check_data()
+    step.save(completed=not to_fetch)
+    if to_fetch:
+        write_str_in_file(
+            step.step_file('INSTRUCTIONS.txt'),
+            _instructions_no_data.format(sequence_db=sequence_db, seqs=', '.join(sorted(to_fetch))))
+    return step
+
+
+def do_fetch_sequences(step, seq_idents, common_db):
     # Fetch from our sequences
     all_sequences = []
-    for ni in table_step.get_column_values_by_type('seq_ident', column_name=column_name):
+    for ni in seq_idents:
         if not step.sequence_exists(ni):
             # Fetching our sequences only for base DB
             ext = fetch_our_sequence(ni, step.directory)
@@ -57,16 +73,7 @@ def fetch_sequences(step_data, table_step, common_db, column_name=None):
     for ni in set(all_sequences) - set(to_fetch):
         step.add_sequence_file(ni + '.gb')
 
-    # ToDo: remove not referenced sequences
-
-    # Store step data
-    # step._check_data()
-    step.save(completed=not to_fetch)
-    if to_fetch:
-        write_str_in_file(
-            step.step_file('INSTRUCTIONS.txt'),
-            _instructions_no_data.format(sequence_db=sequence_db, seqs=', '.join(sorted(to_fetch))))
-    return step
+    return to_fetch
 
 
 def update_cached_sequences(common_db_base, start_seq_ident, end_seq_ident):
