@@ -1,8 +1,10 @@
 from functools import wraps
 import difflib
 from datetime import datetime
+from Bio.SeqFeature import FeatureLocation, CompoundLocation
 from .entrez import Entrez
 from ..chloroplast.utils import find_chloroplast_irs
+from ..chloroplast.irs.small_d import small_d
 
 
 def with_seq(func):
@@ -17,9 +19,9 @@ def with_seq(func):
     return func_wrapper
 
 
+# Note: these methods are not decorators, since wanted functionality depends on two parameters, not on any 'code'
 def cache_fetch(key, method):
     def func_wrapper(self, seq_ident=None, seq=None):
-        assert self.properties_db
         if not seq_ident:
             seq_ident = seq.name
         return self.properties_db.fetch_property(seq_ident, key, method(self), seq_ident=seq_ident, seq=seq)
@@ -91,7 +93,7 @@ class ExtractData:
 
     @with_seq
     def small_d(self, seq_ident=None, seq=None):
-        return dict(length=len(seq.seq))
+        return _small_d_annotation(seq)
 
     # Caching
     # Interface: method_name(seq_ident=None, seq=None)
@@ -107,7 +109,7 @@ class ExtractData:
     cache_keys1_sra_count = cache_fetch_keys1('NCBI SRA count', sra_count)
     cache_keys1_annotation_ncbi = cache_fetch_keys1('annotation ncbi', annotation)
     cache_keys1_annotation_ge_seq = cache_fetch_keys1('annotation ge_seq', annotation)
-    cache_keys1_annotation_small_d = cache_fetch_keys1('annotation small', small_d)
+    cache_keys1_annotation_small_d = cache_fetch_keys1('annotation small_d', small_d)
 
 
 #
@@ -128,6 +130,29 @@ def _seq_annotation(seq):
         d.update(_irs_desc(ira_s, irb_s))
         return d
     return dict(length=len(seq.seq))
+
+
+def _small_d_annotation(seq):
+    # Pokupit rezultate, i ako ih ima: kreirati feature, napraviti extract, pa isto ko gore
+    if res := small_d(seq):
+        ira, irb = res
+        seq_len = len(seq.seq)
+        d = dict(length=len(seq.seq),
+                 ira=[ira[0] - 1, ira[1]],
+                 irb=[irb[0] - 1, irb[1]])
+        #
+        ira = _feature(seq, *ira, 1)
+        irb = _feature(seq, *irb, -1)
+        d.update(_irs_desc(ira.extract(seq), irb.extract(seq)))
+        return d
+    return dict(length=len(seq.seq))
+
+
+def _feature(seq, s, e, strand):
+    if s < e:
+        return FeatureLocation(s, e, strand=strand)
+    return CompoundLocation([FeatureLocation(s, len(seq.seq), strand=strand),
+                             FeatureLocation(0, e, strand=strand)])
 
 
 def _irs_desc(ira, irb):
