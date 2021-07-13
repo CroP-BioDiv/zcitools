@@ -1,8 +1,9 @@
 import os
+import re
 import tempfile
 import subprocess
 import tempfile
-from Bio import SeqIO
+from Bio import SeqIO, Seq
 
 """
 Wrapper around irscan program. irscan program is used by OGDRAW to locate IRs.
@@ -23,24 +24,37 @@ Subproject irscan contains directories:
 
 Note: it is not possible to compile code with current D version.
 
+Note: irscan crashes on some 'proper' input.
+This script handle crashes and do workarounds to get meaningfull result.
+These workarounds can be turned off with script switches.
+
 I encountered two types of crashes, which stderr outputs are:
 Error: ArrayBoundsError irscan(161)
  - IR starts at sequence start. Method screen_from_to_pos() moves pos into negative
- - Workaround is to run irscan on sequence prepended by sequence end. Like: seq[-100:] + seq
+     - Workaround is to run irscan on sequence prepended by sequence end. Like: seq[-100:] + seq
 
 Error: ArrayBoundsError irscan(354)
  - IRs were not located. Printing of results crashes.
- - No workaround since there are no IRs. At least not in irscan definition of IRs.
+    - No workaround since there are no IRs. At least not in irscan definition of IRs.
+
+ - Can be caused if sequence contains character different from ATCG.
+   irscan.d, return in line 82 is dangerous.
 """
 
 
-def small_d(seq_rec, working_dir=None):
+def small_d(seq_rec, working_dir=None, leave_tmp_file=False, no_prepend_workaround=False, no_dna_fix=False):
     if not working_dir:
         working_dir = tempfile.gettempdir()
     fasta_filename = os.path.join(working_dir, f'{seq_rec.name}.fa')
     irscan_exe = os.environ.get('IRSCAN_EXE', 'irscan')
+    offsets = (0,) if no_prepend_workaround else (0, 500, 5000, 25000, 30000)
+    res_irs = None
 
-    for offset in (0, 500, 5000, 25000, 30000):
+    if not no_dna_fix and any(c not in 'ATCG' for c in str(seq_rec.seq)):
+        dna = re.sub(r'[^ATCG]', 'A', str(seq_rec.seq))
+        seq_rec.seq = Seq.Seq(dna)
+
+    for offset in offsets:
         s_rec = (seq_rec[-offset:] + seq_rec) if offset else seq_rec
         SeqIO.write([s_rec], fasta_filename, 'fasta')
         with tempfile.TemporaryFile() as stderr:
@@ -55,18 +69,25 @@ def small_d(seq_rec, working_dir=None):
                 if '161' in err:
                     # Try with longer offset
                     continue
+                # continue
                 return  # Nothing to do more!
-        #
-        os.remove(fasta_filename)
+
         seq_length = len(seq_rec.seq)
         output = result.stdout.decode('utf-8')
         irs = tuple(int(x) - offset for x in output.split(';')[:4])
         ira, irb = _ir(seq_length, *irs[:2]), _ir(seq_length, *irs[2:])
 
         # Check IR order
-        if (irb[0] - ira[1]) % seq_length < (ira[0] - irb[1]) % seq_length:
-            return ira, irb
-        return irb, ira
+        res_irs = (ira, irb) if (irb[0] - ira[1]) % seq_length < (ira[0] - irb[1]) % seq_length else (irb, ira)
+        break
+
+    #
+    if leave_tmp_file:
+        print(f'Note: tmp file {fasta_filename} is not removed!')
+    else:
+        os.remove(fasta_filename)
+
+    return res_irs
 
 
 def _ir(seq_length, ira, irb):
@@ -74,7 +95,7 @@ def _ir(seq_length, ira, irb):
     return ((ira - 1) % seq_length), (irb if irb > 0 else (irb % seq_length))
 
 
-def small_d_on_file(seq_filename):
+def small_d_on_file(seq_filename, leave_tmp_file=False, no_prepend_workaround=False, no_dna_fix=False):
     _ext_2_bio_io_type = dict(
         gb='genbank', gbff='genbank',
         fa='fasta',  fas='fasta',
@@ -83,9 +104,22 @@ def small_d_on_file(seq_filename):
 
     base_filename, file_extension = os.path.splitext(seq_filename)
     in_format = _ext_2_bio_io_type[file_extension[1:]]
-    return small_d(SeqIO.read(seq_filename, in_format))
+    return small_d(SeqIO.read(seq_filename, in_format),
+                   leave_tmp_file=leave_tmp_file,
+                   no_prepend_workaround=no_prepend_workaround,
+                   no_dna_fix=no_dna_fix)
 
 
 if __name__ == '__main__':
-    import sys
-    print(small_d_on_file(sys.argv[1]))
+    import argparse
+    parser = argparse.ArgumentParser(description="Run irscan on a sequence.")
+    parser.add_argument('seq_filename', help='Sequence filename')
+    parser.add_argument('-T', '--leave-tmp-file', action='store_true', help='Leave temporary file. For testing.')
+    parser.add_argument('-P', '--no-prepend-workaround', action='store_true', help='Omit workaround by prepending')
+    parser.add_argument('-D', '--no-dna-fix', action='store_true', help='Omit fixing DNA bases')
+    params = parser.parse_args()
+
+    print(small_d_on_file(params.seq_filename,
+                          leave_tmp_file=params.leave_tmp_file,
+                          no_prepend_workaround=params.no_prepend_workaround,
+                          no_dna_fix=params.no_dna_fix))

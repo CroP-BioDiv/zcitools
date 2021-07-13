@@ -30,7 +30,7 @@ class IRsStatistics(BaseWorkflow):
         actions = [('01_chloroplast_list', f"ncbi_chloroplast_list {taxons} {plastids} {max_update_date}")]
 
         # Collect data
-        seqs_methods = [m for m in methods if m in ('ncbi', 'small_d')]
+        seqs_methods = [m for m in methods if m == 'ncbi' or m.startswith('small_d')]
         seqs_methods = ' '.join(f'-s {m}' for m in seqs_methods)
         actions.append((f'02_seqs', f"analyse_irs_collect_needed_data 01_chloroplast_list seqs {seqs_methods}"))
 

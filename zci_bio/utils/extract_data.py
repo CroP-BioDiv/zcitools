@@ -54,6 +54,8 @@ class ExtractData:
         annotations = seq.annotations
 
         vals = dict(length=len(seq.seq))
+        if not_dna := [i for i, c in enumerate(str(seq.seq)) if c not in 'ATCG']:
+            vals['not_dna'] = not_dna
 
         vals.update((k, v) for k in ('organism', 'sequence_version') if (v := annotations.get(k)))
         if v := annotations.get('date'):
@@ -93,7 +95,19 @@ class ExtractData:
 
     @with_seq
     def small_d(self, seq_ident=None, seq=None):
-        return _small_d_annotation(seq)
+        return _small_d_annotation(seq, no_prepend_workaround=True, no_dna_fix=True)
+
+    @with_seq
+    def small_d_P(self, seq_ident=None, seq=None):
+        return _small_d_annotation(seq, no_prepend_workaround=False, no_dna_fix=True)
+
+    @with_seq
+    def small_d_D(self, seq_ident=None, seq=None):
+        return _small_d_annotation(seq, no_prepend_workaround=True, no_dna_fix=False)
+
+    @with_seq
+    def small_d_all(self, seq_ident=None, seq=None):
+        return _small_d_annotation(seq, no_prepend_workaround=False, no_dna_fix=False)
 
     # Caching
     # Interface: method_name(seq_ident=None, seq=None)
@@ -102,6 +116,9 @@ class ExtractData:
     cache_annotation_ncbi = cache_fetch('annotation ncbi', annotation)
     cache_annotation_ge_seq = cache_fetch('annotation ge_seq', annotation)
     cache_annotation_small_d = cache_fetch('annotation small_d', small_d)
+    cache_annotation_small_d_P = cache_fetch('annotation small_d_P', small_d_P)
+    cache_annotation_small_d_D = cache_fetch('annotation small_d_D', small_d_D)
+    cache_annotation_small_d_all = cache_fetch('annotation small_d_all', small_d_all)
 
     # Bulk fetch
     # Interface: method_name(seq_idents, seq_step=None)
@@ -110,6 +127,9 @@ class ExtractData:
     cache_keys1_annotation_ncbi = cache_fetch_keys1('annotation ncbi', annotation)
     cache_keys1_annotation_ge_seq = cache_fetch_keys1('annotation ge_seq', annotation)
     cache_keys1_annotation_small_d = cache_fetch_keys1('annotation small_d', small_d)
+    cache_keys1_annotation_small_d_P = cache_fetch_keys1('annotation small_d_P', small_d_P)
+    cache_keys1_annotation_small_d_D = cache_fetch_keys1('annotation small_d_D', small_d_D)
+    cache_keys1_annotation_small_d_all = cache_fetch_keys1('annotation small_d_all', small_d_all)
 
 
 #
@@ -120,8 +140,8 @@ def _seq_annotation(seq):
         ira_p = ira.location.parts
         irb_p = irb.location.parts
         d = dict(length=len(seq.seq),
-                 ira=[int(ira_p[0].start) - 1, int(ira_p[-1].end)],
-                 irb=[int(irb_p[0].start) - 1, int(irb_p[-1].end)])
+                 ira=[int(ira_p[0].start), int(ira_p[-1].end)],
+                 irb=[int(irb_p[0].start), int(irb_p[-1].end)])
         #
         ira_s = ira.extract(seq)
         irb_s = irb.extract(seq)
@@ -132,14 +152,13 @@ def _seq_annotation(seq):
     return dict(length=len(seq.seq))
 
 
-def _small_d_annotation(seq):
-    # Pokupit rezultate, i ako ih ima: kreirati feature, napraviti extract, pa isto ko gore
-    if res := small_d(seq):
+def _small_d_annotation(seq, no_prepend_workaround=True, no_dna_fix=True):
+    if res := small_d(seq, no_prepend_workaround=no_prepend_workaround, no_dna_fix=no_dna_fix):
         ira, irb = res
         seq_len = len(seq.seq)
         d = dict(length=len(seq.seq),
-                 ira=[ira[0] - 1, ira[1]],
-                 irb=[irb[0] - 1, irb[1]])
+                 ira=[ira[0], ira[1]],
+                 irb=[irb[0], irb[1]])
         #
         ira = _feature(seq, *ira, 1)
         irb = _feature(seq, *irb, -1)

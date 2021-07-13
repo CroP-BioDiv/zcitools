@@ -194,6 +194,18 @@ class GeSeqCDBClean(CommonDBCommand):
                         print('ToDo: DELETE', f)
 
 
+class Chloe(CreateStepFromStepCommand):
+    _COMMAND = 'chloe'
+    _HELP = "Annotates chloroplast sequences with Chloë"
+    _STEP_BASE_NAME = 'Chloe'
+    _INPUT_STEP_DATA_TYPE = ('table', 'sequences')
+    _COMMON_DB_IDENT = ('Chloe',)
+
+    def run(self, step_data):
+        from .chloe import chloe_annotate
+        return chloe_annotate(step_data, self._input_step(), self.get_common_db_object())
+
+
 class CPGAVAS(CreateStepFromStepCommand):
     _COMMAND = 'cpgavas'
     _HELP = "Annotates chloroplast sequences with CPGAVAS"
