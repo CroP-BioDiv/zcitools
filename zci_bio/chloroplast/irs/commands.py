@@ -40,6 +40,7 @@ class IRsAnalyse(CreateStepFromStepCommand):
         CreateStepFromStepCommand.set_arguments(parser)
         parser.add_argument('seqs_step', help='Step with NCBI sequences.')
         parser.add_argument('-g', '--ge-seq-step', help='Step with GeSeq annotated sequences.')
+        parser.add_argument('-c', '--chloe-step', help='Step with Chloe annotated sequences.')
         parser.add_argument(
             '-m', '--methods', action='append', choices=METHOD_NAMES,
             help=f'Method(s) to check. Available methods: {", ".join(METHOD_NAMES)}')
@@ -54,5 +55,7 @@ class IRsAnalyse(CreateStepFromStepCommand):
             args.seqs_step, check_data_type=('sequences', 'annotations'), no_check=True)
         ge_seq = self.project.read_complete_step(args.ge_seq_step, check_data_type='annotations', no_check=True) \
             if args.ge_seq_step else None
+        chloe = self.project.read_complete_step(args.chloe_step, check_data_type='annotations', no_check=True) \
+            if args.chloe_step else None
 
-        return analyse_irs(step_data, self._input_step(no_data_check=True), seqs, ge_seq, args.methods)
+        return analyse_irs(step_data, self._input_step(no_data_check=True), seqs, ge_seq, chloe, args.methods)

@@ -119,6 +119,7 @@ class ExtractData:
     cache_annotation_small_d_P = cache_fetch('annotation small_d_P', small_d_P)
     cache_annotation_small_d_D = cache_fetch('annotation small_d_D', small_d_D)
     cache_annotation_small_d_all = cache_fetch('annotation small_d_all', small_d_all)
+    cache_annotation_chloe = cache_fetch('annotation chloe', annotation)
 
     # Bulk fetch
     # Interface: method_name(seq_idents, seq_step=None)
@@ -130,6 +131,7 @@ class ExtractData:
     cache_keys1_annotation_small_d_P = cache_fetch_keys1('annotation small_d_P', small_d_P)
     cache_keys1_annotation_small_d_D = cache_fetch_keys1('annotation small_d_D', small_d_D)
     cache_keys1_annotation_small_d_all = cache_fetch_keys1('annotation small_d_all', small_d_all)
+    cache_keys1_annotation_chloe = cache_fetch_keys1('annotation chloe', annotation)
 
 
 #

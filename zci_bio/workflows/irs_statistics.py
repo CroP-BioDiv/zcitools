@@ -32,15 +32,23 @@ class IRsStatistics(BaseWorkflow):
         # Collect data
         seqs_methods = [m for m in methods if m == 'ncbi' or m.startswith('small_d')]
         seqs_methods = ' '.join(f'-s {m}' for m in seqs_methods)
-        actions.append((f'02_seqs', f"analyse_irs_collect_needed_data 01_chloroplast_list seqs {seqs_methods}"))
+        actions.append(('02_seqs', f"analyse_irs_collect_needed_data 01_chloroplast_list seqs {seqs_methods}"))
 
         if 'ge_seq' in methods:
-            actions.append((f'02_ge_seq', f"analyse_irs_collect_needed_data 01_chloroplast_list ge_seq"))
-            actions.append((f'03_ge_seq', f"ge_seq 02_ge_seq"))
+            actions.append(('02_ge_seq', "analyse_irs_collect_needed_data 01_chloroplast_list ge_seq"))
+            actions.append(('03_ge_seq', "ge_seq 02_ge_seq"))
 
-        # Find IRS
-        stats = ['-m ge_seq -g 03_ge_seq' if m == 'ge_seq' else f'-m {m}' for m in methods]
-        actions.append((f'04_stats', f"analyse_irs 01_chloroplast_list 02_seqs {' '.join(stats)}"))
+        if 'chloe' in methods:
+            actions.append(('02_chloe', "analyse_irs_collect_needed_data 01_chloroplast_list chloe"))
+            actions.append(('03_chloe', "chloe 02_chloe"))
+
+        # Analysis
+        stats = [f'-m {m}' for m in methods]
+        for m in ('ge_seq', 'chloe'):
+            if m in methods:
+                stats.append(f'-{m[0]} 03_{m}')
+        actions.append(('04_stats', f"analyse_irs 01_chloroplast_list 02_seqs {' '.join(stats)}"))
+
         # Summary, result, ...
         return actions
 

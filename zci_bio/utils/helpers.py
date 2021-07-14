@@ -216,8 +216,7 @@ def get_align_io_type(filename, format_):
 
 #
 def fetch_our_sequence(seq_ident, in_dir):
-    dirs = os.environ.get('ZCI_OUR_SEQUENCES')
-    if dirs:
+    if dirs := os.environ.get('ZCI_OUR_SEQUENCES'):
         for _dir in dirs.split(':'):
             for f in os.listdir(_dir):
                 name, ext = os.path.splitext(f)
@@ -225,6 +224,15 @@ def fetch_our_sequence(seq_ident, in_dir):
                     print(f"  Our sequences fetch: {f} -> {os.path.join(in_dir, f)}")
                     shutil.copyfile(os.path.join(_dir, f), os.path.join(in_dir, f))
                     return ext
+
+
+def is_our_sequence(seq_ident):
+    if dirs := os.environ.get('ZCI_OUR_SEQUENCES'):
+        for _dir in dirs.split(':'):
+            for f in os.listdir(_dir):
+                name, ext = os.path.splitext(f)
+                if name == seq_ident:
+                    return True
 
 
 #

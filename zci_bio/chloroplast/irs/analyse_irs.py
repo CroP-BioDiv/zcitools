@@ -8,7 +8,7 @@ from common_utils.value_data_types import sheets_2_excel
 from common_utils.properties_db import PropertiesDB
 from ..utils import cycle_distance_lt
 
-METHOD_NAMES = ['ncbi', 'ge_seq', 'small_d', 'small_d_P', 'small_d_D', 'small_d_all']
+METHOD_NAMES = ['ncbi', 'ge_seq', 'small_d', 'small_d_P', 'small_d_D', 'small_d_all', 'chloe']
 _column_types_acc = [
     ('accession', 'seq_ident'), ('organism', 'str'), ('first_date', 'date'), ('length', 'int'), ('not_dna', 'int')]
 _column_types_method = [
@@ -58,9 +58,12 @@ class _ByYear:
 def analyse_irs_collect_needed_data(step_data, table_step, method, seqs_methods, common_db):
     # Finds sequences needed for the analysis. Depends on cached data (PropertiesDB)
     # Creates step with these sequences.
-    assert method in ['seqs', 'ge_seq'], method
+    assert method in ['seqs', 'ge_seq', 'chloe'], method
 
-    step = SequencesStep(table_step.project, step_data, remove_data=True)
+    if method == 'chloe':
+        step = TableStep(table_step.project, step_data, remove_data=True)
+    else:
+        step = SequencesStep(table_step.project, step_data, remove_data=True)
     table_step.propagate_step_name_prefix(step)
 
     seq_idents = table_step.get_column_values('ncbi_ident')
@@ -73,13 +76,17 @@ def analyse_irs_collect_needed_data(step_data, table_step, method, seqs_methods,
         do_fetch_sequences(step, to_fetch, common_db)
     elif method == 'ge_seq':
         do_fetch_sequences(step, properties_db.not_stored_keys1(seq_idents, 'annotation ge_seq'), common_db)
+    elif method == 'chloe':
+        not_in = properties_db.not_stored_keys1(seq_idents, 'annotation chloe')
+        print('chloe', not_in)
+        step.set_table_data([[s] for s in not_in], [('seq_ident', 'seq_ident')])
 
     #
     step.save()
     return step
 
 
-def analyse_irs(step_data, table_step, seqs_step, ge_seq_step, methods):
+def analyse_irs(step_data, table_step, seqs_step, ge_seq_step, chloe_step, methods):
     step = TableStep(table_step.project, step_data, remove_data=True)
     table_step.propagate_step_name_prefix(step)
 
@@ -93,7 +100,12 @@ def analyse_irs(step_data, table_step, seqs_step, ge_seq_step, methods):
     acc_data = dict((s, dict()) for s in seq_idents)
     for method in methods:
         m_call = getattr(extract_data, f'cache_keys1_annotation_{method}')
-        m_data = m_call(seq_idents, seq_step=(ge_seq_step if method == 'ge_seq' else seqs_step))
+        seq_step = seqs_step
+        if method == 'ge_seq':
+            seq_step = ge_seq_step
+        elif method == 'chloe':
+            seq_step = chloe_step
+        m_data = m_call(seq_idents, seq_step=seq_step)
         for seq_ident, irs in m_data.items():
             acc_data[seq_ident][method] = irs
 

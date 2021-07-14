@@ -1,4 +1,4 @@
-from Bio.SeqFeature import FeatureLocation, CompoundLocation
+from Bio.SeqFeature import FeatureLocation, CompoundLocation, SeqFeature
 from common_utils.exceptions import ZCItoolsValueError
 from ..utils.features import Feature, Partition
 from ..utils.helpers import feature_qualifiers_to_desc
@@ -9,6 +9,23 @@ def find_chloroplast_irs(seq, check_length=True):
     _ir = ('inverted',)
     rep_regs = [f for f in seq.features
                 if f.type == 'repeat_region' and f.qualifiers.get('rpt_type', _ir)[0] == 'inverted']
+
+    if len(rep_regs) == 1:
+        # Chloe annotates IRs as one composite feature
+        loc = rep_regs[0].location
+        if isinstance(loc, CompoundLocation):
+            strands = [[], []]  # +1, -1 strand
+            for p in loc.parts:
+                strands[int(p.strand < 0)].append(p)
+            assert all(len(s) >= 1 for s in strands), strands
+            ira = strands[0][0] if len(strands[0]) == 1 else CompoundLocation(strands[0])
+            irb = strands[1][0] if len(strands[1]) == 1 else CompoundLocation(strands[1])
+            diff_1 = (irb.parts[0].start - ira.parts[-1].end) % len(seq)
+            diff_2 = (ira.parts[0].start - irb.parts[-1].end) % len(seq)
+            if diff_1 > diff_2:
+                ira, irb = irb, ira
+            return SeqFeature(location=ira), SeqFeature(location=irb)
+        return
 
     # Repair features with location of type <~start..ira.start>
     half_length = len(seq) // 2

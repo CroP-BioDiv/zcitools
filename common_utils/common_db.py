@@ -97,6 +97,11 @@ class CommonDB:
     def has_record(self, record_ident):
         return self._dir_exists and os.path.isfile(self.get_record_filename(record_ident))
 
+    def has_records(self, record_idents):
+        if self._dir_exists:
+            return [ri for ri in record_idents if os.path.isfile(self.get_record_filename(ri))]
+        return []
+
     def get_all_record_ident(self, startswith=None):
         n = len(self.db_dir) + 1
         for root, subdirs, files in os.walk(self.db_dir):
