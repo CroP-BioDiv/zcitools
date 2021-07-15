@@ -1,3 +1,4 @@
+import os.path
 from functools import wraps
 import difflib
 from datetime import datetime
@@ -5,6 +6,7 @@ from Bio.SeqFeature import FeatureLocation, CompoundLocation
 from .entrez import Entrez
 from ..chloroplast.utils import find_chloroplast_irs
 from ..chloroplast.irs.small_d import small_d
+from ..chloroplast.irs.chloroplot import chloroplot as chloroplot_ann
 
 
 def with_seq(func):
@@ -13,9 +15,16 @@ def with_seq(func):
         if seq is None:
             assert seq_ident
             seq = self.sequences_step.get_sequence_record(seq_ident)
-        # if not seq_ident:
-        #     seq_ident = seq.name
-        return func(self, seq_ident=seq_ident, seq=seq)
+        return func(self, seq)
+    return func_wrapper
+
+
+def with_seq_ident(func):
+    @wraps(func)
+    def func_wrapper(self, seq_ident=None, seq=None):
+        if not seq_ident:
+            seq_ident = seq.name
+        return func(self, seq_ident)
     return func_wrapper
 
 
@@ -50,7 +59,7 @@ class ExtractData:
 
     # Extract and fetch methods
     @with_seq
-    def genbank_data(self, seq_ident=None, seq=None):
+    def genbank_data(self, seq):
         annotations = seq.annotations
 
         vals = dict(length=len(seq.seq))
@@ -79,7 +88,7 @@ class ExtractData:
         return vals
 
     @with_seq
-    def sra_count(self, seq_ident=None, seq=None):
+    def sra_count(self, seq):
         vals_sra = dict()
         for x in seq.dbxrefs:  # format ['BioProject:PRJNA400982', 'BioSample:SAMN07225454'
             if x.startswith('BioProject:'):
@@ -90,24 +99,28 @@ class ExtractData:
         return vals_sra
 
     @with_seq
-    def annotation(self, seq_ident=None, seq=None):
-        return _seq_annotation(seq)
+    def annotation(self, seq):
+        return self._seq_annotation(seq)
 
     @with_seq
-    def small_d(self, seq_ident=None, seq=None):
-        return _small_d_annotation(seq, no_prepend_workaround=True, no_dna_fix=True)
+    def small_d(self, seq):
+        return self._small_d_annotation(seq, no_prepend_workaround=True, no_dna_fix=True)
 
     @with_seq
-    def small_d_P(self, seq_ident=None, seq=None):
-        return _small_d_annotation(seq, no_prepend_workaround=False, no_dna_fix=True)
+    def small_d_P(self, seq):
+        return self._small_d_annotation(seq, no_prepend_workaround=False, no_dna_fix=True)
 
     @with_seq
-    def small_d_D(self, seq_ident=None, seq=None):
-        return _small_d_annotation(seq, no_prepend_workaround=True, no_dna_fix=False)
+    def small_d_D(self, seq):
+        return self._small_d_annotation(seq, no_prepend_workaround=True, no_dna_fix=False)
 
     @with_seq
-    def small_d_all(self, seq_ident=None, seq=None):
-        return _small_d_annotation(seq, no_prepend_workaround=False, no_dna_fix=False)
+    def small_d_all(self, seq):
+        return self._small_d_annotation(seq, no_prepend_workaround=False, no_dna_fix=False)
+
+    @with_seq_ident
+    def chloroplot(self, seq_ident):
+        return chloroplot_ann(os.path.abspath(self.sequences_step.get_sequence_filename(seq_ident)))
 
     # Caching
     # Interface: method_name(seq_ident=None, seq=None)
@@ -120,6 +133,7 @@ class ExtractData:
     cache_annotation_small_d_D = cache_fetch('annotation small_d_D', small_d_D)
     cache_annotation_small_d_all = cache_fetch('annotation small_d_all', small_d_all)
     cache_annotation_chloe = cache_fetch('annotation chloe', annotation)
+    cache_annotation_chloroplot = cache_fetch('annotation chloroplot', chloroplot)
 
     # Bulk fetch
     # Interface: method_name(seq_idents, seq_step=None)
@@ -132,79 +146,82 @@ class ExtractData:
     cache_keys1_annotation_small_d_D = cache_fetch_keys1('annotation small_d_D', small_d_D)
     cache_keys1_annotation_small_d_all = cache_fetch_keys1('annotation small_d_all', small_d_all)
     cache_keys1_annotation_chloe = cache_fetch_keys1('annotation chloe', annotation)
+    cache_keys1_annotation_chloroplot = cache_fetch_keys1('annotation chloroplot', annotation)
 
+    #
+    def _seq_annotation(self, seq):
+        if irs := find_chloroplast_irs(seq, check_length=False):
+            ira, irb = irs
+            # To be sure!
+            ira_p = ira.location.parts
+            irb_p = irb.location.parts
+            d = dict(length=len(seq.seq),
+                     ira=[int(ira_p[0].start), int(ira_p[-1].end)],
+                     irb=[int(irb_p[0].start), int(irb_p[-1].end)])
+            #
+            ira_s = ira.extract(seq)
+            irb_s = irb.extract(seq)
+            if ira.strand == irb.strand:
+                irb_s = irb_s.reverse_complement()
+            d.update(self._irs_desc(seq, ira_s, irb_s, d))
+            return d
+        return dict(length=len(seq.seq))
 
-#
-def _seq_annotation(seq):
-    if irs := find_chloroplast_irs(seq, check_length=False):
-        ira, irb = irs
-        # To be sure!
-        ira_p = ira.location.parts
-        irb_p = irb.location.parts
-        d = dict(length=len(seq.seq),
-                 ira=[int(ira_p[0].start), int(ira_p[-1].end)],
-                 irb=[int(irb_p[0].start), int(irb_p[-1].end)])
-        #
-        ira_s = ira.extract(seq)
-        irb_s = irb.extract(seq)
-        if ira.strand == irb.strand:
-            irb_s = irb_s.reverse_complement()
-        d.update(_irs_desc(ira_s, irb_s))
-        return d
-    return dict(length=len(seq.seq))
+    def _small_d_annotation(self, seq, no_prepend_workaround=True, no_dna_fix=True):
+        if res := small_d(seq, no_prepend_workaround=no_prepend_workaround, no_dna_fix=no_dna_fix):
+            ira, irb = res
+            seq_len = len(seq.seq)
+            d = dict(length=len(seq.seq),
+                     ira=[ira[0], ira[1]],
+                     irb=[irb[0], irb[1]])
+            #
+            ira = self._feature(seq, *ira, 1)
+            irb = self._feature(seq, *irb, -1)
+            d.update(self._irs_desc(seq, ira.extract(seq), irb.extract(seq), d))
+            return d
+        return dict(length=len(seq.seq))
 
+    def _feature(self, seq, s, e, strand):
+        if s < e:
+            return FeatureLocation(s, e, strand=strand)
+        return CompoundLocation([FeatureLocation(s, len(seq.seq), strand=strand),
+                                 FeatureLocation(0, e, strand=strand)])
 
-def _small_d_annotation(seq, no_prepend_workaround=True, no_dna_fix=True):
-    if res := small_d(seq, no_prepend_workaround=no_prepend_workaround, no_dna_fix=no_dna_fix):
-        ira, irb = res
-        seq_len = len(seq.seq)
-        d = dict(length=len(seq.seq),
-                 ira=[ira[0], ira[1]],
-                 irb=[irb[0], irb[1]])
-        #
-        ira = _feature(seq, *ira, 1)
-        irb = _feature(seq, *irb, -1)
-        d.update(_irs_desc(ira.extract(seq), irb.extract(seq)))
-        return d
-    return dict(length=len(seq.seq))
+    def _irs_desc(self, seq, ira, irb, irs_d):
+        ira = str(ira.seq)
+        irb = str(irb.seq)
+        # print(len(ira), len(irb))
+        # print('  ira', ira[:20], ira[-20:])
+        # print('  irb', irb[:20], irb[-20:])
+        if ira == irb:
+            return dict(type='+')
 
+        # Check is same IRs region already inspected.
+        seq_ident = seq.name.split('.')[0]
+        for _, data in self.properties_db.get_properties_key2_like(seq_ident, 'annotation %').items():
+            if irs_d['ira'] == data.get('ira') and irs_d['irb'] == data.get('irb'):
+                return dict(type=data['type'], diff=data['diff'])
 
-def _feature(seq, s, e, strand):
-    if s < e:
-        return FeatureLocation(s, e, strand=strand)
-    return CompoundLocation([FeatureLocation(s, len(seq.seq), strand=strand),
-                             FeatureLocation(0, e, strand=strand)])
+        # Quite slow method. Not unbearable, but slow.
+        # ToDo: possible speedup is to remove equal ends of sequences.
+        print(f'diff {seq_ident}: lengths {len(ira)} and {len(irb)}')
+        diff = difflib.SequenceMatcher(a=ira, b=irb, autojunk=False)
+        opcodes = diff.get_opcodes()
+        # R, I -> [num blocks, num bps]
+        RM = [0, 0]
+        IN = [0, 0]
+        for x in opcodes:
+            print(x)
+            if x[0] == 'equal':
+                continue
+            if x[0] == 'replace':
+                c, bp = RM, (x[2] - x[1])
+            elif x[0] == 'delete':
+                c, bp = IN, (x[2] - x[1])
+            elif x[0] == 'insert':
+                c, bp = IN, (x[4] - x[3])
+            c[0] += 1
+            c[1] += bp
 
-
-def _irs_desc(ira, irb):
-    ira = str(ira.seq)
-    irb = str(irb.seq)
-    # print(len(ira), len(irb))
-    # print('  ira', ira[:20], ira[-20:])
-    # print('  irb', irb[:20], irb[-20:])
-    if ira == irb:
-        return dict(type='+')
-
-    # Quite slow method. Not unbearable, but slow.
-    # ToDo: possible speedup is to remove equal ends of sequences.
-    print('eva', len(ira), len(irb))
-    diff = difflib.SequenceMatcher(a=ira, b=irb, autojunk=False)
-    opcodes = diff.get_opcodes()
-    # R, I -> [num blocks, num bps]
-    RM = [0, 0]
-    IN = [0, 0]
-    for x in opcodes:
-        print(x)
-        if x[0] == 'equal':
-            continue
-        if x[0] == 'replace':
-            c, bp = RM, (x[2] - x[1])
-        elif x[0] == 'delete':
-            c, bp = IN, (x[2] - x[1])
-        elif x[0] == 'insert':
-            c, bp = IN, (x[4] - x[3])
-        c[0] += 1
-        c[1] += bp
-
-    return dict(type=';'.join(f'{label}:{d[0]},{d[1]}' for d, label in ((RM, 'R'), (IN, 'I')) if d[0]),
-                diff=opcodes)
+        return dict(type=';'.join(f'{label}:{d[0]},{d[1]}' for d, label in ((RM, 'R'), (IN, 'I')) if d[0]),
+                    diff=opcodes)

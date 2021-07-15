@@ -21,6 +21,8 @@ class IRsStatistics(BaseWorkflow):
         return params
 
     def _actions(self):
+        from ..chloroplast.irs.analyse_irs import METHODS_USE_SEQUENCES, METHODS_SEPARATE_PATH
+
         taxons = ' '.join(f'-t {t}' for t in self.parameters['taxons'].split(','))
         plastids = '-P' if self.parameters['plastids'] else ''
         if max_update_date := self.parameters.get('max_update_date', ''):
@@ -30,23 +32,20 @@ class IRsStatistics(BaseWorkflow):
         actions = [('01_chloroplast_list', f"ncbi_chloroplast_list {taxons} {plastids} {max_update_date}")]
 
         # Collect data
-        seqs_methods = [m for m in methods if m == 'ncbi' or m.startswith('small_d')]
+        # Methods that use NCBI sequences from common step
+        stats = [f'-m {m}' for m in methods]
+        seqs_methods = [m for m in methods if m in METHODS_USE_SEQUENCES]
         seqs_methods = ' '.join(f'-s {m}' for m in seqs_methods)
         actions.append(('02_seqs', f"analyse_irs_collect_needed_data 01_chloroplast_list seqs {seqs_methods}"))
 
-        if 'ge_seq' in methods:
-            actions.append(('02_ge_seq', "analyse_irs_collect_needed_data 01_chloroplast_list ge_seq"))
-            actions.append(('03_ge_seq', "ge_seq 02_ge_seq"))
-
-        if 'chloe' in methods:
-            actions.append(('02_chloe', "analyse_irs_collect_needed_data 01_chloroplast_list chloe"))
-            actions.append(('03_chloe', "chloe 02_chloe"))
+        # Methods that use separate path to collect data
+        for m in methods:
+            if m in METHODS_SEPARATE_PATH:
+                stats.append(f'-{m[0]} 03_{m}')
+                actions.append((f'02_{m}', f"analyse_irs_collect_needed_data 01_chloroplast_list {m}"))
+                actions.append((f'03_{m}', f"{m} 02_{m}"))
 
         # Analysis
-        stats = [f'-m {m}' for m in methods]
-        for m in ('ge_seq', 'chloe'):
-            if m in methods:
-                stats.append(f'-{m[0]} 03_{m}')
         actions.append(('04_stats', f"analyse_irs 01_chloroplast_list 02_seqs {' '.join(stats)}"))
 
         # Summary, result, ...
