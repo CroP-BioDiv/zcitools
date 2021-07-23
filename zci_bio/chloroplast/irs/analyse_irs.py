@@ -8,8 +8,10 @@ from common_utils.value_data_types import sheets_2_excel
 from common_utils.properties_db import PropertiesDB
 from ..utils import cycle_distance_lt
 
-METHOD_NAMES = ('ncbi', 'ge_seq', 'small_d', 'small_d_P', 'small_d_D', 'small_d_all', 'chloe', 'chloroplot')
-METHODS_USE_SEQUENCES = ('ncbi', 'small_d', 'small_d_P', 'small_d_D', 'small_d_all', 'chloroplot')
+METHOD_NAMES = ('ncbi', 'ge_seq', 'small_d', 'small_d_P', 'small_d_D', 'small_d_all',
+                'chloe', 'chloroplot', 'pga', 'pga_sb', 'plann', 'plann_sb')
+METHODS_USE_SEQUENCES = ('ncbi', 'small_d', 'small_d_P', 'small_d_D', 'small_d_all', 'chloroplot',
+                         'pga', 'pga_sb', 'plann', 'plann_sb')
 METHODS_SEPARATE_PATH = ('ge_seq', 'chloe')
 _column_types_acc = [
     ('accession', 'seq_ident'), ('organism', 'str'), ('first_date', 'date'), ('length', 'int'), ('not_dna', 'int')]

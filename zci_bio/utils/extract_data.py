@@ -4,9 +4,11 @@ import difflib
 from datetime import datetime
 from Bio.SeqFeature import FeatureLocation, CompoundLocation
 from .entrez import Entrez
+from .diff_sequences import Diff
 from ..chloroplast.utils import find_chloroplast_irs
 from ..chloroplast.irs.small_d import small_d
 from ..chloroplast.irs.chloroplot import chloroplot as chloroplot_ann
+from ..chloroplast.irs.self_blast import self_blast
 
 
 def with_seq(func):
@@ -56,6 +58,9 @@ class ExtractData:
     def __init__(self, properties_db=None, sequences_step=None):
         self.properties_db = properties_db
         self.sequences_step = sequences_step
+
+    def _seq_filename(self, seq_ident):
+        return os.path.abspath(self.sequences_step.get_sequence_filename(seq_ident))
 
     # Extract and fetch methods
     @with_seq
@@ -120,7 +125,15 @@ class ExtractData:
 
     @with_seq_ident
     def chloroplot(self, seq_ident):
-        return chloroplot_ann(os.path.abspath(self.sequences_step.get_sequence_filename(seq_ident)))
+        return chloroplot_ann(self._seq_filename(seq_ident))
+
+    @with_seq_ident
+    def pga_sb(self, seq_ident):
+        return self._self_blast('pga', seq_ident)
+
+    @with_seq_ident
+    def plann_sb(self, seq_ident):
+        return self._self_blast('plann', seq_ident)
 
     # Caching
     # Interface: method_name(seq_ident=None, seq=None)
@@ -134,6 +147,8 @@ class ExtractData:
     cache_annotation_small_d_all = cache_fetch('annotation small_d_all', small_d_all)
     cache_annotation_chloe = cache_fetch('annotation chloe', annotation)
     cache_annotation_chloroplot = cache_fetch('annotation chloroplot', chloroplot)
+    cache_annotation_pga_sb = cache_fetch('annotation pga_sb', pga_sb)
+    cache_annotation_plann_sb = cache_fetch('annotation plann_sb', plann_sb)
 
     # Bulk fetch
     # Interface: method_name(seq_idents, seq_step=None)
@@ -147,6 +162,8 @@ class ExtractData:
     cache_keys1_annotation_small_d_all = cache_fetch_keys1('annotation small_d_all', small_d_all)
     cache_keys1_annotation_chloe = cache_fetch_keys1('annotation chloe', annotation)
     cache_keys1_annotation_chloroplot = cache_fetch_keys1('annotation chloroplot', annotation)
+    cache_keys1_annotation_pga_sb = cache_fetch_keys1('annotation pga_sb', pga_sb)
+    cache_keys1_annotation_plann_sb = cache_fetch_keys1('annotation plann_sb', plann_sb)
 
     #
     def _seq_annotation(self, seq):
@@ -169,17 +186,25 @@ class ExtractData:
 
     def _small_d_annotation(self, seq, no_prepend_workaround=True, no_dna_fix=True):
         if res := small_d(seq, no_prepend_workaround=no_prepend_workaround, no_dna_fix=no_dna_fix):
-            ira, irb = res
-            seq_len = len(seq.seq)
-            d = dict(length=len(seq.seq),
-                     ira=[ira[0], ira[1]],
-                     irb=[irb[0], irb[1]])
-            #
-            ira = self._feature(seq, *ira, 1)
-            irb = self._feature(seq, *irb, -1)
-            d.update(self._irs_desc(seq, ira.extract(seq), irb.extract(seq), d))
-            return d
+            return self._from_indices(seq, *res)
         return dict(length=len(seq.seq))
+
+    def _self_blast(self, variant, seq_ident):
+        seq = self.sequences_step.get_sequence_record(seq_ident)
+        if irs := self_blast(variant, self._seq_filename(seq_ident)):
+            return self._from_indices(seq, *irs)
+        return dict(length=len(seq.seq))
+
+    def _from_indices(self, seq, ira, irb):
+        seq_len = len(seq.seq)
+        d = dict(length=len(seq.seq),
+                 ira=[ira[0], ira[1]],
+                 irb=[irb[0], irb[1]])
+        #
+        ira = self._feature(seq, *ira, 1)
+        irb = self._feature(seq, *irb, -1)
+        d.update(self._irs_desc(seq, ira.extract(seq), irb.extract(seq), d))
+        return d
 
     def _feature(self, seq, s, e, strand):
         if s < e:
@@ -202,26 +227,6 @@ class ExtractData:
             if irs_d['ira'] == data.get('ira') and irs_d['irb'] == data.get('irb'):
                 return dict(type=data['type'], diff=data['diff'])
 
-        # Quite slow method. Not unbearable, but slow.
-        # ToDo: possible speedup is to remove equal ends of sequences.
         print(f'diff {seq_ident}: lengths {len(ira)} and {len(irb)}')
-        diff = difflib.SequenceMatcher(a=ira, b=irb, autojunk=False)
-        opcodes = diff.get_opcodes()
-        # R, I -> [num blocks, num bps]
-        RM = [0, 0]
-        IN = [0, 0]
-        for x in opcodes:
-            print(x)
-            if x[0] == 'equal':
-                continue
-            if x[0] == 'replace':
-                c, bp = RM, (x[2] - x[1])
-            elif x[0] == 'delete':
-                c, bp = IN, (x[2] - x[1])
-            elif x[0] == 'insert':
-                c, bp = IN, (x[4] - x[3])
-            c[0] += 1
-            c[1] += bp
-
-        return dict(type=';'.join(f'{label}:{d[0]},{d[1]}' for d, label in ((RM, 'R'), (IN, 'I')) if d[0]),
-                    diff=opcodes)
+        diff = Diff(ira, irb)
+        return dict(type=diff.in_short(), diff=diff.get_opcodes())

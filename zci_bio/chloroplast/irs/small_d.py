@@ -1,8 +1,9 @@
+#!/usr/bin/env python3
+
 import os
 import re
 import tempfile
 import subprocess
-import tempfile
 from Bio import SeqIO, Seq
 
 """
