@@ -1,0 +1,104 @@
+#!/usr/bin/env python3
+
+import sys
+import os.path
+import shutil
+import tempfile
+import subprocess
+from Bio import SeqIO
+
+"""
+Note:
+Script sometimes crashes on working with temp files.
+Something like it removes temp files before calling blast.
+Workaround: repeat a call it more times of that kind of error.
+"""
+
+
+def remove_directory(_dir, create):
+    # assert not _dir.endswith("/") or _dir.endswith("\\"), _dir
+    _dir = os.path.normpath(_dir)
+
+    if os.path.isdir(_dir):
+        if sys.platform == "win32":
+            temp_path = _dir + "_"
+
+            if os.path.exists(temp_path):
+                remove_directory(temp_path, False)
+
+            try:
+                os.renames(_dir, temp_path)
+            except OSError as exception:
+                if exception.errno != errno.ENOENT:
+                    raise
+            else:
+                shutil.rmtree(temp_path)
+        else:
+            shutil.rmtree(_dir)
+
+    if create:
+        os.makedirs(_dir)
+
+
+def _loc(ir):
+    ir = ir.location.parts
+    assert len(ir) <= 2, ir
+    if ir[0].strand > 0:
+        return (int(ir[0].start), int(ir[-1].end))
+    return (int(ir[-1].start), int(ir[0].end))
+
+
+def pga(seq_filename, leave_tmp_file=False):
+    # Tmp directories
+    tmp_d = tempfile.gettempdir()
+    reference = os.path.join(tmp_d, 'pga', 'reference')
+    target = os.path.join(tmp_d, 'pga', 'target')
+    out = os.path.join(tmp_d, 'pga', 'out')
+    #
+    for d in (reference, target, out):
+        remove_directory(d, True)
+    # shutil.copyfile(seq_filename, os.path.join(reference, os.path.basename(seq_filename)))
+    # Remove reference features to make annotation faster
+    seq_rec = SeqIO.read(seq_filename, 'genbank')
+    seq_rec.features = []  # seq_rec.features[:8]
+    SeqIO.write([seq_rec], os.path.join(reference, os.path.basename(seq_filename)), 'genbank')
+    SeqIO.convert(seq_filename, 'genbank', os.path.join(target, 'x.fa'), 'fasta')
+
+    res_irs = None
+
+    # Run script
+    for _ in range(5):
+        with tempfile.TemporaryFile() as stderr:
+            subprocess.run(['PGA.pl', '-r', reference, '-t', target, '-o', out],
+                           check=True,
+                           stdout=subprocess.DEVNULL, stderr=stderr)
+            stderr.seek(0)
+            err = stderr.read().decode('utf-8')
+
+        # Read IRs
+        seq = SeqIO.read(os.path.join(out, 'x.gb'), 'genbank')
+        if rep_regs := [f for f in seq.features
+                        if f.type == 'repeat_region' and f.qualifiers.get('rpt_type', ('inverted',))[0] == 'inverted']:
+            if len(rep_regs) == 2:
+                ira, irb = rep_regs
+                res_irs = _loc(ira), _loc(irb)
+                break
+
+        if 'readline() on closed filehandle' not in err:
+            break
+
+    if not leave_tmp_file:
+        for d in (reference, target, out):
+            remove_directory(d, False)
+
+    return res_irs
+
+
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(description="Run PGA on given GenBank file.")
+    parser.add_argument('filename', help='Sequence GenBank filename')
+    parser.add_argument('-T', '--leave-tmp-file', action='store_true', help='Leave temporary file. For testing.')
+
+    params = parser.parse_args()
+    print(pga(params.filename, leave_tmp_file=params.leave_tmp_file))
