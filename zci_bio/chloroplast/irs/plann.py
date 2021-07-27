@@ -73,8 +73,7 @@ def plann(seq_filename, leave_tmp_file=False):
                 res_irs = (ira, irb) if (irb[0] - ira[1]) % seq_length < (ira[0] - irb[1]) % seq_length else (irb, ira)
 
     if not leave_tmp_file:
-        for d in (reference, target, out):
-            remove_directory(d, False)
+        remove_directory(tmp_plann, False)
 
     return res_irs
 

@@ -8,6 +8,8 @@ from .diff_sequences import Diff
 from ..chloroplast.utils import find_chloroplast_irs
 from ..chloroplast.irs.small_d import small_d
 from ..chloroplast.irs.chloroplot import chloroplot as chloroplot_ann
+from ..chloroplast.irs.pga import pga
+from ..chloroplast.irs.plann import plann
 from ..chloroplast.irs.self_blast import self_blast
 
 
@@ -27,25 +29,6 @@ def with_seq_ident(func):
         if not seq_ident:
             seq_ident = seq.name
         return func(self, seq_ident)
-    return func_wrapper
-
-
-# Note: these methods are not decorators, since wanted functionality depends on two parameters, not on any 'code'
-def cache_fetch(key, method):
-    def func_wrapper(self, seq_ident=None, seq=None):
-        if not seq_ident:
-            seq_ident = seq.name
-        return self.properties_db.fetch_property(seq_ident, key, method(self), seq_ident=seq_ident, seq=seq)
-    return func_wrapper
-
-
-def cache_fetch_keys1(key, method):
-    def func_wrapper(self, seq_idents, seq_step=None):
-        if not seq_step:
-            seq_step = self.sequences_step
-        sr = seq_step.get_sequence_record
-        return self.properties_db.fetch_properties_keys1(
-            seq_idents, key, lambda s: method(self, seq_ident=s, seq=sr(s)))
     return func_wrapper
 
 
@@ -105,7 +88,22 @@ class ExtractData:
 
     @with_seq
     def annotation(self, seq):
-        return self._seq_annotation(seq)
+        if irs := find_chloroplast_irs(seq, check_length=False):
+            ira, irb = irs
+            # To be sure!
+            ira_p = ira.location.parts
+            irb_p = irb.location.parts
+            d = dict(length=len(seq.seq),
+                     ira=[int(ira_p[0].start), int(ira_p[-1].end)],
+                     irb=[int(irb_p[0].start), int(irb_p[-1].end)])
+            #
+            ira_s = ira.extract(seq)
+            irb_s = irb.extract(seq)
+            if ira.strand == irb.strand:
+                irb_s = irb_s.reverse_complement()
+            d.update(self._irs_desc(seq, ira_s, irb_s, d))
+            return d
+        return dict(length=len(seq.seq))
 
     @with_seq
     def small_d(self, seq):
@@ -128,83 +126,51 @@ class ExtractData:
         return chloroplot_ann(self._seq_filename(seq_ident))
 
     @with_seq_ident
+    def pga(self, seq_ident):
+        return self._from_indices(
+            self.sequences_step.get_sequence_record(seq_ident),
+            pga(self._seq_filename(seq_ident)))
+
+    @with_seq_ident
     def pga_sb(self, seq_ident):
         return self._self_blast('pga', seq_ident)
+
+    @with_seq_ident
+    def plann(self, seq_ident):
+        return self._from_indices(
+            self.sequences_step.get_sequence_record(seq_ident),
+            plann(self._seq_filename(seq_ident)))
 
     @with_seq_ident
     def plann_sb(self, seq_ident):
         return self._self_blast('plann', seq_ident)
 
-    # Caching
-    # Interface: method_name(seq_ident=None, seq=None)
-    cache_genbank_data = cache_fetch('NCBI GenBank data', genbank_data)
-    cache_sra_count = cache_fetch('NCBI SRA count', sra_count)
-    cache_annotation_ncbi = cache_fetch('annotation ncbi', annotation)
-    cache_annotation_ge_seq = cache_fetch('annotation ge_seq', annotation)
-    cache_annotation_small_d = cache_fetch('annotation small_d', small_d)
-    cache_annotation_small_d_P = cache_fetch('annotation small_d_P', small_d_P)
-    cache_annotation_small_d_D = cache_fetch('annotation small_d_D', small_d_D)
-    cache_annotation_small_d_all = cache_fetch('annotation small_d_all', small_d_all)
-    cache_annotation_chloe = cache_fetch('annotation chloe', annotation)
-    cache_annotation_chloroplot = cache_fetch('annotation chloroplot', chloroplot)
-    cache_annotation_pga_sb = cache_fetch('annotation pga_sb', pga_sb)
-    cache_annotation_plann_sb = cache_fetch('annotation plann_sb', plann_sb)
-
-    # Bulk fetch
-    # Interface: method_name(seq_idents, seq_step=None)
-    cache_keys1_genbank_data = cache_fetch_keys1('NCBI GenBank data', genbank_data)
-    cache_keys1_sra_count = cache_fetch_keys1('NCBI SRA count', sra_count)
-    cache_keys1_annotation_ncbi = cache_fetch_keys1('annotation ncbi', annotation)
-    cache_keys1_annotation_ge_seq = cache_fetch_keys1('annotation ge_seq', annotation)
-    cache_keys1_annotation_small_d = cache_fetch_keys1('annotation small_d', small_d)
-    cache_keys1_annotation_small_d_P = cache_fetch_keys1('annotation small_d_P', small_d_P)
-    cache_keys1_annotation_small_d_D = cache_fetch_keys1('annotation small_d_D', small_d_D)
-    cache_keys1_annotation_small_d_all = cache_fetch_keys1('annotation small_d_all', small_d_all)
-    cache_keys1_annotation_chloe = cache_fetch_keys1('annotation chloe', annotation)
-    cache_keys1_annotation_chloroplot = cache_fetch_keys1('annotation chloroplot', annotation)
-    cache_keys1_annotation_pga_sb = cache_fetch_keys1('annotation pga_sb', pga_sb)
-    cache_keys1_annotation_plann_sb = cache_fetch_keys1('annotation plann_sb', plann_sb)
-
     #
-    def _seq_annotation(self, seq):
-        if irs := find_chloroplast_irs(seq, check_length=False):
-            ira, irb = irs
-            # To be sure!
-            ira_p = ira.location.parts
-            irb_p = irb.location.parts
-            d = dict(length=len(seq.seq),
-                     ira=[int(ira_p[0].start), int(ira_p[-1].end)],
-                     irb=[int(irb_p[0].start), int(irb_p[-1].end)])
-            #
-            ira_s = ira.extract(seq)
-            irb_s = irb.extract(seq)
-            if ira.strand == irb.strand:
-                irb_s = irb_s.reverse_complement()
-            d.update(self._irs_desc(seq, ira_s, irb_s, d))
-            return d
-        return dict(length=len(seq.seq))
-
     def _small_d_annotation(self, seq, no_prepend_workaround=True, no_dna_fix=True):
-        if res := small_d(seq, no_prepend_workaround=no_prepend_workaround, no_dna_fix=no_dna_fix):
-            return self._from_indices(seq, *res)
-        return dict(length=len(seq.seq))
+        return self._from_indices(
+            seq,
+            small_d(seq, no_prepend_workaround=no_prepend_workaround, no_dna_fix=no_dna_fix))
 
     def _self_blast(self, variant, seq_ident):
-        seq = self.sequences_step.get_sequence_record(seq_ident)
-        if irs := self_blast(variant, self._seq_filename(seq_ident)):
-            return self._from_indices(seq, *irs)
-        return dict(length=len(seq.seq))
+        return self._from_indices(
+            self.sequences_step.get_sequence_record(seq_ident),
+            self_blast(variant, self._seq_filename(seq_ident)))
 
-    def _from_indices(self, seq, ira, irb):
-        seq_len = len(seq.seq)
-        d = dict(length=len(seq.seq),
-                 ira=[ira[0], ira[1]],
-                 irb=[irb[0], irb[1]])
-        #
-        ira = self._feature(seq, *ira, 1)
-        irb = self._feature(seq, *irb, -1)
-        d.update(self._irs_desc(seq, ira.extract(seq), irb.extract(seq), d))
-        return d
+    #
+    def _from_indices(self, seq, irs):
+        if irs:
+            print(irs)
+            ira, irb = irs
+            seq_len = len(seq.seq)
+            d = dict(length=len(seq.seq),
+                     ira=[ira[0], ira[1]],
+                     irb=[irb[0], irb[1]])
+            #
+            ira = self._feature(seq, *ira, 1)
+            irb = self._feature(seq, *irb, -1)
+            d.update(self._irs_desc(seq, ira.extract(seq), irb.extract(seq), d))
+            return d
+        return dict(length=len(seq.seq))
 
     def _feature(self, seq, s, e, strand):
         if s < e:
@@ -230,3 +196,47 @@ class ExtractData:
         print(f'diff {seq_ident}: lengths {len(ira)} and {len(irb)}')
         diff = Diff(ira, irb)
         return dict(type=diff.in_short(), diff=diff.get_opcodes())
+
+
+# Add cache methods into ExtractData class
+# Note: these methods are not decorators, but quite similar
+def cache_fetch(key, method):
+    def func_wrapper(self, seq_ident=None, seq=None):
+        if not seq_ident:
+            seq_ident = seq.name
+        return self.properties_db.fetch_property(seq_ident, key, method(self), seq_ident=seq_ident, seq=seq)
+    return func_wrapper
+
+
+def cache_fetch_keys1(key, method):
+    def func_wrapper(self, seq_idents, seq_step=None):
+        if not seq_step:
+            seq_step = self.sequences_step
+        sr = seq_step.get_sequence_record
+        return self.properties_db.fetch_properties_keys1(
+            seq_idents, key, lambda s: method(self, seq_ident=s, seq=sr(s)))
+    return func_wrapper
+
+
+for key, m_sufix, cls_method in (
+        ('NCBI GenBank data', 'genbank_data', ExtractData.genbank_data),
+        ('NCBI SRA count', 'sra_count', ExtractData.sra_count),
+        ('annotation ncbi', 'annotation_ncbi', ExtractData.annotation),
+        ('annotation ge_seq', 'annotation_ge_seq', ExtractData.annotation),
+        ('annotation small_d', 'annotation_small_d', ExtractData.small_d),
+        ('annotation small_d_P', 'annotation_small_d_P', ExtractData.small_d_P),
+        ('annotation small_d_D', 'annotation_small_d_D', ExtractData.small_d_D),
+        ('annotation small_d_all', 'annotation_small_d_all', ExtractData.small_d_all),
+        ('annotation chloe', 'annotation_chloe', ExtractData.annotation),
+        ('annotation chloroplot', 'annotation_chloroplot', ExtractData.chloroplot),
+        ('annotation pga', 'annotation_pga', ExtractData.pga),
+        ('annotation pga_sb', 'annotation_pga_sb', ExtractData.pga_sb),
+        ('annotation plann', 'annotation_plann', ExtractData.plann),
+        ('annotation plann_sb', 'annotation_plann_sb', ExtractData.plann_sb),
+        ):
+    # Caching
+    # Interface: method_name(seq_ident=None, seq=None)
+    setattr(ExtractData, f'cache_{m_sufix}', cache_fetch(key, cls_method))
+    # Bulk fetch
+    # Interface: method_name(seq_idents, seq_step=None)
+    setattr(ExtractData, f'cache_keys1_{m_sufix}', cache_fetch_keys1(key, cls_method))
