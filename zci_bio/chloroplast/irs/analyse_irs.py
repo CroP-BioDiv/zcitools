@@ -43,13 +43,22 @@ class _ByYear:
     def get_rows(self, methods):
         by = self.by_year.get
         rows = []
+        sum_all = 0
+        sum_m = dict((m, 0) for m in methods)
         for y in sorted(self.all_years):
             n_all = by((y, None), 0)
+            sum_all += n_all
             row = [y, n_all]
             for m in methods:
                 nm = by((y, m), 0)
+                sum_m[m] += nm
                 row.extend([nm, round(100 * (nm / n_all), 2) if n_all else 0])
             rows.append(row)
+        #
+        sum_row = ['all', sum_all]
+        for m in methods:
+            sum_row.extend([sum_m[m], round(100 * (sum_m[m] / sum_all), 2) if sum_all else 0])
+        rows.append(sum_row)
         return rows
 
     def get_columns(self, methods):
