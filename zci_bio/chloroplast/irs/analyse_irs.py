@@ -154,9 +154,58 @@ def analyse_irs(step_data, table_step, seqs_step, ge_seq_step, chloe_step, metho
     _excel_columns = [c for c, _ in (_column_types_acc + _column_types_method[1:])]
     sheets = [(m, _excel_columns, rows) for m, rows in zip(methods, per_method)]
     sheets.append(('By year', by_first_date_year.get_columns(methods), by_first_date_year.get_rows(methods)))
+    sheets.append((
+      'Comparisons',
+      [''] + methods[1:],
+      [[m] + [''] * idx +
+       [_cm(acc_data, m, x) for x in methods[idx + 1:]] for idx, m in enumerate(methods[:-1])]))
     sheets_2_excel('chloroplast_irs_analysis.xls', sheets)
 
     return step
+
+
+def _cm(acc_data, m1, m2):
+    c = _compare_methods(acc_data, m1, m2)
+    return ','.join(str(c[k]) for k in ('same', 'in_1', 'in_2', 'longer_1', 'longer_2', 'not_same'))
+
+
+def _compare_methods(acc_data, m1, m2):
+    comp = dict(same=0, in_1=0, in_2=0, longer_1=0, longer_2=0, not_same=0)
+    for data in acc_data.values():
+        d1 = data[m1]
+        d2 = data[m2]
+        if d1 == d2:
+            comp['same'] += 1
+        elif 'ira' in d1:
+            if 'ira' in d2:
+                # larger_1=0, larger_2=0, not_same=0
+                if _longer(d1, d2):
+                    comp['longer_1'] += 1
+                elif _longer(d2, d1):
+                    comp['longer_2'] += 1
+                else:
+                    comp['not_same'] += 1
+            else:
+                comp['in_1'] += 1
+        elif 'ira' in d2:
+            comp['in_2'] += 1
+    return comp
+
+
+def _longer(d1, d2):
+    # Returns True if d1 IRs have larger span than d2
+    return _longer_ir(d1['ira'], d2['ira']) and _longer_ir(d1['irb'], d2['irb'])
+
+
+def _longer_ir(ir1, ir2):
+    s1, e1 = ir1
+    s2, e2 = ir2
+    if s1 < e1:
+        return s1 <= s2 < e2 <= e1
+    # s1 > e1 -> wraps
+    if s2 < e2:
+        return s1 <= s2
+    return s1 <= s2 and e2 <= e1
 
 
 def _irs_2_row(irs_data):
