@@ -6,11 +6,6 @@ from Bio.SeqFeature import FeatureLocation, CompoundLocation
 from .entrez import Entrez
 from .diff_sequences import Diff
 from ..chloroplast.utils import find_chloroplast_irs
-from ..chloroplast.irs.small_d import small_d
-from ..chloroplast.irs.chloroplot import chloroplot as chloroplot_ann
-from ..chloroplast.irs.pga import pga
-from ..chloroplast.irs.plann import plann
-from ..chloroplast.irs.self_blast import self_blast
 
 
 def with_seq(func):
@@ -123,10 +118,12 @@ class ExtractData:
 
     @with_seq_ident
     def chloroplot(self, seq_ident):
+        from ..chloroplast.irs.chloroplot import chloroplot as chloroplot_ann
         return chloroplot_ann(self._seq_filename(seq_ident))
 
     @with_seq_ident
     def pga(self, seq_ident):
+        from ..chloroplast.irs.pga import pga
         return self._from_indices(
             self.sequences_step.get_sequence_record(seq_ident),
             pga(self._seq_filename(seq_ident)))
@@ -137,6 +134,7 @@ class ExtractData:
 
     @with_seq_ident
     def plann(self, seq_ident):
+        from ..chloroplast.irs.plann import plann
         return self._from_indices(
             self.sequences_step.get_sequence_record(seq_ident),
             plann(self._seq_filename(seq_ident)))
@@ -145,13 +143,22 @@ class ExtractData:
     def plann_sb(self, seq_ident):
         return self._self_blast('plann', seq_ident)
 
+    @with_seq_ident
+    def org_annotate(self, seq_ident):
+        from ..chloroplast.irs.org_annotate import org_annotate
+        return self._from_indices(
+            self.sequences_step.get_sequence_record(seq_ident),
+            org_annotate(self._seq_filename(seq_ident)))
+
     #
     def _small_d_annotation(self, seq, no_prepend_workaround=True, no_dna_fix=True):
+        from ..chloroplast.irs.small_d import small_d
         return self._from_indices(
             seq,
             small_d(seq, no_prepend_workaround=no_prepend_workaround, no_dna_fix=no_dna_fix))
 
     def _self_blast(self, variant, seq_ident):
+        from ..chloroplast.irs.self_blast import self_blast
         return self._from_indices(
             self.sequences_step.get_sequence_record(seq_ident),
             self_blast(variant, self._seq_filename(seq_ident)))
@@ -233,6 +240,7 @@ for key, m_sufix, cls_method in (
         ('annotation pga_sb', 'annotation_pga_sb', ExtractData.pga_sb),
         ('annotation plann', 'annotation_plann', ExtractData.plann),
         ('annotation plann_sb', 'annotation_plann_sb', ExtractData.plann_sb),
+        ('annotation org_annotate', 'annotation_org_annotate', ExtractData.org_annotate),
         ):
     # Caching
     # Interface: method_name(seq_ident=None, seq=None)
