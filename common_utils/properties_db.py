@@ -91,7 +91,7 @@ class PropertiesDB:
 
     def fetch_properties_keys1(self, keys1, key2, _callable, *args, **kwargs):
         data = self.get_properties_keys1(keys1, key2)
-        for k1 in (set(keys1) - set(data.keys())):
+        for k1 in sorted(set(keys1) - set(data.keys())):
             data[k1] = vals = _callable(k1, *args, **kwargs)
             if vals is not None:
                 self.set_property(k1, key2, vals)

@@ -1,5 +1,6 @@
 import datetime
 from step_project.base_workflow import BaseWorkflow
+from common_utils.exceptions import ZCItoolsValueError
 
 
 class IRsStatistics(BaseWorkflow):
@@ -12,9 +13,21 @@ class IRsStatistics(BaseWorkflow):
 
     @staticmethod
     def format_parameters(params):
+        # Methods
         from ..chloroplast.irs.analyse_irs import METHOD_NAMES
-        params['methods'] = params['methods'].lower().split(',')
-        assert all(m in METHOD_NAMES for m in params['methods']), (params['methods'], METHOD_NAMES)
+        methods = set()
+        not_known_methods = set()
+        for m in params['methods'].lower().split(','):
+            if m == 'all':
+                methods.update(METHOD_NAMES)
+            elif m in METHOD_NAMES:
+                methods.add(m)
+            else:
+                not_known_methods.add(m)
+        if not_known_methods:
+            raise ZCItoolsValueError(f'Not know method(s): {", ".join(not_known_methods)}!')
+        params['methods'] = methods
+        #
         params['plastids'] = int(params.get('plastids', 0))
         if 'max_update_date' in params:
             params['max_update_date'] = datetime.date.fromisoformat(params['max_update_date'])
@@ -46,7 +59,12 @@ class IRsStatistics(BaseWorkflow):
                 actions.append((f'03_{m}', f"{m} 02_{m}"))
 
         # Analysis
-        actions.append(('04_stats', f"analyse_irs 01_chloroplast_list 02_seqs {' '.join(stats)}"))
+        cmd = f"analyse_irs 01_chloroplast_list 02_seqs {' '.join(stats)}"
+        if ranks := self.parameters.get('taxa_ranks'):
+            cmd += ' ' + ' '.join(f'-r {r}' for r in ranks)
+        if names := self.parameters.get('taxa_names'):
+            cmd += ' ' + ' '.join(f'-n {n}' for n in names)
+        actions.append(('04_stats', cmd))
 
         # Summary, result, ...
         return actions

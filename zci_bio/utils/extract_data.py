@@ -119,7 +119,9 @@ class ExtractData:
     @with_seq_ident
     def chloroplot(self, seq_ident):
         from ..chloroplast.irs.chloroplot import chloroplot as chloroplot_ann
-        return chloroplot_ann(self._seq_filename(seq_ident))
+        return self._from_indices(
+            self.sequences_step.get_sequence_record(seq_ident),
+            chloroplot_ann(self._seq_filename(seq_ident)))
 
     @with_seq_ident
     def pga(self, seq_ident):
@@ -198,9 +200,15 @@ class ExtractData:
         seq_ident = seq.name.split('.')[0]
         for _, data in self.properties_db.get_properties_key2_like(seq_ident, 'annotation %').items():
             if irs_d['ira'] == data.get('ira') and irs_d['irb'] == data.get('irb'):
-                return dict(type=data['type'], diff=data['diff'])
+                return dict(type=data['type'], diff=data['diff']) if 'diff' in data else dict(type=data['type'])
 
         print(f'diff {seq_ident}: lengths {len(ira)} and {len(irb)}')
+        # Problem:
+        # Original NCBI annotation of NC_031898, has IR lengths 23595 and 74817.
+        # IRn is annotated as complement(10932..85748). It should be 85751..109342.
+        # Copy/paste error?
+        if len(irb) > 3 * len(ira) / 2 or len(ira) > 3 * len(irb) / 2:
+            return dict(type='???')
         diff = Diff(ira, irb)
         return dict(type=diff.in_short(), diff=diff.get_opcodes())
 

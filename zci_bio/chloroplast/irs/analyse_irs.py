@@ -4,6 +4,7 @@ from step_project.common.table.steps import TableStep
 from zci_bio.sequences.steps import SequencesStep
 from zci_bio.sequences.fetch import do_fetch_sequences
 from zci_bio.utils.extract_data import ExtractData
+from zci_bio.utils.stat_by_taxonomy import StatByTaxonomy
 from common_utils.value_data_types import sheets_2_excel
 from common_utils.properties_db import PropertiesDB
 from ..utils import cycle_distance_lt
@@ -19,6 +20,23 @@ _column_types_method = [
     ('method', 'str'),
     ('IRa_start', 'int'), ('IRa_end', 'int'), ('IRb_start', 'int'), ('IRb_end', 'int'),
     ('IRa_len', 'int'), ('IRb_len', 'int'), ('diff_len', 'int'), ('type', 'str')]
+
+
+class _ByTaxonomy(StatByTaxonomy):
+    def __init__(self, methods, taxids, ranks=None, names=None):
+        super().__init__(taxids, ranks=ranks, names=names)
+        self.methods = methods
+
+    def stat_attrs(self):
+        return self.methods
+
+    def excel_columns(self):
+        return self.methods
+
+    def _add(self, node, methods_data):
+        for method, data in methods_data.items():
+            if 'ira' in data:
+                node[method] += 1
 
 
 class _ByYear:
@@ -99,7 +117,7 @@ def analyse_irs_collect_needed_data(step_data, table_step, method, seqs_methods,
     return step
 
 
-def analyse_irs(step_data, table_step, seqs_step, ge_seq_step, chloe_step, methods):
+def analyse_irs(step_data, table_step, seqs_step, ge_seq_step, chloe_step, methods, taxa_ranks, taxa_names):
     step = TableStep(table_step.project, step_data, remove_data=True)
     table_step.propagate_step_name_prefix(step)
 
@@ -128,6 +146,11 @@ def analyse_irs(step_data, table_step, seqs_step, ge_seq_step, chloe_step, metho
     table_rows = []
     per_method = [[] for _ in methods]
     by_first_date_year = _ByYear()
+    if taxa_ranks or taxa_names:
+        nc_2_taxid = table_step.mapping_between_columns('ncbi_ident', 'tax_id')
+        by_taxonomy = _ByTaxonomy(methods, nc_2_taxid.values(), ranks=taxa_ranks, names=taxa_names)
+    else:
+        by_taxonomy = None
     n_acc_c = len(_column_types_acc)
     for seq_ident, data in acc_data.items():
         gb = gb_data[seq_ident]
@@ -142,6 +165,9 @@ def analyse_irs(step_data, table_step, seqs_step, ge_seq_step, chloe_step, metho
             if m_data and 'ira' in m_data:
                 by_first_date_year.add_method(method)
         table_rows.append(row)
+        #
+        if by_taxonomy:
+            by_taxonomy.add(nc_2_taxid[seq_ident], dict((m, data[m]) for m in methods))
 
     # Table data
     columns = []
@@ -153,12 +179,14 @@ def analyse_irs(step_data, table_step, seqs_step, ge_seq_step, chloe_step, metho
     # Excel: method sheets
     _excel_columns = [c for c, _ in (_column_types_acc + _column_types_method[1:])]
     sheets = [(m, _excel_columns, rows) for m, rows in zip(methods, per_method)]
-    sheets.append(('By year', by_first_date_year.get_columns(methods), by_first_date_year.get_rows(methods)))
     sheets.append((
       'Comparisons',
       [''] + methods[1:],
       [[m] + [''] * idx +
        [_cm(acc_data, m, x) for x in methods[idx + 1:]] for idx, m in enumerate(methods[:-1])]))
+    sheets.append(('By year', by_first_date_year.get_columns(methods), by_first_date_year.get_rows(methods)))
+    if by_taxonomy:
+        sheets.append(by_taxonomy.export_sheet('By taxonomy', 0))
     sheets_2_excel('chloroplast_irs_analysis.xls', sheets)
 
     return step

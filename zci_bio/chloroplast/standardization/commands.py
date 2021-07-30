@@ -117,8 +117,8 @@ class ChloroplastNormalizationStatByTaxonomy(ProjectCommand):
     @staticmethod
     def set_arguments(parser):
         parser.add_argument('step', help='Input chloroplast analyses step')
-        parser.add_argument('-r', '--ranks', help='Taxa ranks to group by. Format "rank1:rank2".')
-        parser.add_argument('-n', '--names', help='Taxa names to group by. Format "name1:name2".')
+        parser.add_argument('-r', '--ranks', action='append', help='Taxa ranks to group by.')
+        parser.add_argument('-n', '--names', action='append', help='Taxa names to group by.')
         parser.add_argument('-m', '--minimum-sequences', type=int, help='Minimum sequences to report')
         parser.add_argument('-o', '--output-excel', help='Excel output filename')
         parser.add_argument('-c', '--print-output', action='store_true',
@@ -133,13 +133,13 @@ class ChloroplastNormalizationStatByTaxonomy(ProjectCommand):
     def run(self):
         from .stats import statistics_by_taxa
         args = self.args
-        taxa_names = args.names.split(':') if args.names else []
+        taxa_names = args.names or []
         pie_chart_names = list(args.pie_chart_name) if args.pie_chart_name else []
         if args.pie_chart_all_names:
             pie_chart_names.extend(taxa_names)
         statistics_by_taxa(self.project,
                            self.project.read_step(args.step, check_data_type='table'),
-                           args.ranks.split(':') if args.ranks else None,
+                           args.ranks or None,
                            taxa_names,
                            args.minimum_sequences,
                            args.output_excel,

@@ -44,6 +44,8 @@ class IRsAnalyse(CreateStepFromStepCommand):
         parser.add_argument(
             '-m', '--methods', action='append', choices=METHOD_NAMES,
             help=f'Method(s) to check. Available methods: {", ".join(METHOD_NAMES)}')
+        parser.add_argument('-r', '--ranks', action='append', help='Taxa ranks to group by.')
+        parser.add_argument('-n', '--names', action='append', help='Taxa names to group by.')
 
     def run(self, step_data):
         from .analyse_irs import analyse_irs
@@ -58,4 +60,5 @@ class IRsAnalyse(CreateStepFromStepCommand):
         chloe = self.project.read_complete_step(args.chloe_step, check_data_type='annotations', no_check=True) \
             if args.chloe_step else None
 
-        return analyse_irs(step_data, self._input_step(no_data_check=True), seqs, ge_seq, chloe, args.methods)
+        return analyse_irs(step_data, self._input_step(no_data_check=True), seqs, ge_seq, chloe,
+                           args.methods, args.ranks, args.names)
