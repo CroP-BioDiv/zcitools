@@ -40,7 +40,7 @@ class Diff_difflib:
         RM = [0, 0]
         IN = [0, 0]
         for x in self.opcodes:
-            print(x)
+            print('  ', x)
             if x[0] == 'equal':
                 continue
             if x[0] == 'replace':
@@ -106,6 +106,16 @@ else:
     Diff = Diff_difflib
 
 
+def diff_check_memory(a, b):
+    if Levenshtein:
+        # Note: Levenshtein methods use much more memory!!!
+        from common_utils.resources import virtual_memory
+        if 10 * len(a) * len(b) > 0.9 * virtual_memory:
+            print('Using difflib!')
+            return Diff_difflib(a, b)
+        return Diff_Levenshtein(a, b)
+
+
 if __name__ == '__main__':
     # Test by checking IRs for given GenBank file
     import sys
@@ -119,7 +129,20 @@ if __name__ == '__main__':
         if ira.strand == irb.strand:
             irb_s = irb_s.reverse_complement()
         # diff = Diff_edlib(str(ira_s.seq), str(irb_s.seq))
-        diff = Diff_Levenshtein(str(ira_s.seq), str(irb_s.seq))
+        ira = str(ira_s.seq)
+        irb = str(irb_s.seq)
+        print(f'Lengths {len(ira)} and {len(irb)}')
+        diff_cls = Diff
+        if len(sys.argv) > 2:
+            char = sys.argv[2][0].upper()
+            if char == 'L':
+                diff_cls = Diff_Levenshtein
+            elif char == 'E':
+                diff_cls = Diff_edlib
+            elif char == 'D':
+                diff_cls = Diff_difflib
+        print('cls:', diff_cls.__name__)
+        diff = diff_cls(ira, irb)
         print(diff.get_opcodes())
     else:
         print('No IRs found!!!')

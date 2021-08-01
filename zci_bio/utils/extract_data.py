@@ -4,26 +4,28 @@ import difflib
 from datetime import datetime
 from Bio.SeqFeature import FeatureLocation, CompoundLocation
 from .entrez import Entrez
-from .diff_sequences import Diff
+from .diff_sequences import diff_check_memory
 from ..chloroplast.utils import find_chloroplast_irs
 
 
 def with_seq(func):
     @wraps(func)
-    def func_wrapper(self, seq_ident=None, seq=None):
+    def func_wrapper(self, seq_ident=None, seq=None, key=None):
         if seq is None:
             assert seq_ident
-            seq = self.sequences_step.get_sequence_record(seq_ident)
-        return func(self, seq)
+            seq = self.sequences_step.get_sequence_record(seq_ident, cache=False)
+        if not seq_ident:
+            seq_ident = seq.name
+        return func(self, seq, seq_ident, key)
     return func_wrapper
 
 
 def with_seq_ident(func):
     @wraps(func)
-    def func_wrapper(self, seq_ident=None, seq=None):
+    def func_wrapper(self, seq_ident=None, seq=None, key=None):
         if not seq_ident:
             seq_ident = seq.name
-        return func(self, seq_ident)
+        return func(self, seq_ident, key)
     return func_wrapper
 
 
@@ -42,7 +44,7 @@ class ExtractData:
 
     # Extract and fetch methods
     @with_seq
-    def genbank_data(self, seq):
+    def genbank_data(self, seq, seq_ident, key):
         annotations = seq.annotations
 
         vals = dict(length=len(seq.seq))
@@ -71,7 +73,7 @@ class ExtractData:
         return vals
 
     @with_seq
-    def sra_count(self, seq):
+    def sra_count(self, seq, seq_ident, key):
         vals_sra = dict()
         for x in seq.dbxrefs:  # format ['BioProject:PRJNA400982', 'BioSample:SAMN07225454'
             if x.startswith('BioProject:'):
@@ -82,7 +84,7 @@ class ExtractData:
         return vals_sra
 
     @with_seq
-    def annotation(self, seq):
+    def annotation(self, seq, seq_ident, key):
         if irs := find_chloroplast_irs(seq, check_length=False):
             ira, irb = irs
             # To be sure!
@@ -96,79 +98,80 @@ class ExtractData:
             irb_s = irb.extract(seq)
             if ira.strand == irb.strand:
                 irb_s = irb_s.reverse_complement()
-            d.update(self._irs_desc(seq, ira_s, irb_s, d))
-            return d
+            if desc := self._irs_desc(seq, seq_ident, key, ira_s, irb_s, d):
+                d.update(desc)
+                return d
+            return None
         return dict(length=len(seq.seq))
 
     @with_seq
-    def small_d(self, seq):
-        return self._small_d_annotation(seq, no_prepend_workaround=True, no_dna_fix=True)
+    def small_d(self, seq, seq_ident, key):
+        return self._small_d_annotation(seq, seq_ident, key, no_prepend_workaround=True, no_dna_fix=True)
 
     @with_seq
-    def small_d_P(self, seq):
-        return self._small_d_annotation(seq, no_prepend_workaround=False, no_dna_fix=True)
+    def small_d_P(self, seq, seq_ident, key):
+        return self._small_d_annotation(seq, seq_ident, key, no_prepend_workaround=False, no_dna_fix=True)
 
     @with_seq
-    def small_d_D(self, seq):
-        return self._small_d_annotation(seq, no_prepend_workaround=True, no_dna_fix=False)
+    def small_d_D(self, seq, seq_ident, key):
+        return self._small_d_annotation(seq, seq_ident, key, no_prepend_workaround=True, no_dna_fix=False)
 
     @with_seq
-    def small_d_all(self, seq):
-        return self._small_d_annotation(seq, no_prepend_workaround=False, no_dna_fix=False)
+    def small_d_all(self, seq, seq_ident, key):
+        return self._small_d_annotation(seq, seq_ident, key, no_prepend_workaround=False, no_dna_fix=False)
 
     @with_seq_ident
-    def chloroplot(self, seq_ident):
+    def chloroplot(self, seq_ident, key):
         from ..chloroplast.irs.chloroplot import chloroplot as chloroplot_ann
         return self._from_indices(
-            self.sequences_step.get_sequence_record(seq_ident),
+            self.sequences_step.get_sequence_record(seq_ident, cache=False), seq_ident, key,
             chloroplot_ann(self._seq_filename(seq_ident)))
 
     @with_seq_ident
-    def pga(self, seq_ident):
+    def pga(self, seq_ident, key):
         from ..chloroplast.irs.pga import pga
         return self._from_indices(
-            self.sequences_step.get_sequence_record(seq_ident),
+            self.sequences_step.get_sequence_record(seq_ident, cache=False), seq_ident, key,
             pga(self._seq_filename(seq_ident)))
 
     @with_seq_ident
-    def pga_sb(self, seq_ident):
-        return self._self_blast('pga', seq_ident)
+    def pga_sb(self, seq_ident, key):
+        return self._self_blast('pga', seq_ident, key)
 
     @with_seq_ident
-    def plann(self, seq_ident):
+    def plann(self, seq_ident, key):
         from ..chloroplast.irs.plann import plann
         return self._from_indices(
-            self.sequences_step.get_sequence_record(seq_ident),
+            self.sequences_step.get_sequence_record(seq_ident, cache=False), seq_ident, key,
             plann(self._seq_filename(seq_ident)))
 
     @with_seq_ident
-    def plann_sb(self, seq_ident):
-        return self._self_blast('plann', seq_ident)
+    def plann_sb(self, seq_ident, key):
+        return self._self_blast('plann', seq_ident, key)
 
     @with_seq_ident
-    def org_annotate(self, seq_ident):
+    def org_annotate(self, seq_ident, key):
         from ..chloroplast.irs.org_annotate import org_annotate
         return self._from_indices(
-            self.sequences_step.get_sequence_record(seq_ident),
+            self.sequences_step.get_sequence_record(seq_ident, cache=False), seq_ident, key,
             org_annotate(self._seq_filename(seq_ident)))
 
     #
-    def _small_d_annotation(self, seq, no_prepend_workaround=True, no_dna_fix=True):
+    def _small_d_annotation(self, seq, seq_ident, key, no_prepend_workaround=True, no_dna_fix=True):
         from ..chloroplast.irs.small_d import small_d
         return self._from_indices(
-            seq,
+            seq, seq_ident, key,
             small_d(seq, no_prepend_workaround=no_prepend_workaround, no_dna_fix=no_dna_fix))
 
-    def _self_blast(self, variant, seq_ident):
+    def _self_blast(self, variant, seq_ident, key):
         from ..chloroplast.irs.self_blast import self_blast
         return self._from_indices(
-            self.sequences_step.get_sequence_record(seq_ident),
+            self.sequences_step.get_sequence_record(seq_ident, cache=False), seq_ident, key,
             self_blast(variant, self._seq_filename(seq_ident)))
 
     #
-    def _from_indices(self, seq, irs):
+    def _from_indices(self, seq, seq_ident, key, irs):
         if irs:
-            print(irs)
             ira, irb = irs
             seq_len = len(seq.seq)
             d = dict(length=len(seq.seq),
@@ -177,8 +180,10 @@ class ExtractData:
             #
             ira = self._feature(seq, *ira, 1)
             irb = self._feature(seq, *irb, -1)
-            d.update(self._irs_desc(seq, ira.extract(seq), irb.extract(seq), d))
-            return d
+            if desc := self._irs_desc(seq, seq_ident, key, ira.extract(seq), irb.extract(seq), d):
+                d.update(desc)
+                return d
+            return None
         return dict(length=len(seq.seq))
 
     def _feature(self, seq, s, e, strand):
@@ -187,12 +192,12 @@ class ExtractData:
         return CompoundLocation([FeatureLocation(s, len(seq.seq), strand=strand),
                                  FeatureLocation(0, e, strand=strand)])
 
-    def _irs_desc(self, seq, ira, irb, irs_d):
+    def _irs_desc(self, seq, seq_ident, key, ira, irb, irs_d):
         ira = str(ira.seq)
         irb = str(irb.seq)
-        # print(len(ira), len(irb))
-        # print('  ira', ira[:20], ira[-20:])
-        # print('  irb', irb[:20], irb[-20:])
+        print(f'{key.split(" ", 1)[1]} {seq_ident}: {len(ira)}, {len(irb)}: {irs_d["ira"]}, {irs_d["irb"]}')
+        # if len(ira) > 30000 or len(irb) > 30000:
+        #     return  # Hack: for now
         if ira == irb:
             return dict(type='+')
 
@@ -200,16 +205,17 @@ class ExtractData:
         seq_ident = seq.name.split('.')[0]
         for _, data in self.properties_db.get_properties_key2_like(seq_ident, 'annotation %').items():
             if irs_d['ira'] == data.get('ira') and irs_d['irb'] == data.get('irb'):
+                print(f'  found diff: {data["type"]}')
                 return dict(type=data['type'], diff=data['diff']) if 'diff' in data else dict(type=data['type'])
 
-        print(f'diff {seq_ident}: lengths {len(ira)} and {len(irb)}')
         # Problem:
         # Original NCBI annotation of NC_031898, has IR lengths 23595 and 74817.
         # IRn is annotated as complement(10932..85748). It should be 85751..109342.
         # Copy/paste error?
         if len(irb) > 3 * len(ira) / 2 or len(ira) > 3 * len(irb) / 2:
             return dict(type='???')
-        diff = Diff(ira, irb)
+        print(f'  calculate diff')
+        diff = diff_check_memory(ira, irb)
         return dict(type=diff.in_short(), diff=diff.get_opcodes())
 
 
@@ -219,7 +225,7 @@ def cache_fetch(key, method):
     def func_wrapper(self, seq_ident=None, seq=None):
         if not seq_ident:
             seq_ident = seq.name
-        return self.properties_db.fetch_property(seq_ident, key, method(self), seq_ident=seq_ident, seq=seq)
+        return self.properties_db.fetch_property(seq_ident, key, method(self), seq_ident=seq_ident, seq=seq, key=key)
     return func_wrapper
 
 
@@ -229,7 +235,7 @@ def cache_fetch_keys1(key, method):
             seq_step = self.sequences_step
         sr = seq_step.get_sequence_record
         return self.properties_db.fetch_properties_keys1(
-            seq_idents, key, lambda s: method(self, seq_ident=s, seq=sr(s)))
+            seq_idents, key, lambda s: method(self, seq_ident=s, seq=sr(s, cache=False), key=key))
     return func_wrapper
 
 

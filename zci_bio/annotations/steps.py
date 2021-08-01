@@ -3,7 +3,6 @@ from collections import defaultdict, Counter
 from step_project.base_step import Step
 from common_utils.misc import sets_equal
 from common_utils.show import print_table
-from common_utils.cache import cache_args
 from common_utils.file_utils import silent_remove_file
 from ..utils.import_methods import import_bio_seq_io
 from ..utils.helpers import feature_qualifiers_to_desc, feature_location_desc, concatenate_sequences, fix_sequence
@@ -24,6 +23,7 @@ Annotations are stored:
         self._sequences = set()  # seq_ident
         if type_description:
             self._sequences.update(type_description['sequences'])
+        self._cached_seq_recs = dict()
 
     def _check_data(self):
         exist_seq_idents = set(seq_ident for seq_ident, _ in self._iterate_records())
@@ -58,12 +58,15 @@ Annotations are stored:
     def get_sequence_filename(self, seq_ident):
         return self.step_file(seq_ident + '.gb')
 
-    @cache_args
-    def get_sequence_record(self, seq_ident):
-        with open(self.get_sequence_filename(seq_ident), 'r') as in_s:
-            seq_record = import_bio_seq_io().read(in_s, 'genbank')
-            assert seq_ident == seq_record.id.split('.', 1)[0], (seq_ident, seq_record.id)
-            return fix_sequence(seq_record)
+    def get_sequence_record(self, seq_ident, cache=True):
+        if not (seq_rec := self._cached_seq_recs.get(seq_ident)):
+            with open(self.get_sequence_filename(seq_ident), 'r') as in_s:
+                seq_record = import_bio_seq_io().read(in_s, 'genbank')
+                assert seq_ident == seq_record.id.split('.', 1)[0], (seq_ident, seq_record.id)
+                seq_rec = fix_sequence(seq_record)
+                if cache:
+                    self._cached_seq_recs[seq_ident] = seq_rec
+        return seq_rec
 
     def get_sequence(self, seq_ident):
         return self.get_sequence_record(seq_ident).seq

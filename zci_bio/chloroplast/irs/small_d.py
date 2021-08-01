@@ -75,12 +75,16 @@ def small_d(seq_rec, working_dir=None, leave_tmp_file=False, no_prepend_workarou
 
         seq_length = len(seq_rec.seq)
         output = result.stdout.decode('utf-8')
-        irs = tuple(int(x) - offset for x in output.split(';')[:4])
-        ira, irb = _ir(seq_length, *irs[:2]), _ir(seq_length, *irs[2:])
+        # Note: output can contain lines of type
+        #   found illegal character N at position 1944
+        for line in output.splitlines():
+            if ';' in line:
+                irs = tuple(int(x) - offset for x in line.split(';')[:4])
+                ira, irb = _ir(seq_length, *irs[:2]), _ir(seq_length, *irs[2:])
 
-        # Check IR order
-        res_irs = (ira, irb) if (irb[0] - ira[1]) % seq_length < (ira[0] - irb[1]) % seq_length else (irb, ira)
-        break
+                # Check IR order
+                res_irs = (ira, irb) if (irb[0] - ira[1]) % seq_length < (ira[0] - irb[1]) % seq_length else (irb, ira)
+                break
 
     #
     if leave_tmp_file:

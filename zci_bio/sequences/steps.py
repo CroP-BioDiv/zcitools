@@ -28,6 +28,7 @@ Each sequence can be stored in one or more files in different formats.
             existing_seqs = self._find_existing_seqs()
             for seq_ident in type_description['sequences']:
                 self._sequences[seq_ident] = existing_seqs.get(seq_ident, [])
+        self._cached_seq_recs = dict()
 
     def _check_data(self):
         existing_seqs = self._find_existing_seqs()
@@ -83,7 +84,9 @@ Each sequence can be stored in one or more files in different formats.
             if seq_record is not None:
                 yield seq_ident, seq_record
 
-    def get_sequence_record(self, seq_ident, files=None):
+    def get_sequence_record(self, seq_ident, files=None, cache=False):
+        if seq_rec := self._cached_seq_recs.get(seq_ident):
+            return seq_rec
         if files is None:
             files = self._sequences[seq_ident]
         for ext, st in self._TYPE_LOAD_PRIORITY:
@@ -91,7 +94,11 @@ Each sequence can be stored in one or more files in different formats.
             if f in files:
                 with open(self.step_file(f), 'r') as in_s:
                     seq_record = import_bio_seq_io().read(in_s, st)
-                    return fix_sequence(seq_record)
+                    seq_rec = fix_sequence(seq_record)
+                if cache:
+                    self._cached_seq_recs[seq_ident] = seq_rec
+                return seq_rec
+
 
     # def get_all_seqs_fa(self):
     #     f = self.cache_file('all_seqs.fa')

@@ -19,7 +19,9 @@ def find_chloroplast_irs(seq, check_length=True):
                 strands[int(p.strand < 0)].append(p)
             assert all(len(s) >= 1 for s in strands), strands
             ira = strands[0][0] if len(strands[0]) == 1 else CompoundLocation(strands[0])
-            irb = strands[1][0] if len(strands[1]) == 1 else CompoundLocation(strands[1])
+            # Note: take a care about order of parts in strand -1
+            #       join(83185..108842,complement(126069..151707),complement(1..19))
+            irb = strands[1][0] if len(strands[1]) == 1 else CompoundLocation(strands[1][::-1])
             diff_1 = (irb.parts[0].start - ira.parts[-1].end) % len(seq)
             diff_2 = (ira.parts[0].start - irb.parts[-1].end) % len(seq)
             if diff_1 > diff_2:
