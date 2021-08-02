@@ -87,12 +87,9 @@ class ExtractData:
     def annotation(self, seq, seq_ident, key):
         if irs := find_chloroplast_irs(seq, check_length=False):
             ira, irb = irs
-            # To be sure!
-            ira_p = ira.location.parts
-            irb_p = irb.location.parts
             d = dict(length=len(seq.seq),
-                     ira=[int(ira_p[0].start), int(ira_p[-1].end)],
-                     irb=[int(irb_p[0].start), int(irb_p[-1].end)])
+                     ira=self._loc(ira.location.parts),
+                     irb=self._loc(irb.location.parts))
             #
             ira_s = ira.extract(seq)
             irb_s = irb.extract(seq)
@@ -103,6 +100,17 @@ class ExtractData:
                 return d
             return None
         return dict(length=len(seq.seq))
+
+    @staticmethod
+    def _loc(ir_parts):
+        assert 1 <= len(ir_parts) <= 2, ir_parts
+        p1 = ir_parts[0]
+        if len(ir_parts) == 1:
+            return [int(p1.start), int(p1.end)]
+        if p1.start == 0:
+            return [int(ir_parts[1].start), int(p1.end)]
+        assert ir_parts[1].start == 0
+        return [int(p1.start), int(ir_parts[1].end)]
 
     @with_seq
     def small_d(self, seq, seq_ident, key):

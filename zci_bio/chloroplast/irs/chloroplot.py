@@ -8,7 +8,7 @@ Python wrapper method around chloroplot.R wrapper :-)
 """
 
 
-def chloroplot(genbank_file):
+def chloroplot(genbank_file, print_chloroplot_output=False):
     _dir = os.path.dirname(os.path.abspath(__file__))
     r_script = os.path.join(_dir, 'chloroplot.R')
     try:
@@ -19,6 +19,8 @@ def chloroplot(genbank_file):
         return
 
     output = result.stdout.decode('utf-8')
+    if print_chloroplot_output:
+        print(output)
     return parse_output(output.split('\n'))
 
 
@@ -56,16 +58,31 @@ def parse_output(lines):
             if fields[4] == 'IRB':
                 irbs.append((int(fields[2]), int(fields[3])))
     if iras and irbs:
-        ira, irb = (iras[0][0], iras[-1][1]), (irbs[0][0], irbs[-1][1])
+        ira, irb = _loc(iras), _loc(irbs)
         return (ira, irb) if ((irb[0] - ira[1]) % seq_length < (ira[0] - irb[1]) % seq_length) else (irb, ira)
+
+
+def _loc(ir_parts):
+    assert 1 <= len(ir_parts) <= 2, ir_parts
+    if len(ir_parts) == 1:
+        return tuple(ir_parts[0])
+    # Of type:
+    #    chr  start    end name       text center
+    # 1 chr1      0      3  IRB IRB: 24645 139014
+    # 2 chr1      3  83717  LSC LSC: 83714  41860
+    # 3 chr1  83717 108362  IRA IRA: 24645  96040
+    # 4 chr1 108362 126691  SSC SSC: 18329 117526
+    # 5 chr1 126691 151333  IRB            139012
+    return ir_parts[1][0], ir_parts[0][1]
 
 
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description="Run Chlorolpot IR detection on sequence stored as genbank file.")
     parser.add_argument('genbank_file', help='Sequence filename')
+    parser.add_argument('-C', '--print-chloroplot-output', action='store_true', help='Print Chloroplot R output.')
     params = parser.parse_args()
-    print(chloroplot(params.genbank_file))
+    print(chloroplot(params.genbank_file, print_chloroplot_output=params.print_chloroplot_output))
 
     # # Parse test
     # import sys

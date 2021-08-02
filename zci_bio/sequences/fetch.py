@@ -39,7 +39,7 @@ def fetch_sequences(step_data, table_step, common_db, column_name=None):
 def do_fetch_sequences(step, seq_idents, common_db):
     # Fetch from our sequences
     all_sequences = []
-    for ni in seq_idents:
+    for ni in sorted(seq_idents):
         if not step.sequence_exists(ni):
             # Fetching our sequences only for base DB
             ext = fetch_our_sequence(ni, step.directory)

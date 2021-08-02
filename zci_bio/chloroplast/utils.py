@@ -6,9 +6,13 @@ from ..utils.helpers import feature_qualifiers_to_desc
 
 def find_chloroplast_irs(seq, check_length=True):
     # Finds the longest pair of inverted repeats
-    _ir = ('inverted',)
+    # First try with rpt_type qualifier
+    _ir = [['inverted'], ('inverted',)]
     rep_regs = [f for f in seq.features
-                if f.type == 'repeat_region' and f.qualifiers.get('rpt_type', _ir)[0] == 'inverted']
+                if f.type == 'repeat_region' and f.qualifiers.get('rpt_type') in _ir]
+    if not rep_regs:
+        # Than without qualifier
+        rep_regs = [f for f in seq.features if f.type == 'repeat_region']
 
     if len(rep_regs) == 1:
         # Chloe annotates IRs as one composite feature
