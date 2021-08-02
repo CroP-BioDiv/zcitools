@@ -34,11 +34,14 @@
 #    # https://bioconductor.org/about/release-announcements/
 #    BiocManager::install(version = "3.13")
 #    BiocManager::install("Biostrings")
-#    BiocManager::install("genbankr")
+#    BiocManager::install("genbankr")  <- not used
 #  - dplyr
 #    install.packages("dplyr")
+#  - seqinr
+#    install.packages("seqinr")
 
 library(dplyr)
+library(seqinr)
 
 
 # -----------------------------------------------------------------------------
@@ -468,13 +471,19 @@ args = commandArgs(trailingOnly=TRUE)
 if (length(args) != 1) {
   stop("Exactly one sequence filename must be supplied (input file).n", call. = FALSE)
 }
-gbfile = args[1]
+input_file = args[1]
 
 
 # -----------------------------------------------------------------------------
 # From project's file R/plot_genome.R
-gb <- genbankr::readGenBank(gbfile)  # Quite slow
-genome <- genbankr::getSeq(gb)[[1]]
+# gb <- genbankr::readGenBank(input_file)  # Quite slow
+# genome <- genbankr::getSeq(gb)[[1]]
+
+# Faster
+# Note: upper method of loading sequence can crash :-/
+genome <- read.fasta(input_file, as.string = TRUE, set.att = FALSE)
+genome <- paste(unlist(genome),collapse="")
+genome <- Biostrings::DNAString(genome)
 
 tryCatch({
   ir <- irDetect(genome, seed.size = 100)

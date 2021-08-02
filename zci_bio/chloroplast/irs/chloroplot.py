@@ -2,17 +2,27 @@
 
 import os.path
 import subprocess
+import tempfile
 
 """
 Python wrapper method around chloroplot.R wrapper :-)
 """
 
 
-def chloroplot(genbank_file, print_chloroplot_output=False):
+def chloroplot(seq_filename, print_chloroplot_output=False, leave_tmp_file=False):
+    if any(seq_filename.endswith(e) for e in ('.fa', '.fas', '.fasta', '.fs')):
+        fa_filename = seq_filename
+    else:
+        # Convert file into fasta format
+        assert any(seq_filename.endswith(e) for e in ('.gb', '.genbank', '.gbs')), seq_filename
+        from Bio import SeqIO
+        fa_filename = os.path.join(tempfile.gettempdir(), f'tmp_chloroplot.fa')
+        SeqIO.convert(seq_filename, 'genbank', fa_filename, 'fasta')
+
     _dir = os.path.dirname(os.path.abspath(__file__))
     r_script = os.path.join(_dir, 'chloroplot.R')
     try:
-        result = subprocess.run(['Rscript', r_script, genbank_file],
+        result = subprocess.run(['Rscript', r_script, fa_filename],
                                 check=True,
                                 stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     except subprocess.CalledProcessError:
@@ -21,6 +31,12 @@ def chloroplot(genbank_file, print_chloroplot_output=False):
     output = result.stdout.decode('utf-8')
     if print_chloroplot_output:
         print(output)
+    if fa_filename != seq_filename:
+        if leave_tmp_file:
+            print(f'Note: tmp file {fa_filename} is not removed!')
+        else:
+            os.remove(fa_filename)
+
     return parse_output(output.split('\n'))
 
 
@@ -78,11 +94,14 @@ def _loc(ir_parts):
 
 if __name__ == '__main__':
     import argparse
-    parser = argparse.ArgumentParser(description="Run Chlorolpot IR detection on sequence stored as genbank file.")
-    parser.add_argument('genbank_file', help='Sequence filename')
+    parser = argparse.ArgumentParser(description="Run Chlorolpot IR detection on given sequence.")
+    parser.add_argument('seq_filename', help='Sequence filename')
     parser.add_argument('-C', '--print-chloroplot-output', action='store_true', help='Print Chloroplot R output.')
+    parser.add_argument('-T', '--leave-tmp-file', action='store_true', help='Leave temporary file. For testing.')
     params = parser.parse_args()
-    print(chloroplot(params.genbank_file, print_chloroplot_output=params.print_chloroplot_output))
+    print(chloroplot(params.seq_filename,
+                     print_chloroplot_output=params.print_chloroplot_output,
+                     leave_tmp_file=params.leave_tmp_file))
 
     # # Parse test
     # import sys

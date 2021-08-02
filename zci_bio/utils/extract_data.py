@@ -192,6 +192,7 @@ class ExtractData:
                 d.update(desc)
                 return d
             return None
+        print(f'{key.split(" ", 1)[1]} {seq_ident}: no IRs')
         return dict(length=len(seq.seq))
 
     def _feature(self, seq, s, e, strand):
