@@ -151,8 +151,9 @@ def self_blast(variant, seq_filename, min_ir_length=1000, print_blast_output=Fal
                querylen > 10000 and \
                strand == 'minus':
                 irs.append((qs, qe, ss, se))
-        qs, qe, ss, se = min(irs)  # sort Blast::sort_hsps_by_query_start @irs;
-        res_irs = ((qs - 1, qe), (se - 1, ss))
+        if irs:
+            qs, qe, ss, se = min(irs)  # sort Blast::sort_hsps_by_query_start @irs;
+            res_irs = ((qs - 1, qe), (se - 1, ss))
 
     else:
         assert False, variant

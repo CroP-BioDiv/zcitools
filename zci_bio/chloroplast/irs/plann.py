@@ -50,27 +50,33 @@ def plann(seq_filename, leave_tmp_file=False):
     fa_filename = os.path.join(tmp_plann, 'x.fa')
     SeqIO.convert(seq_filename, 'genbank', fa_filename, 'fasta')
 
-    cmd = ['perl', plann_script, '-reference', seq_filename, '-fasta', fa_filename, '-out', 'plann_result']
-    result = subprocess.run(cmd, cwd=tmp_plann, check=True,
-                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
     res_irs = None
-    tbl_filename = os.path.join(tmp_plann, 'plann_result.tbl')
-    if os.path.isfile(tbl_filename):
-        with open(tbl_filename, 'r') as _in:
-            irs = [(int(fs[0]), int(fs[1]))
-                   for line in _in.readlines()
-                   if 'repeat_region' in line and (fs := line.split()) and len(fs) == 3 and fs[2] == 'repeat_region']
-            if len(irs) == 2:
-                ira, irb = irs
-                # Our indexing
-                ira = (ira[0] - 1, ira[1])
-                irb = (irb[0] - 1, irb[1])
-                # Find sequence length
-                with open(os.path.join(tmp_plann, 'plann_result.fsa'), 'r') as _fsa:
-                    seq_length = len(list(_fsa.readlines())[1]) - 1
-                # Check IR order
-                res_irs = (ira, irb) if (irb[0] - ira[1]) % seq_length < (ira[0] - irb[1]) % seq_length else (irb, ira)
+    try:
+        cmd = ['perl', plann_script, '-reference', seq_filename, '-fasta', fa_filename, '-out', 'plann_result']
+        result = subprocess.run(cmd, cwd=tmp_plann, check=True,
+                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+        tbl_filename = os.path.join(tmp_plann, 'plann_result.tbl')
+        if os.path.isfile(tbl_filename):
+            with open(tbl_filename, 'r') as _in:
+                irs = [(int(fs[0]), int(fs[1]))
+                       for line in _in.readlines()
+                       if 'repeat_region' in line and (fs := line.split()) and len(fs) == 3 and fs[2] == 'repeat_region']
+                if len(irs) == 2:
+                    ira, irb = irs
+                    # Our indexing
+                    ira = (ira[0] - 1, ira[1])
+                    irb = (irb[0] - 1, irb[1])
+                    # Find sequence length
+                    with open(os.path.join(tmp_plann, 'plann_result.fsa'), 'r') as _fsa:
+                        seq_length = len(list(_fsa.readlines())[1]) - 1
+                    # Check IR order
+                    res_irs = (ira, irb) if (irb[0] - ira[1]) % seq_length < (ira[0] - irb[1]) % seq_length else (irb, ira)
+
+    except subprocess.CalledProcessError:
+        print('?' * 100)
+        print('PLANN', seq_filename)
+        print('?' * 100)
 
     if not leave_tmp_file:
         remove_directory(tmp_plann, False)
