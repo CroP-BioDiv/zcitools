@@ -50,17 +50,20 @@ class StatByTaxonomy:
                 assert node['parent'] == parent, (taxid, node['parent'], parent)
             else:
                 node = dict(taxid=taxid, parent=parent, num=0)
-                node.update((a, 0) for a in self.stat_attrs())
+                self._init_new_node(node)
                 self.taxid_2_stat[taxid] = node
             #
             node['num'] += 1
             self._add(node, *args, **kwargs)
 
+    def _init_new_node(self, node):
+        node.update((a, 0) for a in self.stat_attrs())
+
     def _sum(self, stats):
         # Note: contains num_groups attr!
         assert stats
         ss = dict(taxid=None, parent=stats[0]['parent'], num=0, num_groups=len(stats))
-        ss.update((a, 0) for a in self.stat_attrs())
+        self._init_new_node(ss)
         for a in ['num'] + self.stat_attrs():
             for s in stats:
                 ss[a] += s[a]
@@ -104,15 +107,17 @@ class StatByTaxonomy:
         #
         return rows
 
-    def _to_row(self, s, max_depth, depth):
+    def _to_row_label(self, s, max_depth, depth, label):
         row = [''] * max_depth + [s['num']] + [s[a] for a in self.stat_attrs()]
-        row[depth] = (self.taxid_2_name[s['taxid']] if s['taxid'] else f"... ({s['num_groups']})")
+        row[depth] = label
         return row
 
+    def _to_row(self, s, max_depth, depth):
+        return self._to_row_label(
+            s, max_depth, depth, (self.taxid_2_name[s['taxid']] if s['taxid'] else f"... ({s['num_groups']})"))
+
     def _to_sum_row(self, s, max_depth):
-        row = [''] * max_depth + [s['num']] + [s[a] for a in self.stat_attrs()]
-        row[0] = 'all'
-        return row
+        return self._to_row_label(s, max_depth, 0, 'all')
 
     def export_excel(self, filename, minimum_sequences):
         from common_utils.value_data_types import rows_2_excel

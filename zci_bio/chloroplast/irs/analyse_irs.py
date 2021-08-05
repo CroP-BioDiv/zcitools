@@ -1,5 +1,6 @@
 from collections import defaultdict
 from datetime import datetime
+import statistics
 from step_project.common.table.steps import TableStep
 from zci_bio.sequences.steps import SequencesStep
 from zci_bio.sequences.fetch import do_fetch_sequences
@@ -31,12 +32,33 @@ class _ByTaxonomy(StatByTaxonomy):
         return self.methods
 
     def excel_columns(self):
-        return self.methods
+        return ['Min length', 'Max length', 'Avg. length', 'Length stdev'] + self.methods
 
-    def _add(self, node, methods_data):
+    def _add(self, node, methods_data, seq_length):
+        node['lengths'].append(seq_length)
         for method, data in methods_data.items():
             if 'ira' in data:
                 node[method] += 1
+
+    def _init_new_node(self, node):
+        super()._init_new_node(node)
+        node['lengths'] = []
+
+    def _sum(self, stats):
+        ss = super()._sum(stats)
+        for s in stats:
+            ss['lengths'].extend(s['lengths'])
+        return ss
+
+    def _to_row_label(self, s, max_depth, depth, label):
+        lengths = s['lengths']
+        avg = statistics.mean(lengths)
+        std = round(statistics.stdev(lengths), 1) if len(lengths) > 1 else 0
+        row = [''] * max_depth + \
+            [s['num'], min(lengths), max(lengths), int(round(avg)), std] + \
+            [s[a] for a in self.stat_attrs()]
+        row[depth] = label
+        return row
 
 
 class _ByYear:
@@ -121,9 +143,8 @@ def analyse_irs(step_data, table_step, seqs_step, ge_seq_step, chloe_step, metho
     step = TableStep(table_step.project, step_data, remove_data=True)
     table_step.propagate_step_name_prefix(step)
 
-    table_step.mapping_column_2_columns('ncbi_ident', 'length')  # Mapiranje seq_ident -> sto?
-
-    seq_idents = sorted(table_step.get_column_values('ncbi_ident'))
+    seq_ident_2_length = table_step.mapping_between_columns('ncbi_ident', 'length')
+    seq_idents = sorted(seq_ident_2_length.keys())
     extract_data = ExtractData(properties_db=PropertiesDB(), sequences_step=seqs_step)
 
     # Collect annotation data
@@ -167,7 +188,7 @@ def analyse_irs(step_data, table_step, seqs_step, ge_seq_step, chloe_step, metho
         table_rows.append(row)
         #
         if by_taxonomy:
-            by_taxonomy.add(nc_2_taxid[seq_ident], dict((m, data[m]) for m in methods))
+            by_taxonomy.add(nc_2_taxid[seq_ident], dict((m, data[m]) for m in methods), seq_ident_2_length[seq_ident])
 
     # Table data
     columns = []
