@@ -1,32 +1,37 @@
 import os.path
 from functools import wraps
-import difflib
 import time
 from datetime import datetime
 from Bio.SeqFeature import FeatureLocation, CompoundLocation
-from .entrez import Entrez
-from .diff_sequences import diff_check_memory
-from ..chloroplast.utils import find_chloroplast_irs
+from Bio import SeqIO
+from zci_bio.utils.entrez import Entrez
+from zci_bio.utils.diff_sequences import diff_check_memory
+from zci_bio.chloroplast.utils import find_chloroplast_irs
 
 
 def with_seq(func):
     @wraps(func)
-    def func_wrapper(self, seq_ident=None, seq=None, key=None):
+    def func_wrapper(self, seq_ident=None, seq=None, key=None, seq_filename=None):
+        if seq_filename:
+            seq = SeqIO.read(seq_filename, 'genbank')  # ToDo: Type?
         if seq is None:
             assert seq_ident
             seq = self.sequences_step.get_sequence_record(seq_ident, cache=False)
         if not seq_ident:
-            seq_ident = seq.name
+            seq_ident = seq.name.split('.')[0]
         return func(self, seq, seq_ident, key)
     return func_wrapper
 
 
 def with_seq_ident(func):
     @wraps(func)
-    def func_wrapper(self, seq_ident=None, seq=None, key=None):
+    def func_wrapper(self, seq_ident=None, seq=None, key=None, seq_filename=None):
         if not seq_ident:
-            seq_ident = seq.name
-        return func(self, seq_ident, key)
+            if seq_filename:
+                seq_ident = os.path.splitext(os.path.basename(seq_filename))[0]
+            else:
+                seq_ident = seq.name
+        return func(self, seq_ident, key, seq_filename)
     return func_wrapper
 
 
@@ -36,12 +41,20 @@ class ExtractData:
     # Two set of methods:
     #  - set of methods that extract or fetch data
     #  - set of methods use upper methods and do caching.
-    def __init__(self, properties_db=None, sequences_step=None):
+    def __init__(self, properties_db=None, sequences_step=None, look_for_diff=True):
         self.properties_db = properties_db
         self.sequences_step = sequences_step
+        self.look_for_diff = look_for_diff
 
-    def _seq_filename(self, seq_ident):
+    def _seq_filename(self, seq_ident, seq_filename):
+        if seq_filename:
+            return os.path.abspath(seq_filename)
         return os.path.abspath(self.sequences_step.get_sequence_filename(seq_ident))
+
+    def _seq_record(self, seq_ident, seq_filename):
+        if seq_filename:
+            return SeqIO.read(seq_filename, 'genbank')  # ToDo: Type?
+        return self.sequences_step.get_sequence_record(seq_ident, cache=False)
 
     # Extract and fetch methods
     @with_seq
@@ -130,53 +143,53 @@ class ExtractData:
         return self._small_d_annotation(seq, seq_ident, key, no_prepend_workaround=False, no_dna_fix=False)
 
     @with_seq_ident
-    def chloroplot(self, seq_ident, key):
-        from ..chloroplast.irs.chloroplot import chloroplot as chloroplot_ann
+    def chloroplot(self, seq_ident, key, seq_filename):
+        from zci_bio.chloroplast.irs.chloroplot import chloroplot as chloroplot_ann
         return self._from_indices(
-            self.sequences_step.get_sequence_record(seq_ident, cache=False), seq_ident, key,
-            lambda: chloroplot_ann(self._seq_filename(seq_ident)))
+            self._seq_record(seq_ident, seq_filename), seq_ident, key,
+            lambda: chloroplot_ann(self._seq_filename(seq_ident, seq_filename)))
 
     @with_seq_ident
-    def pga(self, seq_ident, key):
-        from ..chloroplast.irs.pga import pga
+    def pga(self, seq_ident, key, seq_filename):
+        from zci_bio.chloroplast.irs.pga import pga
         return self._from_indices(
-            self.sequences_step.get_sequence_record(seq_ident, cache=False), seq_ident, key,
-            lambda: pga(self._seq_filename(seq_ident)))
+            self._seq_record(seq_ident, seq_filename), seq_ident, key,
+            lambda: pga(self._seq_filename(seq_ident, seq_filename)))
 
     @with_seq_ident
-    def pga_sb(self, seq_ident, key):
-        return self._self_blast('pga', seq_ident, key)
+    def pga_sb(self, seq_ident, key, seq_filename):
+        return self._self_blast('pga', seq_ident, key, seq_filename)
 
     @with_seq_ident
-    def plann(self, seq_ident, key):
-        from ..chloroplast.irs.plann import plann
+    def plann(self, seq_ident, key, seq_filename):
+        from zci_bio.chloroplast.irs.plann import plann
         return self._from_indices(
-            self.sequences_step.get_sequence_record(seq_ident, cache=False), seq_ident, key,
-            lambda: plann(self._seq_filename(seq_ident)))
+            self._seq_record(seq_ident, seq_filename), seq_ident, key,
+            lambda: plann(self._seq_filename(seq_ident, seq_filename)))
 
     @with_seq_ident
-    def plann_sb(self, seq_ident, key):
-        return self._self_blast('plann', seq_ident, key)
+    def plann_sb(self, seq_ident, key, seq_filename):
+        return self._self_blast('plann', seq_ident, key, seq_filename)
 
     @with_seq_ident
-    def org_annotate(self, seq_ident, key):
-        from ..chloroplast.irs.org_annotate import org_annotate
+    def org_annotate(self, seq_ident, key, seq_filename):
+        from zci_bio.chloroplast.irs.org_annotate import org_annotate
         return self._from_indices(
-            self.sequences_step.get_sequence_record(seq_ident, cache=False), seq_ident, key,
-            lambda: org_annotate(self._seq_filename(seq_ident)))
+            self._seq_record(seq_ident, seq_filename), seq_ident, key,
+            lambda: org_annotate(self._seq_filename(seq_ident, seq_filename)))
 
     #
     def _small_d_annotation(self, seq, seq_ident, key, no_prepend_workaround=True, no_dna_fix=True):
-        from ..chloroplast.irs.small_d import small_d
+        from zci_bio.chloroplast.irs.small_d import small_d
         return self._from_indices(
             seq, seq_ident, key,
             lambda: small_d(seq, no_prepend_workaround=no_prepend_workaround, no_dna_fix=no_dna_fix))
 
-    def _self_blast(self, variant, seq_ident, key):
-        from ..chloroplast.irs.self_blast import self_blast
+    def _self_blast(self, variant, seq_ident, key, seq_filename):
+        from zci_bio.chloroplast.irs.self_blast import self_blast
         return self._from_indices(
-            self.sequences_step.get_sequence_record(seq_ident, cache=False), seq_ident, key,
-            lambda: self_blast(variant, self._seq_filename(seq_ident)))
+            self._seq_record(seq_ident, seq_filename), seq_ident, key,
+            lambda: self_blast(variant, self._seq_filename(seq_ident, seq_filename)))
 
     #
     def _from_indices(self, seq, seq_ident, key, irs_method):
@@ -213,11 +226,12 @@ class ExtractData:
             return dict(type='+')
 
         # Check is same IRs region already inspected.
-        seq_ident = seq.name.split('.')[0]
-        for _, data in self.properties_db.get_properties_key2_like(seq_ident, 'annotation %').items():
-            if irs_d['ira'] == data.get('ira') and irs_d['irb'] == data.get('irb'):
-                print(f'  found diff: {data["type"]}')
-                return dict(type=data['type'], diff=data['diff']) if 'diff' in data else dict(type=data['type'])
+        if self.look_for_diff:
+            seq_ident = seq.name.split('.')[0]
+            for _, data in self.properties_db.get_properties_key2_like(seq_ident, 'annotation %').items():
+                if irs_d['ira'] == data.get('ira') and irs_d['irb'] == data.get('irb'):
+                    print(f'  found diff: {data["type"]}')
+                    return dict(type=data['type'], diff=data['diff']) if 'diff' in data else dict(type=data['type'])
 
         # Problem:
         # Original NCBI annotation of NC_031898, has IR lengths 23595 and 74817.
@@ -292,3 +306,36 @@ def _format_time(seconds):
         rest = seconds - minutes * 60
         return f'{minutes}m {int(rest)}s'
     return f'{round(seconds, 1)}s'
+
+
+if __name__ == '__main__':
+    import argparse
+    from common_utils.properties_db import PropertiesDB
+    _methods = ('annotation', 'small_d', 'small_d_P', 'small_d_D', 'small_d_all',
+                'chloroplot', 'pga', 'pga_sb', 'plann', 'plann_sb', 'org_annotate')
+    parser = argparse.ArgumentParser(description="Calls ExtractData method on given sequence")
+    parser.add_argument('method_name', choices=_methods, help='Method name')
+    parser.add_argument('-c', '--common-db', help='Use common db sequence')
+    parser.add_argument('seq_filename', help='Sequence filename')
+    parser.add_argument('-l', '--look-for-diff', action='store_true', help='Search for diff in properties DB.')
+    params = parser.parse_args()
+
+    #
+    seq_filename = params.seq_filename
+    tmp_file = None
+    if params.common_db:
+        import tempfile
+        from common_utils.common_db import CommonDB
+        cdb = CommonDB.get_zci_db(tuple(params.common_db.split('/')))
+        seq_filename = cdb.get_record(tuple(params.seq_filename.split('/')), tempfile.gettempdir(), info=True)
+        tmp_file = seq_filename
+
+    #
+    if seq_filename:
+        ed = ExtractData(properties_db=PropertiesDB(), look_for_diff=params.look_for_diff)
+        getattr(ed, params.method_name)(key=f'annotation {params.method_name}', seq_filename=seq_filename)
+
+        if tmp_file:
+            os.remove(tmp_file)
+    else:
+        print('No sequence file set!!!')

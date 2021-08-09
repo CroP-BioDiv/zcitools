@@ -17,13 +17,13 @@ METHODS_USE_SEQUENCES = ('ncbi', 'small_d', 'small_d_P', 'small_d_D', 'small_d_a
                          'pga', 'pga_sb', 'plann', 'plann_sb', 'org_annotate')
 METHODS_SEPARATE_PATH = ('ge_seq', 'chloe')
 _column_types_acc = [
-    ('accession', 'seq_ident'), ('organism', 'str'),
-    ('first_date', 'date'), ('update_date', 'date'),
-    ('length', 'int'), ('not_dna', 'int')]
+    ('Accession', 'seq_ident'), ('Organism', 'str'),
+    ('Creted', 'date'), ('Published', 'date'),
+    ('Length', 'int'), ('not_dna', 'int')]
 _column_types_method = [
-    ('method', 'str'),
+    ('Method', 'str'),
     ('IRa_start', 'int'), ('IRa_end', 'int'), ('IRb_start', 'int'), ('IRb_end', 'int'),
-    ('IRa_len', 'int'), ('IRb_len', 'int'), ('diff_len', 'int'), ('type', 'str')]
+    ('IRa_len', 'int'), ('IRb_len', 'int'), ('diff_len', 'int'), ('diff_type', 'str')]
 
 
 class _ByYear:
