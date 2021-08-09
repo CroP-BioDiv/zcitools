@@ -17,7 +17,9 @@ METHODS_USE_SEQUENCES = ('ncbi', 'small_d', 'small_d_P', 'small_d_D', 'small_d_a
                          'pga', 'pga_sb', 'plann', 'plann_sb', 'org_annotate')
 METHODS_SEPARATE_PATH = ('ge_seq', 'chloe')
 _column_types_acc = [
-    ('accession', 'seq_ident'), ('organism', 'str'), ('first_date', 'date'), ('length', 'int'), ('not_dna', 'int')]
+    ('accession', 'seq_ident'), ('organism', 'str'),
+    ('first_date', 'date'), ('update_date', 'date'),
+    ('length', 'int'), ('not_dna', 'int')]
 _column_types_method = [
     ('method', 'str'),
     ('IRa_start', 'int'), ('IRa_end', 'int'), ('IRb_start', 'int'), ('IRb_end', 'int'),
@@ -116,8 +118,9 @@ def analyse_irs(step_data, table_step, seqs_step, ge_seq_step, chloe_step, metho
             length=(length := gb['length']),
             organism=(organism := gb.get('organism', '?')),
             first_date=(first_date := gb.get('first_date')),
+            update_date=(update_date := gb.get('update_date')),
             not_dna=(not_dna := len(gb.get('not_dna', []))),
-            _seq_row=[seq_ident, organism, first_date, length, len(gb.get('not_dna', []))]))
+            _seq_row=[seq_ident, organism, first_date, update_date, length, len(gb.get('not_dna', []))]))
         for seq_ident, gb in gb_data.items())
     assert all(x in acc_data for x in seq_idents), [x for x in seq_idents if x not in acc_data]
 
@@ -169,8 +172,13 @@ def analyse_irs(step_data, table_step, seqs_step, ge_seq_step, chloe_step, metho
                       for node_names, objects in g_data)))) for m in methods)
 
     # By year
-    by_year = _ByYear(methods, ((d['first_date'], ('ira' in d[m] for m in methods)) for d in acc_data.values()))
-    sheets.append(('By year', by_year.get_columns(), by_year.get_rows()))
+    by_year_fd = _ByYear(methods, ((d['first_date'], ('ira' in d[m] for m in methods)) for d in acc_data.values()))
+    by_year_ud = _ByYear(methods, ((d['update_date'], ('ira' in d[m] for m in methods)) for d in acc_data.values()))
+    columns = by_year_fd.get_columns()
+    nc = len(columns)
+    sheets.append(('By year', columns,
+                   [['Created'] + [''] * (nc - 1)] + by_year_fd.get_rows() +
+                   [[''] * nc, ['Published'] + [''] * (nc - 1)] + by_year_ud.get_rows()))
 
     # By taxonomy
     rows = []
