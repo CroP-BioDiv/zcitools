@@ -1,9 +1,10 @@
 from itertools import chain
 from common_utils.cache import cache
-from zci_bio.utils.ncbi_taxonomy import get_ncbi_taxonomy
+from zci_bio.utils.ncbi_taxonomy import get_ncbi_taxonomy, order_ranks
 
 
 class StatByTaxonomy:
+    # Stores statistics (counters) for given taxons and group arguments
     _STAT_ATTRS = []
     _EXCEL_COLUMNS = []
 
@@ -142,3 +143,139 @@ class StatByTaxonomy:
             print(f'Taxon {taxa_name} has no stat data!')
             return
         return node
+
+
+#
+class _Node:
+    def __init__(self, is_leaf, taxid, parent_node, depth, name):
+        self.is_leaf = is_leaf
+        self.taxid = taxid
+        self.parent_node = parent_node
+        self.depth = depth
+        self.name = name
+        self.max_depth = depth  # In subtree
+        if is_leaf:
+            self.objects = []
+        else:
+            self.children = []  # List of nodes
+
+    def add_child(self, node):
+        self.children.append(node)
+        self.set_depth(node.depth)
+
+    def set_depth(self, depth):
+        if depth > self.max_depth:
+            self.max_depth = depth
+            if self.parent:
+                self.parent.set_depth(depth)
+
+    def nodes_under(self):
+        if self.is_leaf:
+            return (self, None)
+        return (self, [n.nodes_under() for n in sorted(self.children, key=lambda x: x.name)])
+
+    @staticmethod
+    def dummy_node(is_leaf=False, depth=0):
+        return _Node(is_leaf, 0, None, depth, '-')
+
+
+class GroupByTaxonomy:
+    # Stores data (list of objects) for given taxons and group arguments
+    # Used for grouping rows or statistics on data grouped by taxonomic structure.
+    # Note: more general than class StatByTaxonomy. Previous class is here for backward compatibility
+    def __init__(self, objects, ranks=None, names=None, taxid_method=None, taxid_attr=None):
+        if taxid_method:
+            object_taxids = [taxid_method(o) for o in objects]
+        elif taxid_attr:
+            object_taxids = [o[taxid_attr] for o in objects]
+        else:
+            assert False, '?'
+            # taxid_method = lambda o: o[taxid_attr]
+
+        # Find all taxids, species and parent clades
+        all_taxids = set(object_taxids)
+        ncbi_taxonomy = get_ncbi_taxonomy()
+        gl = ncbi_taxonomy.get_lineage
+        self.taxid_2_lineage = dict((t, gl(t)) for t in all_taxids)
+        all_taxids.update(chain.from_iterable(self.taxid_2_lineage.values()))
+        taxid_2_rank = ncbi_taxonomy.get_rank(all_taxids)
+        self.taxid_2_name = ncbi_taxonomy.get_taxid_translator(all_taxids)
+
+        # Extract only taxid of interest
+        self.group_taxids = set()
+        self.ranks = order_ranks(ranks) if ranks else None
+        if ranks:
+            self.group_taxids.update(t for t, r in taxid_2_rank.items() if r in ranks)
+        if names:
+            for name in names:
+                if n_taxid := ncbi_taxonomy.get_exact_name_translation(name):
+                    self.group_taxids.add(n_taxid)
+
+        # Set objects
+        self.nodes = dict()
+        for taxid, obj in zip(object_taxids, objects):
+            parents = [t for t in self.taxid_2_lineage[taxid] if t in self.group_taxids]
+            if not parents:
+                print(f'Warning: stat for taxid {taxid} is not set, because there is no parent to add to!')
+                continue
+
+            # Add nodes
+            # Note: node creation is from higher to lower taxonomy
+            for depth, (taxid, parent) in enumerate(zip(parents, [None] + parents[:-1])):
+                node = self._add_node(taxid == parents[-1], taxid, parent, depth)
+            node.objects.append(obj)  # Last node is a leaf
+
+    def _add_node(self, is_leaf, taxid, parent_taxid, depth):
+        if node := self.nodes.get(taxid):
+            assert node.is_leaf == is_leaf, (node.is_leaf, is_leaf, taxid, parent, depth)
+            assert node.taxid == taxid, (node.taxid, is_leaf, taxid, parent, depth)
+            # assert node.parent_taxid == parent, (node.parent_taxid, is_leaf, taxid, parent, depth)
+            assert node.depth == depth, (node.parent_taxid, is_leaf, taxid, parent, depth)
+            return node
+        parent = self.nodes[parent_taxid] if parent_taxid is not None else None
+        self.nodes[taxid] = node = _Node(is_leaf, taxid, parent, depth, self.taxid_2_name[taxid])
+        if parent:
+            parent.add_child(node)
+        return node
+
+    def grouped_columns(self):
+        # Assumes that names are higher nodes and ranks are lower nodes.
+        max_depth = max(n.depth for n in self.nodes.values())
+        assert len(self.ranks) >= max_depth, (len(self.ranks), max_depth)
+        num_names = max_depth - len(self.ranks)
+        if not num_names:
+            return self.ranks
+        if num_names == 1:
+            return ['Name'] + self.ranks
+        return [f'Name_{n}' for n in range(1, num_names + 1)] + self.ranks
+
+    def sorted_objects(self, objects_sort=None):
+        # Iterate through objects in taxonomical order
+        for n in sorted((n for n in self.nodes.values() if n.depth == 0), key=lambda n: (-n.max_depth, n.name)):
+            yield from self._sorted_objects(n, objects_sort)
+
+    def _sorted_objects(self, node, objects_sort):
+        if node.is_leaf:
+            yield from (sorted(n.objects, key=objects_sort) if objects_sort else n.objects)
+        else:
+            for n in sorted(node.children, key=lambda n: n.name):
+                yield from self._sorted_objects(n, objects_sort)
+
+    def sorted_nodes_objects(self, return_names=False, objects_sort=None):
+        # Iterate through objects in taxonomical order.
+        # Returns pairs (list of nodes, list of objects)
+        max_depth = max(n.depth for n in self.nodes.values()) + 1  # +1 since depth 0 means the heighest node
+        for n in sorted((n for n in self.nodes.values() if n.depth == 0), key=lambda n: (-n.max_depth, n.name)):
+            yield from self._sorted_nodes_objects([n], max_depth, objects_sort, return_names)
+
+    def _sorted_nodes_objects(self, prev_nodes, max_depth, objects_sort, return_names):
+        node = prev_nodes[-1]
+        if node.is_leaf:
+            if return_names:
+                prev_nodes = [n.name for n in prev_nodes]
+            if (num_dummies := max(0, max_depth - len(prev_nodes))):
+                prev_nodes = ['-' if return_names else _Node.dummy_node()] * num_dummies + prev_nodes
+            yield (prev_nodes, (sorted(node.objects, key=objects_sort) if objects_sort else node.objects))
+        else:
+            for n in sorted(node.children, key=lambda n: n.name):
+                yield from self._sorted_nodes_objects(prev_nodes + [n], max_depth, objects_sort, return_names)

@@ -8,6 +8,26 @@ try:
 except ImportError:
     Tree = None
 
+# Note: there are more ranks. These ranks have clear hierarchy.
+# Ranks filtered from result of SQL query in taxa.sqlite database:
+#   SELECT rank, COUNT(*) FROM species GROUP BY rank ORDER BY 1;
+NCBI_RANKS = (
+    'superkingdom', 'kingdom', 'subkingdom',
+    'superphylum', 'phylum', 'subphylum',
+    'superclass', 'class', 'subclass', 'infraclass',
+    'superorder', 'order', 'suborder', 'infraorder',
+    'superfamily', 'family', 'subfamily',
+    'tribe', 'subtribe',
+    'genus', 'subgenus',
+    'species', 'subspecies',
+    'varietas', 'subvariety')
+
+
+def order_ranks(ranks):
+    assert all(r in NCBI_RANKS for r in ranks), [r for r in ranks if r not in NCBI_RANKS]
+    return sorted(ranks, key=NCBI_RANKS.index)
+
+
 # NCBI taxonomy is static data (singleton)
 _ncbi_taxonomy = None
 

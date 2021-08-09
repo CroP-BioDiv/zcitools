@@ -1,11 +1,12 @@
 from collections import defaultdict
 from datetime import datetime
 import statistics
+from itertools import chain
 from step_project.common.table.steps import TableStep
 from zci_bio.sequences.steps import SequencesStep
 from zci_bio.sequences.fetch import do_fetch_sequences
 from zci_bio.utils.extract_data import ExtractData
-from zci_bio.utils.stat_by_taxonomy import StatByTaxonomy
+from zci_bio.utils.stat_by_taxonomy import GroupByTaxonomy
 from common_utils.value_data_types import sheets_2_excel
 from common_utils.properties_db import PropertiesDB
 from ..utils import cycle_distance_lt
@@ -23,89 +24,45 @@ _column_types_method = [
     ('IRa_len', 'int'), ('IRb_len', 'int'), ('diff_len', 'int'), ('type', 'str')]
 
 
-class _ByTaxonomy(StatByTaxonomy):
-    def __init__(self, methods, taxids, ranks=None, names=None):
-        super().__init__(taxids, ranks=ranks, names=names)
-        self.methods = methods
-
-    def stat_attrs(self):
-        return self.methods
-
-    def excel_columns(self):
-        return ['Min length', 'Max length', 'Avg. length', 'Length stdev'] + self.methods
-
-    def _add(self, node, methods_data, seq_length):
-        node['lengths'].append(seq_length)
-        for method, data in methods_data.items():
-            if 'ira' in data:
-                node[method] += 1
-
-    def _init_new_node(self, node):
-        super()._init_new_node(node)
-        node['lengths'] = []
-
-    def _sum(self, stats):
-        ss = super()._sum(stats)
-        for s in stats:
-            ss['lengths'].extend(s['lengths'])
-        return ss
-
-    def _to_row_label(self, s, max_depth, depth, label):
-        lengths = s['lengths']
-        avg = statistics.mean(lengths)
-        std = round(statistics.stdev(lengths), 1) if len(lengths) > 1 else 0
-        row = [''] * max_depth + \
-            [s['num'], min(lengths), max(lengths), int(round(avg)), std] + \
-            [s[a] for a in self.stat_attrs()]
-        row[depth] = label
-        return row
-
-
 class _ByYear:
-    def __init__(self):
+    def __init__(self, methods, data):
         self.by_year = defaultdict(int)  # (year, method|None) -> num
         self.all_years = set()
-        self.current_year = None
+        self.methods = methods
+        for date_str, m_data in data:
+            assert date_str
+            if isinstance(date_str, str):
+                current_year = datetime.fromisoformat(date_str).year
+            else:
+                current_year = date_str.year
+            self.all_years.add(current_year)
+            self.by_year[(current_year, None)] += 1
+            for method, is_in in zip(methods, m_data):
+                if is_in:
+                    self.by_year[(current_year, method)] += 1
 
-    def set_year(self, date_str):
-        if not date_str:
-            self.current_year = None
-        elif isinstance(date_str, str):
-            self.current_year = datetime.fromisoformat(date_str).year
-        else:
-            self.current_year = date_str.year
-        self.all_years.add(self.current_year)
-        self.by_year[(self.current_year, None)] += 1
-
-    def add_method(self, method):
-        self.by_year[(self.current_year, method)] += 1
-
-    def get_rows(self, methods):
+    def get_rows(self):
         by = self.by_year.get
         rows = []
         sum_all = 0
-        sum_m = dict((m, 0) for m in methods)
+        sum_m = dict((m, 0) for m in self.methods)
         for y in sorted(self.all_years):
             n_all = by((y, None), 0)
             sum_all += n_all
             row = [y, n_all]
-            for m in methods:
+            for m in self.methods:
                 nm = by((y, m), 0)
                 sum_m[m] += nm
                 row.extend([nm, round(100 * (nm / n_all), 2) if n_all else 0])
             rows.append(row)
         #
-        sum_row = ['all', sum_all]
-        for m in methods:
-            sum_row.extend([sum_m[m], round(100 * (sum_m[m] / sum_all), 2) if sum_all else 0])
-        rows.append(sum_row)
+        rows.append(['all', sum_all] +
+                    list(chain(*([sum_m[m], round(100 * (sum_m[m] / sum_all), 2) if sum_all else 0]
+                                 for m in self.methods))))
         return rows
 
-    def get_columns(self, methods):
-        cs = ['year', 'num_sequences']
-        for m in methods:
-            cs.extend([m, f'{m} %'])
-        return cs
+    def get_columns(self):
+        return ['year', 'num_sequences'] + list(chain(*([m, f'{m} %'] for m in self.methods)))
 
 
 def analyse_irs_collect_needed_data(step_data, table_step, method, seqs_methods, common_db):
@@ -145,72 +102,134 @@ def analyse_irs(step_data, table_step, seqs_step, ge_seq_step, chloe_step, metho
 
     seq_ident_2_length = table_step.mapping_between_columns('ncbi_ident', 'length')
     seq_idents = sorted(seq_ident_2_length.keys())
+    nc_2_taxid = table_step.mapping_between_columns('ncbi_ident', 'tax_id')
     extract_data = ExtractData(properties_db=PropertiesDB(), sequences_step=seqs_step)
+    # seq_ident -> dict with data from NCBI genbak file
+    gb_data = extract_data.cache_keys1_genbank_data(seq_idents, seqs_step)
 
-    # Collect annotation data
-    # seq_ident -> dict([annotation_method->data]+)
-    acc_data = dict((s, dict()) for s in seq_idents)
+    # Collect sequence data. seq_ident -> dict(seq_values+, annotations+)
+    # Dict's store all needed data for latter outputs.
+    acc_data = dict(
+        (seq_ident, dict(
+            seq_ident=seq_ident,
+            taxid=nc_2_taxid[seq_ident],
+            length=(length := gb['length']),
+            organism=(organism := gb.get('organism', '?')),
+            first_date=(first_date := gb.get('first_date')),
+            not_dna=(not_dna := len(gb.get('not_dna', []))),
+            _seq_row=[seq_ident, organism, first_date, length, len(gb.get('not_dna', []))]))
+        for seq_ident, gb in gb_data.items())
+    assert all(x in acc_data for x in seq_idents), [x for x in seq_idents if x not in acc_data]
+
+    # Add annotation data. Add values into a dicts. <annotation_method> -> data
     for method in methods:
+        # ExtractData method to use.
         m_call = getattr(extract_data, f'cache_keys1_annotation_{method}')
+        # find input step
         seq_step = seqs_step
         if method == 'ge_seq':
             seq_step = ge_seq_step
         elif method == 'chloe':
             seq_step = chloe_step
+        # Call annotation method and store data
         m_data = m_call(seq_idents, seq_step=seq_step)
         for seq_ident, irs in m_data.items():
+            irs['_method_row'] = _irs_2_row(irs)
             acc_data[seq_ident][method] = irs
 
-    # Format data for storing in table step and Excel file(s)
-    # seq_ident -> dict with data from NCBI genbak file
-    gb_data = extract_data.cache_keys1_genbank_data(seq_idents, seqs_step)
-    table_rows = []
-    per_method = [[] for _ in methods]
-    by_first_date_year = _ByYear()
-    if taxa_ranks or taxa_names:
-        nc_2_taxid = table_step.mapping_between_columns('ncbi_ident', 'tax_id')
-        by_taxonomy = _ByTaxonomy(methods, nc_2_taxid.values(), ranks=taxa_ranks, names=taxa_names)
-    else:
-        by_taxonomy = None
-    n_acc_c = len(_column_types_acc)
-    for seq_ident, data in acc_data.items():
-        gb = gb_data[seq_ident]
-        first_date = gb.get('first_date')
-        by_first_date_year.set_year(first_date)
-        row = [seq_ident, gb.get('organism', '?'), first_date, gb['length'], len(gb.get('not_dna', []))]
-        for method, pm in zip(methods, per_method):  # Garanties column order!
-            m_data = data[method]
-            ir_row = _irs_2_row(m_data)
-            row.extend([method] + ir_row)
-            pm.append(row[:n_acc_c] + ir_row)
-            if m_data and 'ira' in m_data:
-                by_first_date_year.add_method(method)
-        table_rows.append(row)
-        #
-        if by_taxonomy:
-            by_taxonomy.add(nc_2_taxid[seq_ident], dict((m, data[m]) for m in methods), seq_ident_2_length[seq_ident])
+    # Export data in Excel file, in more sheets
+    assert taxa_ranks or taxa_names
+    group_bt = GroupByTaxonomy(list(acc_data.values()), ranks=taxa_ranks, names=taxa_names,
+                               taxid_attr='taxid')
+    g_data = list(group_bt.sorted_nodes_objects(return_names=True, objects_sort=lambda d: d['organism']))
 
-    # Table data
-    columns = []
-    for method in methods:
-        columns.extend([(f'{method}_{n}', t) for n, t in _column_types_method])
-    step.set_table_data(table_rows, _column_types_acc + columns)
-    step.save()
+    grouped_columns = group_bt.grouped_columns()
+    empty_row_part = [''] * len(grouped_columns)
 
-    # Excel: method sheets
-    _excel_columns = [c for c, _ in (_column_types_acc + _column_types_method[1:])]
-    sheets = [(m, _excel_columns, rows) for m, rows in zip(methods, per_method)]
+    # All data
+    _excel_columns = grouped_columns + [c for c, _ in (_column_types_acc + _column_types_method)] + ['Same']
+    rows = []
+    for node_names, objects in g_data:
+        nn = node_names
+        for o in objects:
+            seq_row = o['_seq_row']
+            d_sr = [''] * len(seq_row)
+            same_m = _group_same_irs(o, methods)
+            rows.extend(((nn + seq_row) if i == 0 else (empty_row_part + d_sr)) + [m] + o[m]['_method_row'] + [sm]
+                        for i, (m, sm) in enumerate(zip(methods, same_m)))
+            nn = empty_row_part
+    sheets = [('All', _excel_columns, rows)]
+
+    # One sheet per method
+    _excel_columns = grouped_columns + [c for c, _ in (_column_types_acc + _column_types_method[1:])]
+    sheets.extend(
+        (m, _excel_columns,
+         list(chain(*([(node_names if i == 0 else empty_row_part) + o['_seq_row'] + o[m]['_method_row']
+                       for i, o in enumerate(objects)]
+                      for node_names, objects in g_data)))) for m in methods)
+
+    # By year
+    by_year = _ByYear(methods, ((d['first_date'], ('ira' in d[m] for m in methods)) for d in acc_data.values()))
+    sheets.append(('By year', by_year.get_columns(), by_year.get_rows()))
+
+    # By taxonomy
+    rows = []
+    for node_names, objects in g_data:
+        num_seqs = len(objects)
+        nums = [sum(1 for o in objects if 'ira' in o[m]) for m in methods]
+        perc = [round(100 * n / num_seqs, 2) for n in nums]
+        # ToDo: Lengths
+        rows.append(node_names + [num_seqs] + list(chain(*zip(nums, perc))))
+    columns = [''] * len(node_names) + ['Num sequences'] + list(chain(*([m, f'{m} %'] for m in methods)))
+    sheets.append(('By taxonomy', columns, rows))
+
+    # Lengths (by taxonomy)
+    rows = []
+    for node_names, objects in g_data:
+        lengths = [o['length'] for o in objects]
+        _min = min(lengths)
+        _max = max(lengths)
+        avg = round(statistics.mean(lengths), 1)
+        std = round(statistics.stdev(lengths), 1) if len(lengths) > 1 else 0
+        rows.append(node_names + [len(lengths), _min, _max, _max - _min, avg, std])
+    columns = [''] * len(node_names) + ['Num sequences', 'Min', 'Max', 'Max - min', 'Average', 'Std']
+    sheets.append(('Lengths', columns, rows))
+
+    # Comparison
     sheets.append((
       'Comparisons',
       [''] + methods[1:],
       [[m] + [''] * idx +
        [_cm(acc_data, m, x) for x in methods[idx + 1:]] for idx, m in enumerate(methods[:-1])]))
-    sheets.append(('By year', by_first_date_year.get_columns(methods), by_first_date_year.get_rows(methods)))
-    if by_taxonomy:
-        sheets.append(by_taxonomy.export_sheet('By taxonomy', 0))
+
+    # Excel: method sheets
     sheets_2_excel('chloroplast_irs_analysis.xls', sheets)
 
+    # Store step data. This finishes step
+    table_rows = [data['_seq_row'] + list(chain(*(data[m]['_method_row'] for m in methods)))
+                  for seq_ident, data in acc_data.items()]
+    columns = list(chain(*([(f'{method}_{n}', t) for n, t in _column_types_method] for m in methods)))
+    step.set_table_data(table_rows, _column_types_acc + columns)
+    step.save()
+
     return step
+
+
+def _group_same_irs(obj, methods):
+    same = []
+    by_method = []
+    for m in methods:
+        if ira := obj[m].get('ira'):
+            d = ira, obj[m].get('irb')
+            try:
+                ind = same.index(d) + 1
+            except ValueError:
+                same.append(d)
+                ind = len(same)
+            by_method.append(ind)
+        else:
+            by_method.append('-')
+    return by_method
 
 
 def _cm(acc_data, m1, m2):
