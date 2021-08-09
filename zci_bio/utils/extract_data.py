@@ -1,6 +1,7 @@
 import os.path
 from functools import wraps
 import difflib
+import time
 from datetime import datetime
 from Bio.SeqFeature import FeatureLocation, CompoundLocation
 from .entrez import Entrez
@@ -133,14 +134,14 @@ class ExtractData:
         from ..chloroplast.irs.chloroplot import chloroplot as chloroplot_ann
         return self._from_indices(
             self.sequences_step.get_sequence_record(seq_ident, cache=False), seq_ident, key,
-            chloroplot_ann(self._seq_filename(seq_ident)))
+            lambda: chloroplot_ann(self._seq_filename(seq_ident)))
 
     @with_seq_ident
     def pga(self, seq_ident, key):
         from ..chloroplast.irs.pga import pga
         return self._from_indices(
             self.sequences_step.get_sequence_record(seq_ident, cache=False), seq_ident, key,
-            pga(self._seq_filename(seq_ident)))
+            lambda: pga(self._seq_filename(seq_ident)))
 
     @with_seq_ident
     def pga_sb(self, seq_ident, key):
@@ -151,7 +152,7 @@ class ExtractData:
         from ..chloroplast.irs.plann import plann
         return self._from_indices(
             self.sequences_step.get_sequence_record(seq_ident, cache=False), seq_ident, key,
-            plann(self._seq_filename(seq_ident)))
+            lambda: plann(self._seq_filename(seq_ident)))
 
     @with_seq_ident
     def plann_sb(self, seq_ident, key):
@@ -162,29 +163,30 @@ class ExtractData:
         from ..chloroplast.irs.org_annotate import org_annotate
         return self._from_indices(
             self.sequences_step.get_sequence_record(seq_ident, cache=False), seq_ident, key,
-            org_annotate(self._seq_filename(seq_ident)))
+            lambda: org_annotate(self._seq_filename(seq_ident)))
 
     #
     def _small_d_annotation(self, seq, seq_ident, key, no_prepend_workaround=True, no_dna_fix=True):
         from ..chloroplast.irs.small_d import small_d
         return self._from_indices(
             seq, seq_ident, key,
-            small_d(seq, no_prepend_workaround=no_prepend_workaround, no_dna_fix=no_dna_fix))
+            lambda: small_d(seq, no_prepend_workaround=no_prepend_workaround, no_dna_fix=no_dna_fix))
 
     def _self_blast(self, variant, seq_ident, key):
         from ..chloroplast.irs.self_blast import self_blast
         return self._from_indices(
             self.sequences_step.get_sequence_record(seq_ident, cache=False), seq_ident, key,
-            self_blast(variant, self._seq_filename(seq_ident)))
+            lambda: self_blast(variant, self._seq_filename(seq_ident)))
 
     #
-    def _from_indices(self, seq, seq_ident, key, irs):
+    def _from_indices(self, seq, seq_ident, key, irs_method):
+        start = time.perf_counter()
+        irs = irs_method()
+        d = dict(length=len(seq.seq), calculation_time=_format_time(time.perf_counter() - start))
         if irs:
             ira, irb = irs
-            seq_len = len(seq.seq)
-            d = dict(length=len(seq.seq),
-                     ira=[ira[0], ira[1]],
-                     irb=[irb[0], irb[1]])
+            d['ira'] = [ira[0], ira[1]]
+            d['irb'] = [irb[0], irb[1]]
             #
             ira = self._feature(seq, *ira, 1)
             irb = self._feature(seq, *irb, -1)
@@ -193,7 +195,7 @@ class ExtractData:
                 return d
             return None
         print(f'{key.split(" ", 1)[1]} {seq_ident}: no IRs')
-        return dict(length=len(seq.seq))
+        return d
 
     def _feature(self, seq, s, e, strand):
         if s < e:
@@ -271,3 +273,22 @@ for key, m_sufix, cls_method in (
     # Bulk fetch
     # Interface: method_name(seq_idents, seq_step=None)
     setattr(ExtractData, f'cache_keys1_{m_sufix}', cache_fetch_keys1(key, cls_method))
+
+
+def _format_time(seconds):
+    if seconds < 0.001:
+        return f'{round(seconds * 1000000)}ns'
+    if seconds < 0.2:
+        return f'{round(seconds * 1000)}ms'
+    if seconds < 10:
+        return f'{round(seconds, 2)}s'
+    if seconds > 3600:
+        hours = int(seconds // 3600)
+        rest = seconds - hours * 3600
+        minutes = int(rest // 60)
+        return f'{hours}h {minutes}m'
+    if seconds > 60:
+        minutes = int(seconds // 60)
+        rest = seconds - minutes * 60
+        return f'{minutes}m {int(rest)}s'
+    return f'{round(seconds, 1)}s'
