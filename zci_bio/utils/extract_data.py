@@ -202,8 +202,11 @@ class ExtractData:
     def _feature(self, seq, s, e, strand):
         if s < e:
             return FeatureLocation(s, e, strand=strand)
-        return CompoundLocation([FeatureLocation(s, len(seq.seq), strand=strand),
-                                 FeatureLocation(0, e, strand=strand)])
+        if strand == 1:
+            return CompoundLocation([FeatureLocation(s, len(seq.seq), strand=1),
+                                     FeatureLocation(0, e, strand=1)])
+        return CompoundLocation([FeatureLocation(0, e, strand=-1),
+                                 FeatureLocation(s, len(seq.seq), strand=-1)])
 
     def _irs_desc(self, seq, seq_ident, key, ira, irb, irs_d):
         ira = str(ira.seq)
@@ -302,9 +305,21 @@ if __name__ == '__main__':
     from common_utils.properties_db import PropertiesDB
     _methods = ('annotation', 'small_d', 'small_d_P', 'small_d_D', 'small_d_all',
                 'chloroplot', 'pga', 'pga_sb', 'plann', 'plann_sb', 'org_annotate')
-    parser = argparse.ArgumentParser(description="Calls ExtractData method on given sequence")
+    parser = argparse.ArgumentParser(description="""
+Calls ExtractData method on given sequence
+
+Examples:
+python3 extract_data.py pga <path_to_sequence_filename>
+Make PGA IRs location on sequence given with a filename.
+
+python3 extract_data.py plann -c sequences <sequence_accession_number>
+Make Plann IRs location on sequence in stored in Common DB.
+File is searched with path 'sequences' and given ident (accession number).
+""", formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('method_name', choices=_methods, help='Method name')
-    parser.add_argument('-c', '--common-db', help='Use common db sequence')
+    parser.add_argument(
+        '-c', '--common-db',
+        help='Common DB path. If specified, seq_filename is used as ident inside Common DB specified with given path.')
     parser.add_argument('seq_filename', help='Sequence filename')
     parser.add_argument('-l', '--look-for-diff', action='store_true', help='Search for diff in properties DB.')
     params = parser.parse_args()
@@ -322,7 +337,8 @@ if __name__ == '__main__':
     #
     if seq_filename:
         ed = ExtractData(properties_db=PropertiesDB(), look_for_diff=params.look_for_diff)
-        getattr(ed, params.method_name)(key=f'annotation {params.method_name}', seq_filename=seq_filename)
+        ir_desc = getattr(ed, params.method_name)(key=f'annotation {params.method_name}', seq_filename=seq_filename)
+        print(ir_desc)
 
         if tmp_file:
             os.remove(tmp_file)

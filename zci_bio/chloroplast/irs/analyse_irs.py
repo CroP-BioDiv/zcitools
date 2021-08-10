@@ -183,25 +183,34 @@ def analyse_irs(step_data, table_step, seqs_step, ge_seq_step, chloe_step, metho
     # By taxonomy
     rows = []
     for node_names, objects in g_data:
-        num_seqs = len(objects)
-        nums = [sum(1 for o in objects if 'ira' in o[m]) for m in methods]
-        perc = [round(100 * n / num_seqs, 2) for n in nums]
-        # ToDo: Lengths
-        rows.append(node_names + [num_seqs] + list(chain(*zip(nums, perc))))
-    columns = [''] * len(node_names) + ['Num sequences'] + list(chain(*([m, f'{m} %'] for m in methods)))
-    sheets.append(('By taxonomy', columns, rows))
-
-    # Lengths (by taxonomy)
-    rows = []
-    for node_names, objects in g_data:
+        # Taxonomy and lengths
         lengths = [o['length'] for o in objects]
         _min = min(lengths)
         _max = max(lengths)
         avg = round(statistics.mean(lengths), 1)
         std = round(statistics.stdev(lengths), 1) if len(lengths) > 1 else 0
-        rows.append(node_names + [len(lengths), _min, _max, _max - _min, avg, std])
-    columns = [''] * len(node_names) + ['Num sequences', 'Min', 'Max', 'Max - min', 'Average', 'Std']
-    sheets.append(('Lengths', columns, rows))
+        row_p = node_names + [len(lengths), _min, _max, _max - _min, avg, std]
+        dummy_p = [''] * len(row_p)
+
+        # Methods
+        num_seqs = len(objects)
+        for idx, m in enumerate(methods):
+            if ir_lengths := [max(o[m]['_method_row'][4:6]) for o in objects if 'ira' in o[m]]:
+                num = len(ir_lengths)
+                perc = round(100 * num / num_seqs, 2)
+                _min = min(ir_lengths)
+                _max = max(ir_lengths)
+                avg = round(statistics.mean(ir_lengths), 1)
+                # ToDo: grupirati po duljini
+            else:
+                nums = perc = 0
+                _min = _max = avg = None
+            rows.append((row_p if idx == 0 else dummy_p) + [m, num, perc, _min, _max, avg])
+    #
+    columns = [''] * len(node_names) + \
+        ['Num sequences', 'Min length', 'Max length', 'Length span', 'Avg length', 'Std length',
+         'Method', 'Num annotated', '% annotated', 'Min IR length', 'Max IR length', 'Avg IR length']
+    sheets.append(('By taxonomy', columns, rows))
 
     # Comparison
     sheets.append((

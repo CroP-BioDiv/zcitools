@@ -99,6 +99,7 @@ class PropertiesDB:
 
     #
     def get_properties_key2_like(self, key1, key2):
-        cursor = self.db().execute(f"SELECT key2, data_type, data FROM properties WHERE key1 = ? AND key2 LIKE ?", (key1, key2))
+        cursor = self.db().execute(
+            "SELECT key2, data_type, data FROM properties WHERE key1 = ? AND key2 LIKE ?", (key1, key2))
         return dict((k, (m(data) if (m := self._from_db_methods.get(data_type)) else data))
                     for k, data_type, data in cursor.fetchall())
