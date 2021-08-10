@@ -6,7 +6,7 @@ from Bio.SeqFeature import FeatureLocation, CompoundLocation
 from Bio import SeqIO
 from zci_bio.utils.entrez import Entrez
 from zci_bio.utils.diff_sequences import diff_check_memory
-from zci_bio.chloroplast.utils import find_chloroplast_irs
+from zci_bio.chloroplast.utils import find_chloroplast_irs, ir_loc
 
 
 def with_seq(func):
@@ -102,8 +102,8 @@ class ExtractData:
         if irs := find_chloroplast_irs(seq, check_length=False):
             ira, irb = irs
             d = dict(length=len(seq.seq),
-                     ira=self._loc(ira.location.parts),
-                     irb=self._loc(irb.location.parts))
+                     ira=ir_loc(ira.location.parts),
+                     irb=ir_loc(irb.location.parts))
             #
             ira_s = ira.extract(seq)
             irb_s = irb.extract(seq)
@@ -114,17 +114,6 @@ class ExtractData:
                 return d
             return None
         return dict(length=len(seq.seq))
-
-    @staticmethod
-    def _loc(ir_parts):
-        assert 1 <= len(ir_parts) <= 2, ir_parts
-        p1 = ir_parts[0]
-        if len(ir_parts) == 1:
-            return [int(p1.start), int(p1.end)]
-        if p1.start == 0:
-            return [int(ir_parts[1].start), int(p1.end)]
-        assert ir_parts[1].start == 0
-        return [int(p1.start), int(ir_parts[1].end)]
 
     @with_seq
     def small_d(self, seq, seq_ident, key):

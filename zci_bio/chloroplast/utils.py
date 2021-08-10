@@ -56,6 +56,17 @@ def find_chloroplast_irs(seq, check_length=True):
             return (ira, irb) if diff_1 < diff_2 else (irb, ira)
 
 
+def ir_loc(ir_parts):
+    assert 1 <= len(ir_parts) <= 2, ir_parts
+    p1 = ir_parts[0]
+    if len(ir_parts) == 1:
+        return [int(p1.start), int(p1.end)]
+    if p1.start == 0:
+        return [int(ir_parts[1].start), int(p1.end)]
+    assert ir_parts[1].start == 0
+    return [int(p1.start), int(ir_parts[1].end)]
+
+
 def irb_start(irb):
     return int(irb.location.parts[0].start)
 
