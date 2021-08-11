@@ -36,6 +36,8 @@ def create_table_step(project, step_data, params):
                 if not columns:
                     columns = [(c, column_name_2_type(c)) for c in header]  # Default
             data = sorted(reader)
+    elif data_format == 'raw_data':
+        data = [[line] for line in filename.split(';') if line]
     else:
         raise ZCItoolsValueError(f'Data format {data_format} is not supported!')
 

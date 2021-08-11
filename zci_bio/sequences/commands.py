@@ -21,7 +21,7 @@ class FetchSequencesStep(CreateStepFromStepCommand):
             step_data, self._input_step(), self.get_common_db_object(), column_name=self.args.column_name)
 
 
-class UpdateCahcedSequencesStep(NonProjectCommand):
+class UpdateCachedSequencesStep(NonProjectCommand):
     _COMMAND = 'cdb_update_seqs'
     _COMMAND_GROUP = 'NCBI'
     _HELP = "Update cached sequences"

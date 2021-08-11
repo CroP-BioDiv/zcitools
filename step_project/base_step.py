@@ -182,7 +182,8 @@ class Step:
         return dict(step_name=step_name)  # , prev_steps=None, command=None, command_args=None, cmd=None)
 
     def create_substep(self, step_cls, local_step_name, remove_data=False, update_mode=False):
-        return step_cls(self.get_substep_step_data(self._step_name_list + [local_step_name]),
+        return step_cls(self.project,
+                        self.get_substep_step_data(self._step_name_list + [local_step_name]),
                         remove_data=remove_data, update_mode=update_mode)
 
     def read_substep(self, local_step_name):

@@ -201,7 +201,7 @@ def analyse_irs(step_data, table_step, seqs_step, ge_seq_step, chloe_step, metho
                 _min = min(ir_lengths)
                 _max = max(ir_lengths)
                 avg = round(statistics.mean(ir_lengths), 1)
-                # ToDo: grupirati po duljini
+                # ToDo: grupirati po duljini, nekako????
             else:
                 nums = perc = 0
                 _min = _max = avg = None
@@ -296,7 +296,7 @@ def _longer_ir(ir1, ir2):
 def _irs_2_row(irs_data):
     if irs_data is None:    # No data, method was not called?
         return ['?'] * 8
-    if len(irs_data) == 1:  # Only length, means method didn't find IRs
+    if 'ira' not in irs_data:  # No annotation
         return ['-'] * 8
     #
     seq_length = irs_data['length']
