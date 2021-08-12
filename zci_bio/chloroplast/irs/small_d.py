@@ -95,9 +95,11 @@ def small_d(seq_rec, working_dir=None, leave_tmp_file=False, no_prepend_workarou
     return res_irs
 
 
-def _ir(seq_length, ira, irb):
+def _ir(seq_length, start, end):
     # Note: irscan output is 1-based, and range means [start..end]
-    return ((ira - 1) % seq_length), (irb if irb > 0 else (irb % seq_length))
+    if end == 0:
+        end = seq_length
+    return ((start - 1) % seq_length), (end if (end > 0 or end == seq_length) else (end % seq_length))
 
 
 def small_d_on_file(seq_filename, leave_tmp_file=False, no_prepend_workaround=False, no_dna_fix=False):
