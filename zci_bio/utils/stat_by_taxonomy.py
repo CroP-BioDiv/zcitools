@@ -147,10 +147,11 @@ class StatByTaxonomy:
 
 #
 class _Node:
-    def __init__(self, is_leaf, taxid, parent_node, depth, name):
+    def __init__(self, is_leaf, taxid, parent_node, rank, depth, name):
         self.is_leaf = is_leaf
         self.taxid = taxid
         self.parent_node = parent_node
+        self.rank = rank
         self.depth = depth
         self.name = name
         self.max_depth = depth  # In subtree
@@ -166,8 +167,8 @@ class _Node:
     def set_depth(self, depth):
         if depth > self.max_depth:
             self.max_depth = depth
-            if self.parent:
-                self.parent.set_depth(depth)
+            if self.parent_node:
+                self.parent_node.set_depth(depth)
 
     def nodes_under(self):
         if self.is_leaf:
@@ -175,8 +176,12 @@ class _Node:
         return (self, [n.nodes_under() for n in sorted(self.children, key=lambda x: x.name)])
 
     @staticmethod
-    def dummy_node(is_leaf=False, depth=0):
-        return _Node(is_leaf, 0, None, depth, '-')
+    def dummy_node(is_leaf=False, depth=0, name='-'):
+        return _Node(is_leaf, 0, None, None, depth, name)
+
+
+_DUMMY_NODE_INNER = _Node.dummy_node(name='-')
+_DUMMY_NODE_INNER_S = _Node.dummy_node(name='')
 
 
 class GroupByTaxonomy:
@@ -214,26 +219,25 @@ class GroupByTaxonomy:
         # Set objects
         self.nodes = dict()
         for taxid, obj in zip(object_taxids, objects):
-            parents = [t for t in self.taxid_2_lineage[taxid] if t in self.group_taxids]
-            if not parents:
+            parent_taxids = [t for t in self.taxid_2_lineage[taxid] if t in self.group_taxids]
+            if not parent_taxids:
                 print(f'Warning: stat for taxid {taxid} is not set, because there is no parent to add to!')
                 continue
 
             # Add nodes
             # Note: node creation is from higher to lower taxonomy
-            for depth, (taxid, parent) in enumerate(zip(parents, [None] + parents[:-1])):
-                node = self._add_node(taxid == parents[-1], taxid, parent, depth)
+            for depth, (taxid, parent_taxid) in enumerate(zip(parent_taxids, [None] + parent_taxids[:-1])):
+                node = self._add_node(taxid == parent_taxids[-1], taxid, parent_taxid, taxid_2_rank[taxid], depth)
             node.objects.append(obj)  # Last node is a leaf
 
-    def _add_node(self, is_leaf, taxid, parent_taxid, depth):
+    def _add_node(self, is_leaf, taxid, parent_taxid, rank, depth):
         if node := self.nodes.get(taxid):
-            assert node.is_leaf == is_leaf, (node.is_leaf, is_leaf, taxid, parent, depth)
-            assert node.taxid == taxid, (node.taxid, is_leaf, taxid, parent, depth)
-            # assert node.parent_taxid == parent, (node.parent_taxid, is_leaf, taxid, parent, depth)
-            assert node.depth == depth, (node.parent_taxid, is_leaf, taxid, parent, depth)
+            assert node.is_leaf == is_leaf, (node.is_leaf, is_leaf, taxid, parent_taxid, depth)
+            assert node.taxid == taxid, (node.taxid, is_leaf, taxid, parent_taxid, depth)
+            assert node.depth == depth, (node.parent_taxid, is_leaf, taxid, parent_taxid, depth)
             return node
         parent = self.nodes[parent_taxid] if parent_taxid is not None else None
-        self.nodes[taxid] = node = _Node(is_leaf, taxid, parent, depth, self.taxid_2_name[taxid])
+        self.nodes[taxid] = node = _Node(is_leaf, taxid, parent, rank, depth, self.taxid_2_name[taxid])
         if parent:
             parent.add_child(node)
         return node
@@ -261,21 +265,35 @@ class GroupByTaxonomy:
             for n in sorted(node.children, key=lambda n: n.name):
                 yield from self._sorted_objects(n, objects_sort)
 
-    def sorted_nodes_objects(self, return_names=False, objects_sort=None):
+    def sorted_nodes_objects(self, objects_sort=None, return_names=False, compact_names=False, lowest_rank=None):
         # Iterate through objects in taxonomical order.
         # Returns pairs (list of nodes, list of objects)
         max_depth = max(n.depth for n in self.nodes.values()) + 1  # +1 since depth 0 means the heighest node
         for n in sorted((n for n in self.nodes.values() if n.depth == 0), key=lambda n: (-n.max_depth, n.name)):
-            yield from self._sorted_nodes_objects([n], max_depth, objects_sort, return_names)
+            yield from self._sorted_nodes_objects(
+                [n], max_depth, objects_sort, return_names, compact_names, lowest_rank)
 
-    def _sorted_nodes_objects(self, prev_nodes, max_depth, objects_sort, return_names):
+    def _sorted_nodes_objects(self, prev_nodes, max_depth, objects_sort, return_names, compact_names, lowest_rank):
         node = prev_nodes[-1]
         if node.is_leaf:
             if return_names:
                 prev_nodes = [n.name for n in prev_nodes]
             if (num_dummies := max(0, max_depth - len(prev_nodes))):
-                prev_nodes = ['-' if return_names else _Node.dummy_node()] * num_dummies + prev_nodes
+                prev_nodes = ['-' if return_names else _DUMMY_NODE_INNER] * num_dummies + prev_nodes
             yield (prev_nodes, (sorted(node.objects, key=objects_sort) if objects_sort else node.objects))
         else:
-            for n in sorted(node.children, key=lambda n: n.name):
-                yield from self._sorted_nodes_objects(prev_nodes + [n], max_depth, objects_sort, return_names)
+            if lowest_rank and node.rank == lowest_rank:
+                all_objs = []
+                for n in sorted(node.children, key=lambda n: n.name):
+                    for nodes, objs in self._sorted_nodes_objects(prev_nodes + [n], max_depth, objects_sort,
+                                                                  return_names, compact_names, lowest_rank):
+                        all_objs.extend(objs)
+                if return_names:
+                    prev_nodes = [n.name for n in prev_nodes]
+                yield prev_nodes, all_objs
+            else:
+                next_prev_names = ([_DUMMY_NODE_INNER_S] * len(prev_nodes)) if compact_names else prev_nodes
+                for n in sorted(node.children, key=lambda n: n.name):
+                    yield from self._sorted_nodes_objects(prev_nodes + [n], max_depth, objects_sort,
+                                                          return_names, compact_names, lowest_rank)
+                    prev_nodes = next_prev_names

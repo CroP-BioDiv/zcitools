@@ -167,9 +167,12 @@ irDetect <- function(genome, seed.size = 1000) {
   # ir_dff <- abs(sum(ifelse(ir_dff$dff, 1, -1)))
   if (ira_len != irb_len){
     if (is.null(indel_table) |
-        sum(indel_table$mismatch_type %in% c("insert", "delete")) == 0 |
-        abs(ira_len - irb_len) > 100){
+        sum(indel_table$mismatch_type %in% c("insert", "delete")) == 0
+        ){
       stop("The IR regions are not in similar length and no indel was detected")
+    }
+    if (abs(ira_len - irb_len) > 1000){
+      warning("The difference between IR regions is larger than 1000 bp")
     }
   }
 
@@ -221,7 +224,7 @@ irDetect <- function(genome, seed.size = 1000) {
                                      irb_s - tick - 1, l),
                              name = c("LSC", "IRA", "SSC", "IRB"),
                              text = c(paste("LSC:", lsc_len),
-                                      paste("IRA:", irb_len),
+                                      paste("IRA:", ira_len),
                                       paste("SSC:", ssc_len),
                                       paste("IRB:", irb_len)),
                              stringsAsFactors = FALSE)
@@ -234,7 +237,7 @@ irDetect <- function(genome, seed.size = 1000) {
                              name = c("IRB", "LSC", "IRA", "SSC", "IRB"),
                              text = c(paste("IRB:", irb_len),
                                       paste("LSC:", lsc_len),
-                                      paste("IRA:", irb_len),
+                                      paste("IRA:", ira_len),
                                       paste("SSC:", ssc_len),
                                       ""),
                              stringsAsFactors = FALSE)
@@ -488,6 +491,8 @@ genome <- Biostrings::DNAString(genome)
 tryCatch({
   ir <- irDetect(genome, seed.size = 100)
 }, error = function(e){
+  ir <- irDetect(genome, seed.size = 1000)
+}, warning = function(w) {
   ir <- irDetect(genome, seed.size = 1000)
 })
 

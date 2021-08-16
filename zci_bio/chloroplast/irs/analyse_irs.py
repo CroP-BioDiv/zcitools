@@ -144,7 +144,8 @@ def analyse_irs(step_data, table_step, seqs_step, ge_seq_step, chloe_step, metho
     assert taxa_ranks or taxa_names
     group_bt = GroupByTaxonomy(list(acc_data.values()), ranks=taxa_ranks, names=taxa_names,
                                taxid_attr='taxid')
-    g_data = list(group_bt.sorted_nodes_objects(return_names=True, objects_sort=lambda d: d['organism']))
+    g_data = list(group_bt.sorted_nodes_objects(objects_sort=(lambda d: d['organism']),
+                                                return_names=True, compact_names=True))
 
     grouped_columns = group_bt.grouped_columns()
     empty_row_part = [''] * len(grouped_columns)
@@ -181,35 +182,43 @@ def analyse_irs(step_data, table_step, seqs_step, ge_seq_step, chloe_step, metho
                    [[''] * nc, ['Published'] + [''] * (nc - 1)] + by_year_ud.get_rows()))
 
     # By taxonomy
-    rows = []
-    for node_names, objects in g_data:
-        # Taxonomy and lengths
-        lengths = [o['length'] for o in objects]
-        _min = min(lengths)
-        _max = max(lengths)
-        avg = round(statistics.mean(lengths), 1)
-        std = round(statistics.stdev(lengths), 1) if len(lengths) > 1 else 0
-        row_p = node_names + [len(lengths), _min, _max, _max - _min, avg, std]
-        dummy_p = [''] * len(row_p)
+    for rank_idx, rank in enumerate(taxa_ranks):
+        _g_data = g_data if rank == taxa_ranks[-1] else list(
+            group_bt.sorted_nodes_objects(objects_sort=(lambda d: d['organism']),
+                                          return_names=True, compact_names=True, lowest_rank=rank))
 
-        # Methods
-        num_seqs = len(objects)
-        for idx, m in enumerate(methods):
-            if ir_lengths := [max(o[m]['_method_row'][4:6]) for o in objects if 'ira' in o[m]]:
-                num = len(ir_lengths)
-                perc = round(100 * num / num_seqs, 2)
-                _min = min(ir_lengths)
-                _max = max(ir_lengths)
-                avg = round(statistics.mean(ir_lengths), 1)
-                # ToDo: grupirati po duljini, nekako????
-            else:
-                nums = perc = 0
-                _min = _max = avg = None
-            rows.append((row_p if idx == 0 else dummy_p) + [m, num, perc, _min, _max, avg])
+        rows = []
+        for node_names, objects in _g_data:
+            # Taxonomy and lengths
+            lengths = [o['length'] for o in objects]
+            _min = min(lengths)
+            _max = max(lengths)
+            avg = round(statistics.mean(lengths), 1)
+            std = round(statistics.stdev(lengths), 1) if len(lengths) > 1 else 0
+            row_p = node_names + [len(lengths), _min, _max, _max - _min, avg, std]
+            dummy_p = [''] * len(row_p)
+
+            # Methods
+            num_seqs = len(lengths)
+            for idx, m in enumerate(methods):
+                if ir_lengths := [max(o[m]['_method_row'][4:6]) for o in objects if 'ira' in o[m]]:
+                    num = len(ir_lengths)
+                    perc = round(100 * num / num_seqs, 2)
+                    _min = min(ir_lengths)
+                    _max = max(ir_lengths)
+                    avg = round(statistics.mean(ir_lengths), 1)
+                    # ToDo: grupirati po duljini, nekako????
+                else:
+                    num = perc = 0
+                    _min = _max = avg = None
+                rows.append((row_p if idx == 0 else dummy_p) + [m, num, perc, _min, _max, avg])
+
+        columns = grouped_columns[:(rank_idx + 1)] + \
+            ['Num sequences', 'Min length', 'Max length', 'Length span', 'Avg length', 'Std length',
+             'Method', 'Num annotated', '% annotated', 'Min IR length', 'Max IR length', 'Avg IR length']
+        sheets.append((f'By {rank}', columns, rows))
+
     #
-    columns = [''] * len(node_names) + \
-        ['Num sequences', 'Min length', 'Max length', 'Length span', 'Avg length', 'Std length',
-         'Method', 'Num annotated', '% annotated', 'Min IR length', 'Max IR length', 'Avg IR length']
     sheets.append(('By taxonomy', columns, rows))
 
     # Comparison
