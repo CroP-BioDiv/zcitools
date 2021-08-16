@@ -28,7 +28,8 @@ _column_types_method = [
 
 class _ByYear:
     def __init__(self, methods, data):
-        self.by_year = defaultdict(int)  # (year, method|None) -> num
+        self.num_by_year = defaultdict(int)  # year -> num
+        self.by_year = defaultdict(list)     # (year, method) -> list of data
         self.all_years = set()
         self.methods = methods
         for date_str, m_data in data:
@@ -38,33 +39,57 @@ class _ByYear:
             else:
                 current_year = date_str.year
             self.all_years.add(current_year)
-            self.by_year[(current_year, None)] += 1
-            for method, is_in in zip(methods, m_data):
-                if is_in:
-                    self.by_year[(current_year, method)] += 1
+            self.num_by_year[current_year] += 1
+            for method, m_d in zip(methods, m_data):
+                if 'ira' in m_d:
+                    self.by_year[(current_year, method)].append(m_d)
 
     def get_rows(self):
         by = self.by_year.get
         rows = []
         sum_all = 0
         sum_m = dict((m, 0) for m in self.methods)
+        min_ir_l_method = dict()
+        max_ir_l_method = dict()
+        num_not_eq_method = defaultdict(int)
+        num_q_method = defaultdict(int)
         for y in sorted(self.all_years):
-            n_all = by((y, None), 0)
+            n_all = self.num_by_year.get(y, 0)
             sum_all += n_all
             row = [y, n_all]
-            for m in self.methods:
-                nm = by((y, m), 0)
+            d_row = [''] * len(row)
+            # Min, max IR length
+            # num with diff
+            for idx, m in enumerate(self.methods):
+                nm = min_ir_l = max_ir_l = num_not_eq = num_q = 0
+                if m_ds := by((y, m)):
+                    nm = len(m_ds)
+                    if not_q := [d for d in m_ds if d['type'][0] != '?']:
+                        min_ir_l = min(min(d['_method_row'][4:6]) for d in not_q)
+                        max_ir_l = max(max(d['_method_row'][4:6]) for d in not_q)
+                        min_ir_l_method[m] = min(min_ir_l_method.get(m, min_ir_l), min_ir_l)
+                        max_ir_l_method[m] = max(max_ir_l_method.get(m, max_ir_l), max_ir_l)
+                        #
+                        num_not_eq = sum(1 for d in not_q if d['type'] != '+')
+                        num_not_eq_method[m] += num_not_eq
+                    #
+                    num_q = sum(1 for d in m_ds if d['type'][0] == '?')
+                    num_q_method[m] += num_q
+                #
                 sum_m[m] += nm
-                row.extend([nm, round(100 * (nm / n_all), 2) if n_all else 0])
-            rows.append(row)
+                rows.append((row if idx == 0 else d_row) +
+                            [m, nm, round(100 * (nm / n_all), 2) if n_all else 0, min_ir_l, max_ir_l, num_not_eq, num_q])
         #
-        rows.append(['all', sum_all] +
-                    list(chain(*([sum_m[m], round(100 * (sum_m[m] / sum_all), 2) if sum_all else 0]
-                                 for m in self.methods))))
+        row = ['all', sum_all]
+        rows.extend((row if idx == 0 else d_row) +
+                    [m, sum_m[m], round(100 * (sum_m[m] / sum_all), 2) if sum_all else 0,
+                     min_ir_l_method.get(m, 0), max_ir_l_method.get(m, 0), num_not_eq_method[m], num_q_method[m]]
+                    for idx, m in enumerate(self.methods))
         return rows
 
     def get_columns(self):
-        return ['year', 'num_sequences'] + list(chain(*([m, f'{m} %'] for m in self.methods)))
+        return ['year', 'num_sequences', 'method', 'num annotated', '% annotated',
+                'Min IR length', 'Max IR length', 'Num not equal', 'Num questionable']
 
 
 def analyse_irs_collect_needed_data(step_data, table_step, method, seqs_methods, common_db):
@@ -173,13 +198,11 @@ def analyse_irs(step_data, table_step, seqs_step, ge_seq_step, chloe_step, metho
                       for node_names, objects in g_data)))) for m in methods)
 
     # By year
-    by_year_fd = _ByYear(methods, ((d['first_date'], ('ira' in d[m] for m in methods)) for d in acc_data.values()))
-    by_year_ud = _ByYear(methods, ((d['update_date'], ('ira' in d[m] for m in methods)) for d in acc_data.values()))
+    by_year_fd = _ByYear(methods, ((d['first_date'], (d[m] for m in methods)) for d in acc_data.values()))
+    by_year_ud = _ByYear(methods, ((d['update_date'], (d[m] for m in methods)) for d in acc_data.values()))
     columns = by_year_fd.get_columns()
-    nc = len(columns)
-    sheets.append(('By year', columns,
-                   [['Created'] + [''] * (nc - 1)] + by_year_fd.get_rows() +
-                   [[''] * nc, ['Published'] + [''] * (nc - 1)] + by_year_ud.get_rows()))
+    sheets.append(('Year created', columns, by_year_fd.get_rows()))
+    sheets.append(('Year published', columns, by_year_ud.get_rows()))
 
     # By taxonomy
     for rank_idx, rank in enumerate(taxa_ranks):
@@ -217,9 +240,6 @@ def analyse_irs(step_data, table_step, seqs_step, ge_seq_step, chloe_step, metho
             ['Num sequences', 'Min length', 'Max length', 'Length span', 'Avg length', 'Std length',
              'Method', 'Num annotated', '% annotated', 'Min IR length', 'Max IR length', 'Avg IR length']
         sheets.append((f'By {rank}', columns, rows))
-
-    #
-    sheets.append(('By taxonomy', columns, rows))
 
     # Comparison
     sheets.append((
