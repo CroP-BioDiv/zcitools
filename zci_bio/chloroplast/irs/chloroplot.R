@@ -143,21 +143,6 @@ irDetect <- function(genome, seed.size = 1000) {
   lsc_len <- ira_s - 1 + l - irb_e
   ssc_len <- irb_s - ira_e - 1
 
-  # Detecting indels and replaces in IR-----------------------------------------
-
-  if (nrow(pos) > 3){
-    ira_seq <- genome[ira_s:ira_e]
-    irb_seq <- genome[irb_s:irb_e]
-    other_letter <- (Biostrings::letterFrequency(ira_seq, letters = "ATCG") !=
-                       Biostrings::nchar(ira_seq)) |
-      (Biostrings::letterFrequency(irb_seq, letters = "ATCG") !=
-                                            Biostrings::nchar(irb_seq))
-    indel_table <- detect_mismatch(ira_seq = ira_seq, irb_seq = irb_seq,
-                                   ira_s = ira_s, irb_s = irb_s,
-                                   other_letter = other_letter)
-  } else {
-    indel_table <- NULL
-  }
 
   # If the difference between IRA length and IRB length is not equal to the
   # number of the "insert" base pairs, the result should be wrong
@@ -166,6 +151,24 @@ irDetect <- function(genome, seed.size = 1000) {
   # ir_dff$dff <- (ir_dff$mismatch_type == "insert") == ir_dff$ira
   # ir_dff <- abs(sum(ifelse(ir_dff$dff, 1, -1)))
   if (ira_len != irb_len){
+
+    # Note: this part of code is move from before this if, because of speedup.
+    #       No need to calculate indel_table if ira_len == irb_len
+    # Detecting indels and replaces in IR-----------------------------------------
+    if (nrow(pos) > 3){
+      ira_seq <- genome[ira_s:ira_e]
+      irb_seq <- genome[irb_s:irb_e]
+      other_letter <- (Biostrings::letterFrequency(ira_seq, letters = "ATCG") !=
+                         Biostrings::nchar(ira_seq)) |
+        (Biostrings::letterFrequency(irb_seq, letters = "ATCG") !=
+                                              Biostrings::nchar(irb_seq))
+      indel_table <- detect_mismatch(ira_seq = ira_seq, irb_seq = irb_seq,
+                                     ira_s = ira_s, irb_s = irb_s,
+                                     other_letter = other_letter)
+    } else {
+        indel_table <- NULL
+    }
+
     if (is.null(indel_table) |
         sum(indel_table$mismatch_type %in% c("insert", "delete")) == 0
         ){
@@ -267,7 +270,7 @@ irDetect <- function(genome, seed.size = 1000) {
     ir_table$text <- sub("tmp", "SSC", ir_table$text, fixed = TRUE)
   }
 
-  return(list(ir_table = ir_table, indel_table = indel_table))
+  return(list(ir_table = ir_table))  # , indel_table = indel_table))
 
 }
 
