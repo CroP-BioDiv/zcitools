@@ -57,11 +57,12 @@ irDetect <- function(genome, seed.size = 1000) {
   tick = 0
 
   # Matching seeds to genome ------------------------------------------------
-  # Get the reverse complement version of genome
-  genome_rc <- Biostrings::reverseComplement(genome)
+  # Note: No need for this
+  # # Get the reverse complement version of genome
+  # genome_rc <- Biostrings::reverseComplement(genome)
 
   # Get the length of genome
-  l <- Biostrings::nchar(genome_rc)
+  l <- Biostrings::nchar(genome)  # genome_rc)
 
   # set seeds start points
   seed_starts <- seq(1, (l - seed.size + 1))
@@ -84,17 +85,24 @@ irDetect <- function(genome, seed.size = 1000) {
   }
 
   # if IRA cover genome start point, shift the genome sequence backward with seed.size
+  tick_step = round(l / 16)  # Optimization: seed.size <-> tick_step
   while(m$group[1] == 1){
-    tick <- tick + seed.size
-    genome <- c(genome[(l - seed.size + 1):l], genome[1:(l - seed.size)])
+    tick <- tick + tick_step
+    if(tick >= l - 100) {
+      return(NULL)
+    }
+    genome <- c(genome[(l - tick_step + 1):l], genome[1:(l - tick_step)])
     m <- map_genome(genome, seed_starts = seed_starts, seed.size = seed.size,
                     other_letter = other_letter)
   }
 
   # if IRB cover genome end point, shift the genome sequence forward with seed.size
   while(m$group[nrow(m)] + seed.size - 1 == l){
-    tick <- tick - seed.size
-    genome <- c(genome[(seed.size + 1):l], genome[1: seed.size])
+    tick <- tick - tick_step
+    if(tick < -l + 100) {
+      return(NULL)
+    }
+    genome <- c(genome[(tick_step + 1):l], genome[1: tick_step])
     m <- map_genome(genome, seed_starts = seed_starts, seed.size = seed.size,
                     other_letter = other_letter)
   }
@@ -118,7 +126,7 @@ irDetect <- function(genome, seed.size = 1000) {
     dplyr::arrange(group_before)
 
   # get start and end points for IRA and IRB (1-base)
-  if (sum(pos$start_diff < 0) > 0){
+  # if (sum(pos$start_diff < 0) > 0){
     tmp <- pos[pos$start_diff < 0, ]
     pos <- rbind.data.frame(pos, df[which(df$group_diff %in% tmp$group_diff) - 1, ],
                             df[which(df$group_diff %in% tmp$group_diff) + 1, ]) %>%
@@ -130,12 +138,12 @@ irDetect <- function(genome, seed.size = 1000) {
     ira_e <- pos$group_before[which.max(pos$group_diff)] + seed.size - 1
     irb_s <- l - pos$start_before[which.max(pos$group_diff)] - seed.size + 2
     irb_e <- pos$group_after[mismatch_group[length(mismatch_group)] + 1] + seed.size -1
-  } else {
-    ira_s <- pos$group_before[1]
-    ira_e <- pos$group_before[(nrow(pos)+1)/2] + seed.size - 1
-    irb_s <- pos$group_after[(nrow(pos)+1)/2]
-    irb_e <- pos$group_after[nrow(pos)] + seed.size - 1
-  }
+  # } else {
+  #   ira_s <- pos$group_before[1]
+  #   ira_e <- pos$group_before[(nrow(pos)+1)/2] + seed.size - 1
+  #   irb_s <- pos$group_after[(nrow(pos)+1)/2]
+  #   irb_e <- pos$group_after[nrow(pos)] + seed.size - 1
+  # }
 
   # Calculate lengths of each regions (1-base)
   ira_len <- ira_e - ira_s + 1
@@ -143,6 +151,10 @@ irDetect <- function(genome, seed.size = 1000) {
   lsc_len <- ira_s - 1 + l - irb_e
   ssc_len <- irb_s - ira_e - 1
 
+  if (abs(ira_len - irb_len) > 1000){
+    # warning("The difference between IR regions is larger than 1000 bp")
+    return(NULL)
+  }
 
   # If the difference between IRA length and IRB length is not equal to the
   # number of the "insert" base pairs, the result should be wrong
@@ -172,10 +184,8 @@ irDetect <- function(genome, seed.size = 1000) {
     if (is.null(indel_table) |
         sum(indel_table$mismatch_type %in% c("insert", "delete")) == 0
         ){
-      stop("The IR regions are not in similar length and no indel was detected")
-    }
-    if (abs(ira_len - irb_len) > 1000){
-      warning("The difference between IR regions is larger than 1000 bp")
+      # stop("The IR regions are not in similar length and no indel was detected")
+      return(NULL)
     }
   }
 
@@ -483,23 +493,30 @@ input_file = args[1]
 # -----------------------------------------------------------------------------
 # From project's file R/plot_genome.R
 # gb <- genbankr::readGenBank(input_file)  # Quite slow
-# genome <- genbankr::getSeq(gb)[[1]]
+# genome_orig <- genbankr::getSeq(gb)[[1]]
 
 # Faster
 # Note: upper method of loading sequence can crash :-/
-genome <- read.fasta(input_file, as.string = TRUE, set.att = FALSE)
-genome <- paste(unlist(genome),collapse="")
-genome <- Biostrings::DNAString(genome)
+genome_orig <- read.fasta(input_file, as.string = TRUE, set.att = FALSE)
+genome_orig <- paste(unlist(genome_orig),collapse="")
+genome_orig <- Biostrings::DNAString(genome_orig)
 
-tryCatch({
-  ir <- irDetect(genome, seed.size = 100)
-}, error = function(e){
-  ir <- irDetect(genome, seed.size = 1000)
-}, warning = function(w) {
-  ir <- irDetect(genome, seed.size = 1000)
-})
+# Original call from plot_genome.R
+# tryCatch({
+#   my_env$ir <- irDetect(my_env$genome, seed.size = 100)
+# }, error = function(e){
+#   my_env$ir <- irDetect(my_env$genome, seed.size = 1000)
+# }, warning = function(w) {
+#   my_env$ir <- irDetect(my_env$genome, seed.size = 1000)
+# })
 
-if(exists("ir")) {
+# Simpler version, by changing stop() and warning() with return(NULL)
+ir = irDetect(genome_orig, seed.size = 100)
+if(is.null(ir)) {
+  ir = irDetect(genome_orig, seed.size = 1000)
+}
+
+if(!is.null(ir)) {
   print(ir)
 } else {
   print('No IRs found!')
