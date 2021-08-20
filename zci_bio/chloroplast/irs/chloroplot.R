@@ -85,7 +85,8 @@ irDetect <- function(genome, seed.size = 1000) {
   }
 
   # if IRA cover genome start point, shift the genome sequence backward with seed.size
-  tick_step = round(l / 16)  # Optimization: seed.size <-> tick_step
+  # tick_step <- round(l / 16)  # Optimization: seed.size <-> tick_step
+  tick_step <- seed.size
   while(m$group[1] == 1){
     tick <- tick + tick_step
     if(tick >= l - 100) {
@@ -152,8 +153,7 @@ irDetect <- function(genome, seed.size = 1000) {
   ssc_len <- irb_s - ira_e - 1
 
   if (abs(ira_len - irb_len) > 1000){
-    # warning("The difference between IR regions is larger than 1000 bp")
-    return(NULL)
+    warning("The difference between IR regions is larger than 1000 bp")
   }
 
   # If the difference between IRA length and IRB length is not equal to the
@@ -184,8 +184,7 @@ irDetect <- function(genome, seed.size = 1000) {
     if (is.null(indel_table) |
         sum(indel_table$mismatch_type %in% c("insert", "delete")) == 0
         ){
-      # stop("The IR regions are not in similar length and no indel was detected")
-      return(NULL)
+      stop("The IR regions are not in similar length and no indel was detected")
     }
   }
 
@@ -493,31 +492,29 @@ input_file = args[1]
 # -----------------------------------------------------------------------------
 # From project's file R/plot_genome.R
 # gb <- genbankr::readGenBank(input_file)  # Quite slow
-# genome_orig <- genbankr::getSeq(gb)[[1]]
+# genome <- genbankr::getSeq(gb)[[1]]
 
 # Faster
 # Note: upper method of loading sequence can crash :-/
-genome_orig <- read.fasta(input_file, as.string = TRUE, set.att = FALSE)
-genome_orig <- paste(unlist(genome_orig),collapse="")
-genome_orig <- Biostrings::DNAString(genome_orig)
+genome <- read.fasta(input_file, as.string = TRUE, set.att = FALSE)
+genome <- paste(unlist(genome),collapse="")
+genome <- Biostrings::DNAString(genome)
+
+my_env <- new.env()
+my_env$ir <- NULL
 
 # Original call from plot_genome.R
-# tryCatch({
-#   my_env$ir <- irDetect(my_env$genome, seed.size = 100)
-# }, error = function(e){
-#   my_env$ir <- irDetect(my_env$genome, seed.size = 1000)
-# }, warning = function(w) {
-#   my_env$ir <- irDetect(my_env$genome, seed.size = 1000)
-# })
+# Note: algorithm depends on some indexing errors!
+tryCatch({
+  my_env$ir <- irDetect(genome, seed.size = 100)
+}, error = function(e){
+  my_env$ir <- irDetect(genome, seed.size = 1000)
+}, warning = function(w) {
+  my_env$ir <- irDetect(genome, seed.size = 1000)
+})
 
-# Simpler version, by changing stop() and warning() with return(NULL)
-ir = irDetect(genome_orig, seed.size = 100)
-if(is.null(ir)) {
-  ir = irDetect(genome_orig, seed.size = 1000)
-}
-
-if(!is.null(ir)) {
-  print(ir)
+if(!is.null(my_env$ir)) {
+  print(my_env$ir)
 } else {
   print('No IRs found!')
 }
