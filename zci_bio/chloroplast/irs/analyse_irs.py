@@ -115,7 +115,6 @@ def analyse_irs_collect_needed_data(step_data, table_step, method, seqs_methods,
         do_fetch_sequences(step, properties_db.not_stored_keys1(seq_idents, 'annotation ge_seq'), common_db)
     elif method == 'chloe':
         not_in = properties_db.not_stored_keys1(seq_idents, 'annotation chloe')
-        print('chloe', not_in)
         step.set_table_data([[s] for s in not_in], [('seq_ident', 'seq_ident')])
 
     #

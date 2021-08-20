@@ -47,7 +47,8 @@ def find_chloroplast_irs(seq, check_length=True):
         if len(max_regs) != 2 and not check_length:
             # Backup
             max_regs = sorted(rep_regs, key=len)[-2:]
-            if len(max_regs[0]) - len(max_regs[1]) > 1000:  # This is too much of difference
+            # If features are too short or difference is too large, do note take them
+            if len(max_regs[0]) < 1000 or len(max_regs[1]) or len(max_regs[0]) - len(max_regs[1]) > 1000:
                 return None
         if len(max_regs) == 2:
             ira, irb = max_regs
@@ -63,7 +64,7 @@ def ir_loc(ir_parts):
         return [int(p1.start), int(p1.end)]
     if p1.start == 0:
         return [int(ir_parts[1].start), int(p1.end)]
-    assert ir_parts[1].start == 0
+    assert ir_parts[1].start == 0, ir_parts
     return [int(p1.start), int(ir_parts[1].end)]
 
 
