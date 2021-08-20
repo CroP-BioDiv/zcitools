@@ -89,6 +89,16 @@ def _loc(ir_parts):
     # 3 chr1  83717 108362  IRA IRA: 24645  96040
     # 4 chr1 108362 126691  SSC SSC: 18329 117526
     # 5 chr1 126691 151333  IRB            139012
+
+    if ir_parts[0][1] < 0:
+        # ??? NC_028349
+        #   chr  start    end name       text center
+        # 1 chr1      0   -242  IRB IRB: 25926 146143
+        # 2 chr1   -242  88174  LSC LSC: 88416  43966
+        # 3 chr1  88174 114236  IRA IRA: 26062 101205
+        # 4 chr1 114236 133179  SSC SSC: 18943 123708
+        # 5 chr1 133179 159347  IRB            146263
+        return ir_parts[1][0], (ir_parts[1][1] + ir_parts[0][1])
     return ir_parts[1][0], ir_parts[0][1]
 
 
