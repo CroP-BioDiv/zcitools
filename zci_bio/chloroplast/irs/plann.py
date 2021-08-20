@@ -59,9 +59,23 @@ def plann(seq_filename, leave_tmp_file=False):
         tbl_filename = os.path.join(tmp_plann, 'plann_result.tbl')
         if os.path.isfile(tbl_filename):
             with open(tbl_filename, 'r') as _in:
-                irs = [(int(fs[0]), int(fs[1]))
-                       for line in _in.readlines()
-                       if 'repeat_region' in line and (fs := line.split()) and len(fs) == 3 and fs[2] == 'repeat_region']
+                in_repeat = False
+                irs = []
+                for line in _in.readlines():
+                    if line[0].startswith('>'):
+                        continue
+                    if not line[0].isspace():  # line.startswith('\t'):
+                        # Feature start. 2-3 fields, first two are location
+                        fs = line.split()
+                        in_repeat = (len(fs) == 3) and (fs[2] == 'repeat_region')
+                        if in_repeat:
+                            irs.append((int(fs[0]), int(fs[1])))
+                    elif in_repeat:
+                        fs = line.split()
+                        if len(fs) == 2 and fs[0] == 'rpt_type' and fs[1] != 'inverted':
+                            irs.pop()
+                            in_repeat = False  # To make sure only one repeat is removed
+                #
                 if len(irs) == 2:
                     ira, irb = irs
                     # Our indexing
