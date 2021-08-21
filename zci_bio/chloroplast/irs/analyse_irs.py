@@ -204,10 +204,11 @@ def analyse_irs(step_data, table_step, seqs_step, ge_seq_step, chloe_step, metho
     sheets.append(('Year published', columns, by_year_ud.get_rows()))
 
     # By taxonomy
-    for rank_idx, rank in enumerate(taxa_ranks):
+    for group_idx, rank in [(-1, 'all')] + list(enumerate(grouped_columns)):
         _g_data = g_data if rank == taxa_ranks[-1] else list(
             group_bt.sorted_nodes_objects(objects_sort=(lambda d: d['organism']),
-                                          return_names=True, compact_names=True, lowest_rank=rank))
+                                          return_names=True, compact_names=True,
+                                          lowest_rank=rank if rank in taxa_ranks else group_idx))
 
         rows = []
         for node_names, objects in _g_data:
@@ -235,17 +236,17 @@ def analyse_irs(step_data, table_step, seqs_step, ge_seq_step, chloe_step, metho
                     _min = _max = avg = None
                 rows.append((row_p if idx == 0 else dummy_p) + [m, num, perc, _min, _max, avg])
 
-        columns = grouped_columns[:(rank_idx + 1)] + \
+        columns = grouped_columns[:(group_idx + 1)] + \
             ['Num sequences', 'Min length', 'Max length', 'Length span', 'Avg length', 'Std length',
              'Method', 'Num annotated', '% annotated', 'Min IR length', 'Max IR length', 'Avg IR length']
-        sheets.append((f'By {rank}', columns, rows))
+        sheets.append((('All' if group_idx == -1 else f'By {rank}'), columns, rows))
 
-    # Comparison
-    sheets.append((
-      'Comparisons',
-      [''] + methods[1:],
-      [[m] + [''] * idx +
-       [_cm(acc_data, m, x) for x in methods[idx + 1:]] for idx, m in enumerate(methods[:-1])]))
+    # # Comparison
+    # sheets.append((
+    #   'Comparisons',
+    #   [''] + methods[1:],
+    #   [[m] + [''] * idx +
+    #    [_cm(acc_data, m, x) for x in methods[idx + 1:]] for idx, m in enumerate(methods[:-1])]))
 
     # Excel: method sheets
     sheets_2_excel('chloroplast_irs_analysis.xls', sheets)

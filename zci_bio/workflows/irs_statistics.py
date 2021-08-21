@@ -62,8 +62,8 @@ class IRsStatistics(BaseWorkflow):
         cmd = f"analyse_irs 01_chloroplast_list 02_seqs {' '.join(stats)}"
         if ranks := self.parameters.get('taxa_ranks'):
             cmd += ' ' + ' '.join(f'-r {r}' for r in ranks)
-        if names := self.parameters.get('taxa_names'):
-            cmd += ' ' + ' '.join(f'-n {n}' for n in names)
+        if names := self.parameters.get('taxons'):
+            cmd += ' ' + ' '.join(f'-n {n}' for n in names.split(','))
         actions.append(('04_stats', cmd))
 
         # Summary, result, ...

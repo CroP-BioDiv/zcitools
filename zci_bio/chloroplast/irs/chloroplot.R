@@ -85,8 +85,8 @@ irDetect <- function(genome, seed.size = 1000) {
   }
 
   # if IRA cover genome start point, shift the genome sequence backward with seed.size
-  # tick_step <- round(l / 16)  # Optimization: seed.size <-> tick_step
-  tick_step <- seed.size
+  tick_step <- round(l / 16)  # Optimization: seed.size <-> tick_step
+  # tick_step <- seed.size
   while(m$group[1] == 1){
     tick <- tick + tick_step
     if(tick >= l - 100) {
