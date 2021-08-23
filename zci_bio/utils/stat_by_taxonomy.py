@@ -252,8 +252,8 @@ class GroupByTaxonomy:
         if num_names == 0:
             return self.ranks
         if num_names == 1:
-            return ['Name'] + self.ranks
-        return [f'Name_{n}' for n in range(1, num_names + 1)] + self.ranks
+            return ['Clade'] + self.ranks
+        return [f'Clade_{n}' for n in range(1, num_names + 1)] + self.ranks
 
     def sorted_objects(self, objects_sort=None):
         # Iterate through objects in taxonomical order

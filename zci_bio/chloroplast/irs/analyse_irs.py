@@ -9,7 +9,7 @@ from zci_bio.utils.extract_data import ExtractData
 from zci_bio.utils.stat_by_taxonomy import GroupByTaxonomy
 from common_utils.value_data_types import sheets_2_excel
 from common_utils.properties_db import PropertiesDB
-from ..utils import cycle_distance_lt
+# from ..utils import cycle_distance_lt
 
 METHOD_NAMES = ('ncbi', 'ge_seq', 'small_d', 'small_d_P', 'small_d_D', 'small_d_all',
                 'chloe', 'chloroplot', 'pga', 'pga_sb', 'plann', 'plann_sb', 'org_annotate')
@@ -65,8 +65,8 @@ class _ByYear:
                 if m_ds := by((y, m)):
                     nm = len(m_ds)
                     if not_q := [d for d in m_ds if d['type'][0] != '?']:
-                        min_ir_l = min(min(d['_method_row'][4:6]) for d in not_q)
-                        max_ir_l = max(max(d['_method_row'][4:6]) for d in not_q)
+                        min_ir_l = min(min(d['ir_lengths']) for d in not_q)
+                        max_ir_l = max(max(d['ir_lengths']) for d in not_q)
                         min_ir_l_method[m] = min(min_ir_l_method.get(m, min_ir_l), min_ir_l)
                         max_ir_l_method[m] = max(max_ir_l_method.get(m, max_ir_l), max_ir_l)
                         #
@@ -186,7 +186,7 @@ def analyse_irs(step_data, table_step, seqs_step, ge_seq_step, chloe_step, metho
             rows.extend(((nn + seq_row) if i == 0 else (empty_row_part + d_sr)) + [m] + o[m]['_method_row'] + [sm]
                         for i, (m, sm) in enumerate(zip(methods, same_m)))
             nn = empty_row_part
-    sheets = [('All', _excel_columns, rows)]
+    sheets = [('All methods', _excel_columns, rows)]
 
     # One sheet per method
     _excel_columns = grouped_columns + [c for c, _ in (_column_types_acc + _column_types_method[1:])]
@@ -224,7 +224,7 @@ def analyse_irs(step_data, table_step, seqs_step, ge_seq_step, chloe_step, metho
             # Methods
             num_seqs = len(lengths)
             for idx, m in enumerate(methods):
-                if ir_lengths := [max(o[m]['_method_row'][4:6]) for o in objects if 'ira' in o[m]]:
+                if ir_lengths := [max(o[m]['ir_lengths']) for o in objects if 'ira' in o[m]]:
                     num = len(ir_lengths)
                     perc = round(100 * num / num_seqs, 2)
                     _min = min(ir_lengths)
@@ -239,7 +239,7 @@ def analyse_irs(step_data, table_step, seqs_step, ge_seq_step, chloe_step, metho
         columns = grouped_columns[:(group_idx + 1)] + \
             ['Num sequences', 'Min length', 'Max length', 'Length span', 'Avg length', 'Std length',
              'Method', 'Num annotated', '% annotated', 'Min IR length', 'Max IR length', 'Avg IR length']
-        sheets.append((('All' if group_idx == -1 else f'By {rank}'), columns, rows))
+        sheets.append((('All summed' if group_idx == -1 else f'By {rank}'), columns, rows))
 
     # # Comparison
     # sheets.append((
@@ -247,6 +247,9 @@ def analyse_irs(step_data, table_step, seqs_step, ge_seq_step, chloe_step, metho
     #   [''] + methods[1:],
     #   [[m] + [''] * idx +
     #    [_cm(acc_data, m, x) for x in methods[idx + 1:]] for idx, m in enumerate(methods[:-1])]))
+
+    #
+    sheets.append(('Overall stats', ['Stat'] + methods, _stat_rows(methods, acc_data)))
 
     # Excel: method sheets
     sheets_2_excel('chloroplast_irs_analysis.xls', sheets)
@@ -259,6 +262,63 @@ def analyse_irs(step_data, table_step, seqs_step, ge_seq_step, chloe_step, metho
     step.save()
 
     return step
+
+
+def _stat_rows(methods, acc_data):
+    num_seqs = len(acc_data)
+    rows = []
+
+    def _add_stat(title, add_diffs, filter_data):
+        per_method = [dict(annot=0, lengths=[], wraps=0, on_start=0,
+                           not_dna=0, max_not_dna=0,
+                           diff_lens=0, max_diff_len=0, max_indel_len=0) for _ in methods]
+        for seq_ident, ir_data in acc_data.items():
+            for m, pm in zip(methods, per_method):
+                m_data = ir_data[m]
+                # assert all(x > 0 for x in m_data.get('ir_lengths', [])), (seq_ident, m, m_data['ir_lengths'])
+                if filter_data(m_data):
+                    pm['annot'] += 1
+                    ir_lengths = m_data['ir_lengths']
+                    pm['lengths'].extend(ir_lengths)
+                    if any(e < s for s, e in (m_data['ira'], m_data['irb'])):
+                        pm['wraps'] += 1
+                    if any(s == 0 for s, e in (m_data['ira'], m_data['irb'])):
+                        pm['on_start'] += 1
+                    if (nd := m_data.get('not_dna')):
+                        pm['not_dna'] += 1
+                        pm['max_not_dna'] = max(pm['max_not_dna'], *nd)
+                    if add_diffs:
+                        if dl := abs(ir_lengths[0] - ir_lengths[1]):
+                            pm['diff_lens'] += 1
+                            pm['max_diff_len'] = max(pm['max_diff_len'], dl)
+                        pm['max_indel_len'] = max(pm['max_indel_len'], m_data.get('max_indel_length', 0))
+
+        rows.extend([
+            [title] + [''] * len(methods),
+            ['Num annotated'] + [d['annot'] for d in per_method],
+            ['% annotated'] + [round(100 * d['annot'] / num_seqs, 2) for d in per_method],
+            ['Min IR length'] + [min(d['lengths']) for d in per_method],
+            ['Max IR length'] + [max(d['lengths']) for d in per_method],
+            ['Avg IR length'] + [round(statistics.mean(d['lengths']), 1) for d in per_method],
+            ['Num wraps'] + [d['wraps'] for d in per_method],
+            ['Num on start'] + [d['on_start'] for d in per_method],
+            ['Num with not DNA'] + [d['not_dna'] for d in per_method],
+            ['Max not DNA length'] + [d['max_not_dna'] for d in per_method],
+        ])
+        if add_diffs:
+            rows.extend([
+                ['Num different lengths'] + [d['diff_lens'] for d in per_method],
+                ['Max different length'] + [d['max_diff_len'] for d in per_method],
+                ['Max indel length'] + [d['max_indel_len'] for d in per_method],
+            ])
+    #
+    e_row = [''] * (len(methods) + 1)
+    _add_stat('Annotated sequences', True, lambda ir_data: 'ira' in ir_data and ir_data['type'][0] != '?')
+    rows.append(e_row)
+    _add_stat('Exact IRs', False, lambda ir_data: ir_data.get('type') == '+')
+    rows.append(e_row)
+    rows.append(['Num sequences', num_seqs] + e_row[2:])
+    return rows
 
 
 def _group_same_irs(obj, methods):
@@ -328,10 +388,4 @@ def _irs_2_row(irs_data):
     if 'ira' not in irs_data:  # No annotation
         return ['-'] * 8
     #
-    seq_length = irs_data['length']
-    ira = irs_data['ira']
-    irb = irs_data['irb']
-    ira_l = cycle_distance_lt(*ira, seq_length)
-    irb_l = cycle_distance_lt(*irb, seq_length)
-    diff_len = abs(ira_l - irb_l)
-    return [ira[0], ira[1], irb[0], irb[1], ira_l, irb_l, diff_len, irs_data['type']]
+    return irs_data['ira'] + irs_data['irb'] + irs_data['ir_lengths'] + [irs_data['diff_len'], irs_data['type']]

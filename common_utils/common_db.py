@@ -1,4 +1,5 @@
 import os
+from io import StringIO
 from zipfile import ZipFile, ZIP_DEFLATED
 from .file_utils import ensure_directory, silent_remove
 from .exceptions import ZCItoolsValueError
@@ -146,6 +147,10 @@ class CommonDB:
     def get_record_data(self, record_ident):
         for _, _, data in self._get_zip_data(record_ident):
             return data
+
+    def get_record_stringIO(self, record_ident):
+        if (d := self.get_record_data(record_ident)):
+            return StringIO(d.decode('utf-8'))
 
     def get_record_str(self, record_ident):
         if (d := self.get_record_data(record_ident)):

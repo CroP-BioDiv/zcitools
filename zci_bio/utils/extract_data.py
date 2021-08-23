@@ -6,7 +6,7 @@ from Bio.SeqFeature import FeatureLocation, CompoundLocation
 from Bio import SeqIO
 from zci_bio.utils.entrez import Entrez
 from zci_bio.utils.diff_sequences import diff_check_memory
-from zci_bio.chloroplast.utils import find_chloroplast_irs, ir_loc
+from zci_bio.chloroplast.utils import find_chloroplast_irs, ir_loc, cycle_distance_lt
 
 
 def with_seq(func):
@@ -235,6 +235,85 @@ class ExtractData:
         diff = diff_check_memory(ira, irb)
         return dict(type=diff.in_short(), diff=diff.get_opcodes())
 
+    #
+    def _irs_desc_add_1(self, irs_d, seq, not_dna, store=False, ira=None, irb=None):
+        # Addition to method _irs_desc().
+        seq_length = irs_d['length']
+        ira_l = cycle_distance_lt(*irs_d['ira'], seq_length)
+        irb_l = cycle_distance_lt(*irs_d['irb'], seq_length)
+        d = dict(ir_lengths=[ira_l, irb_l], diff_len=abs(ira_l - irb_l))
+
+        if diff := irs_d.get('diff'):
+            # ToDo: <a>,equal,<a>,equal by few bases
+            max_diff = max(max(src_e - src_s, tgt_e - tgt_s)
+                           for action, src_s, src_e, tgt_s, tgt_e in diff if action != 'equal')
+            d['max_indel_length'] = max_diff
+
+        if not_dna:
+            if ira is None and seq:
+                ira = self._feature(seq, *irs_d['ira'], 1)
+                irb = self._feature(seq, *irs_d['irb'], -1)
+            if ira and irb:
+                d['not_dna'] = [sum(1 for c in str(ira.extract(seq).seq) if c not in 'ATCG'),
+                                sum(1 for c in str(irb.extract(seq).seq) if c not in 'ATCG')]
+        return d
+
+    def ir_data(self, cdb):
+        # Applies _irs_desc_add_1() to stored IR data
+        like = 'annotation %'
+        seq_idents = self.properties_db.get_keys1_key2_like(like)
+        for seq_ident in sorted(seq_idents):
+            annots = self.properties_db.get_properties_key2_like(seq_ident, like)
+
+            # If all annotations are without IRs, than there is nothing to do
+            if all('ira' not in data for data in annots.values()):
+                print(f'{seq_ident}: no method located IRs')
+                continue
+
+            # Note: sequence is needed only for finding do IRs contain not DNA bases.
+            # First check number of not DNA bases in sequence (NCBI GenBank data) than load sequence if needed
+            seq = None
+
+            # First check stored data, and if there is no one, than calculate and cache it
+            if not (gb_data := self.properties_db.get_property(seq_ident, 'NCBI GenBank data')):
+                # Fetch sequence
+                if seq_io := cdb.get_record_stringIO(seq_ident):
+                    seq = SeqIO.read(seq_io, 'genbank')
+                    gb_data = self.cache_genbank_data(seq=seq, seq_ident=seq_ident)
+                else:
+                    print(f'Warning: no sequence {seq_ident}!!!')
+
+            not_dna = gb_data.get('not_dna', 0) if gb_data else 0
+            if not_dna and not seq:
+                if seq_io := cdb.get_record_stringIO(seq_ident):
+                    seq = SeqIO.read(seq_io, 'genbank')
+                else:
+                    not_dna = 0  # Not possible to check not DNA bases inside IRs
+
+            # Proci po anotacijama i ekstrahirati feature IR-ova
+            # _irs_desc(seq, seq_ident, key, ira, irb, irs_d)
+            cached_data = dict()  # (ira, irb) -> found data
+            print(f'{seq_ident}: ', end='', flush=True)
+            for a_method, irs_d in annots.items():
+                print('.', end='', flush=True)
+                if 'ira' not in irs_d:
+                    continue
+
+                # Additional data already stored!
+                if 'irs_lengths' in irs_d:
+                    continue
+
+                c_key = (tuple(irs_d['ira']), tuple(irs_d['irb']))
+                if not (new_data := cached_data.get(c_key)):
+                    new_data = self._irs_desc_add_1(irs_d, seq, not_dna, store=False)
+                    cached_data[c_key] = new_data
+
+                # Store data
+                if new_data:
+                    irs_d.update(new_data)
+                    self.properties_db.set_property(seq_ident, a_method, irs_d)
+            print()
+
 
 # Add cache methods into ExtractData class
 # Note: these methods are not decorators, but quite similar
@@ -303,8 +382,10 @@ def _format_time(seconds):
 if __name__ == '__main__':
     import argparse
     from common_utils.properties_db import PropertiesDB
+
     _methods = ('annotation', 'small_d', 'small_d_P', 'small_d_D', 'small_d_all',
-                'chloroplot', 'pga', 'pga_sb', 'plann', 'plann_sb', 'org_annotate')
+                'chloroplot', 'pga', 'pga_sb', 'plann', 'plann_sb', 'org_annotate',
+                'ir_data')
     parser = argparse.ArgumentParser(description="""
 Calls ExtractData method on given sequence
 
@@ -324,23 +405,29 @@ File is searched with path 'sequences' and given ident (accession number).
     parser.add_argument('-l', '--look-for-diff', action='store_true', help='Search for diff in properties DB.')
     params = parser.parse_args()
 
-    #
-    seq_filename = params.seq_filename
-    tmp_file = None
-    if params.common_db:
-        import tempfile
+    if params.method_name == 'ir_data':
         from common_utils.common_db import CommonDB
-        cdb = CommonDB.get_zci_db(tuple(params.common_db.split('/')))
-        seq_filename = cdb.get_record(tuple(params.seq_filename.split('/')), tempfile.gettempdir(), info=True)
-        tmp_file = seq_filename
-
-    #
-    if seq_filename:
-        ed = ExtractData(properties_db=PropertiesDB(), look_for_diff=params.look_for_diff)
-        ir_desc = getattr(ed, params.method_name)(key=f'annotation {params.method_name}', seq_filename=seq_filename)
-        print(ir_desc)
-
-        if tmp_file:
-            os.remove(tmp_file)
+        ed = ExtractData(properties_db=PropertiesDB())
+        ed.ir_data(CommonDB.get_zci_db(tuple(params.common_db.split('/'))))
     else:
-        print('No sequence file set!!!')
+        #
+        seq_filename = params.seq_filename
+        tmp_file = None
+
+        if params.common_db:
+            import tempfile
+            from common_utils.common_db import CommonDB
+            cdb = CommonDB.get_zci_db(tuple(params.common_db.split('/')))
+            seq_filename = cdb.get_record(tuple(params.seq_filename.split('/')), tempfile.gettempdir(), info=True)
+            tmp_file = seq_filename
+
+        #
+        if seq_filename:
+            ed = ExtractData(properties_db=PropertiesDB(), look_for_diff=params.look_for_diff)
+            ir_desc = getattr(ed, params.method_name)(key=f'annotation {params.method_name}', seq_filename=seq_filename)
+            print(ir_desc)
+
+            if tmp_file:
+                os.remove(tmp_file)
+        else:
+            print('No sequence file set!!!')

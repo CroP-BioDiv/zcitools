@@ -40,6 +40,14 @@ def find_chloroplast_irs(seq, check_length=True):
             loc = f.location
             f.location = CompoundLocation([FeatureLocation(loc.end, len(seq), strand=1),
                                            FeatureLocation(0, loc.start + 1, strand=1)])
+        elif isinstance(f.location, CompoundLocation) and \
+                len(f.location.parts) == 2 and \
+                all(p.strand == -1 for p in f.location.parts) and \
+                f.location.parts[1].start == 0:  # Note: BioPyhton changes order parts if location is complement!
+            # Chloe can have annotation of format:
+            #   repeat_region complement(join(1..24302,168220..173587))
+            # It should be: complement(join(168220..173587,1..24302))
+            f.location.parts = f.location.parts[::-1]
 
     if len(rep_regs) >= 2:
         max_len = max(map(len, rep_regs)) - 10  # Some tolerance :-)

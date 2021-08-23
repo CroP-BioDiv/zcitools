@@ -103,3 +103,7 @@ class PropertiesDB:
             "SELECT key2, data_type, data FROM properties WHERE key1 = ? AND key2 LIKE ?", (key1, key2))
         return dict((k, (m(data) if (m := self._from_db_methods.get(data_type)) else data))
                     for k, data_type, data in cursor.fetchall())
+
+    def get_keys1_key2_like(self, key2):
+        cursor = self.db().execute("SELECT DISTINCT(key1) FROM properties WHERE key2 LIKE ?", (key2,))
+        return set(k[0] for k in cursor.fetchall())
