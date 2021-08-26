@@ -13,7 +13,7 @@ def _copy_from_origin(step, annotation_step, seq_ident):
     step.add_sequence_file(os.path.basename(an_filename))
 
 
-def fix_by_parts(step_data, analyses_step, subset, keep_offset, sequences_db):
+def fix_by_parts(step_data, analyse_step, subset, keep_offset, sequences_db):
     assert subset in ('all', 'sum', 'ge_seq', 'ncbi'), subset
     step = SequencesStep(analyse_step.project, step_data, remove_data=True)
     analyse_step.propagate_step_name_prefix(step)

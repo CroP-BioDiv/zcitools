@@ -9,11 +9,12 @@ class PhylogeneticAnalysis(BaseWorkflow):
 
     @staticmethod
     def required_parameters():
+        # annotate (default ncbi), csv_columns
         return ('input_format', 'input_data', 'data', 'methods')
 
     @staticmethod
     def format_parameters(params):
-        if params['input_format'] in ('list', 'step'):
+        if params['input_format'] in ('list', 'step', 'csv'):
             params['input_data'] = os.path.abspath(params['input_data'])
         return params
 
@@ -28,7 +29,13 @@ class PhylogeneticAnalysis(BaseWorkflow):
             if not os.path.isfile(input_data):
                 raise ZCItoolsValueError(f"Input data argument ({input_data}) is not a filename!")
             actions.append(
-                ('01_accessions_list', f'table -f csv -c seq_ident,seq_ident {input_data}'))
+                ('01_accessions_list', f'table -f csv -c ncbi_ident,seq_ident {input_data}'))
+        elif input_format == 'csv':
+            if not os.path.isfile(input_data):
+                raise ZCItoolsValueError(f"Input data argument ({input_data}) is not a filename!")
+            assert params['csv_columns']
+            actions.append(
+                ('01_accessions_list', f'table -f csv -c {params["csv_columns"]} {input_data}'))
         elif input_format == 'step':
             if not os.path.isfile(input_data):
                 raise ZCItoolsValueError(f"Input data argument ({input_data}) is not a directory!")
@@ -55,11 +62,18 @@ class PhylogeneticAnalysis(BaseWorkflow):
         # Data used for phylogeny
         on_data = params['data']
         align = params.get('align', 'mafft')
-        parts = ' -w gene' if params.get('use_partitions', 1) else ''
+        use_partitions = params.get('use_partitions', 1)
+        parts = ' -w gene' if use_partitions else ''
         if on_data == 'whole_original':
             actions.append(('04_alignment', f'align_genomes 03_annotations w -p {align}{parts}'))
         elif on_data == 'whole_standardized':
-            assert False, 'ToDo'
+            actions.append(('04a_analyse_chloroplast', 'analyse_chloroplast 03_annotations'))
+            actions.append(('04b_standardized_seqs', f'fix_by_analysis parts {annotation} 04a_analyse_chloroplast'))
+            if annotation == 'ge_seq':
+                actions.append(('04c_standardized_annotations', 'ge_seq 04b_standardized_seqs'))
+            elif annotation == 'ncbi':
+                actions.append(('04c_standardized_annotations', 'seq_subset 04b_standardized_seqs -t annotations'))
+            actions.append(('04_alignment', f'align_genomes 04c_standardized_annotations w -p {align}{parts}'))
         elif on_data == 'all_genes':
             actions.append(('04_alignment', f'align_genomes 03_annotations gc -p {align}{parts}'))
         elif on_data == 'genes':
@@ -67,9 +81,10 @@ class PhylogeneticAnalysis(BaseWorkflow):
 
         # Phylogenetic analyses
         methods = set(params['methods'].lower().split(','))
+        parts = '' if use_partitions else ' -p'
         if not_r := [m for m in methods if m not in ('mr_bayes', 'raxml')]:
             raise ZCItoolsValueError(f'Not known phylogenetic method(s): {", ".join(not_r)}!')
-        actions.extend((f'05_{m}', f'{m} 04_alignment') for m in methods)
+        actions.extend((f'05_{m}', f'{m} 04_alignment {parts}') for m in methods)
 
         return actions
 

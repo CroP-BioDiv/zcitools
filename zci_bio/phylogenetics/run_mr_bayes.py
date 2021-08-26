@@ -54,7 +54,7 @@ def _run_mr_bayes_mpi(exe, run_dir, f, nchains, threads, job_idx):
 
 
 def run(locale=True, threads=None, use_mpi=True):
-    threads = threads or exec_utils.get_num_logical_threads()
+    threads = threads or exec_utils.get_num_physical_cores()
     # find_exe(default_exe, env_var, install_instructions, raise_desc)
     mr_bayes_mpi_exe = exec_utils.find_exe(_DEFAULT_EXE_NAME_MPI, _ENV_VAR_MPI, _install_instructions, None) \
         if (use_mpi and threads > 1) else None

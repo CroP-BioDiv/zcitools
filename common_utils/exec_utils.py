@@ -61,10 +61,10 @@ def get_num_threads():
     return multiprocessing.cpu_count()
 
 
-def get_num_logical_threads():
+def get_num_physical_cores():
     try:
         import psutil
-        return psutil.cpu_count(logical=True)
+        return psutil.cpu_count(logical=False)
     except ImportError:
         return max(1, (get_num_threads() // 2))
 
