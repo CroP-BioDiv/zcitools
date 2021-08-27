@@ -64,7 +64,8 @@ class MrBayes(RAxML):
 
     def run(self, step_data):
         from .mr_bayes import create_mr_bayes_data
-        return create_mr_bayes_data(step_data, self._input_step(), self.args, self._partitions(), self._run_threads())
+        return create_mr_bayes_data(
+            step_data, self._input_step(), self.args, self._partitions(), self._run_threads(logical=False))
 
     def finish(self, step_obj):
         from .mr_bayes import finish_mr_bayes_data

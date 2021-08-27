@@ -79,13 +79,21 @@ class _Command:
             return CommonDB.get_zci_db(idents)
 
     # helpers
-    def _run_threads(self):
+    def _run_threads(self, logical=True):
         r = self.args.run
         if r is not None:
             if r > 0:
                 return r
+            #
+            try:
+                import psutil
+                return psutil.cpu_count(logical=logical)
+            except ImportError:
+                pass
+            #
             import multiprocessing
-            return multiprocessing.cpu_count()
+            c = multiprocessing.cpu_count()
+            return c if logical else c // 2
 
 
 #
