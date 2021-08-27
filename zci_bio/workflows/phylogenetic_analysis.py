@@ -16,6 +16,7 @@ class PhylogeneticAnalysis(BaseWorkflow):
     def format_parameters(params):
         if params['input_format'] in ('list', 'step', 'csv'):
             params['input_data'] = os.path.abspath(params['input_data'])
+        params['use_partitions'] = int(params.get('use_partitions', 0))
         return params
 
     def _actions(self):
