@@ -16,4 +16,4 @@ Project structure is described on [page](docs/project.md).
 
 Pages describing research papers reproduction:
 
-* [Towards the Well-Tempered Chloroplast DNA Sequences](docs/well_tempered.md)
+* [Towards the Well-Tempered Chloroplast DNA Sequences](https://www.mdpi.com/2223-7747/10/7/1360); reproduction [steps](docs/well_tempered.md).
