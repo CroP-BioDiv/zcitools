@@ -1,4 +1,4 @@
-# Reproduction: Towards the Well-Tempered Chloroplast DNA Sequences
+# How to reproduce results:<br/>[Towards the Well-Tempered Chloroplast DNA Sequences](https://www.mdpi.com/2223-7747/10/7/1360)
 
 Research is implemented as a [workflow](project.md#workflow) named `chloroplast_normalization`
 with required parameters family and outgroup, and optional parameter max_update_date.
