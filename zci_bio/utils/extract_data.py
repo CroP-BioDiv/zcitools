@@ -99,21 +99,12 @@ class ExtractData:
 
     @with_seq
     def annotation(self, seq, seq_ident, key):
-        if irs := find_chloroplast_irs(seq, check_length=False):
-            ira, irb = irs
-            d = dict(length=len(seq.seq),
-                     ira=ir_loc(ira.location.parts),
-                     irb=ir_loc(irb.location.parts))
-            #
-            ira_s = ira.extract(seq)
-            irb_s = irb.extract(seq)
-            if ira.strand == irb.strand:
-                irb_s = irb_s.reverse_complement()
-            if desc := self._irs_desc(seq, seq_ident, key, ira_s, irb_s, d):
-                d.update(desc)
-                return d
-            return None
-        return dict(length=len(seq.seq))
+        return self._from_features(seq, seq_ident, key, find_chloroplast_irs(seq, check_length=False))
+
+    @with_seq
+    def airpg(self, seq, seq_ident, key):
+        from zci_bio.chloroplast.irs.airpg import airpg
+        return self._from_features(seq, seq_ident, key, airpg(seq, ret_features=True))
 
     @with_seq
     def small_d(self, seq, seq_ident, key):
@@ -181,6 +172,24 @@ class ExtractData:
             lambda: self_blast(variant, self._seq_filename(seq_ident, seq_filename)))
 
     #
+    def _from_features(self, seq, seq_ident, key, irs):
+        if irs:
+            ira, irb = irs
+            d = dict(length=len(seq.seq),
+                     ira=ir_loc(ira.location.parts),
+                     irb=ir_loc(irb.location.parts))
+            #
+            ira_s = ira.extract(seq)
+            irb_s = irb.extract(seq)
+            if ira.strand == irb.strand:
+                irb_s = irb_s.reverse_complement()
+            if desc := self._irs_desc(seq, seq_ident, key, ira_s, irb_s, d):
+                d.update(desc)
+                return d
+            return None
+        print(f'{key.split(" ", 1)[1]} {seq_ident}: no IRs')
+        return dict(length=len(seq.seq))
+
     def _from_indices(self, seq, seq_ident, key, irs_method):
         start = time.perf_counter()
         irs = irs_method()
@@ -215,7 +224,7 @@ class ExtractData:
         # if len(ira) > 30000 or len(irb) > 30000:
         #     return  # Hack: for now
         if ira == irb:
-            return dict(type='+')
+            return self._irs_desc_add_1_store(irs_d, dict(type='+'), seq)
 
         # Check is same IRs region already inspected.
         if self.look_for_diff:
@@ -223,7 +232,8 @@ class ExtractData:
             for _, data in self.properties_db.get_properties_key2_like(seq_ident, 'annotation %').items():
                 if irs_d['ira'] == data.get('ira') and irs_d['irb'] == data.get('irb'):
                     print(f'  found diff: {data["type"]}')
-                    return dict(type=data['type'], diff=data['diff']) if 'diff' in data else dict(type=data['type'])
+                    return dict((k, v) for k, v in data.items()
+                                if k in ('type', 'diff', 'ir_lengths', 'diff_len', 'max_indel_length', 'not_dna'))
 
         # Problem:
         # Original NCBI annotation of NC_031898, has IR lengths 23595 and 74817.
@@ -233,9 +243,17 @@ class ExtractData:
             return dict(type='???')
         print(f'  calculate diff')
         diff = diff_check_memory(ira, irb)
-        return dict(type=diff.in_short(), diff=diff.get_opcodes())
+        return self._irs_desc_add_1_store(irs_d, dict(type=diff.in_short(), diff=diff.get_opcodes()), seq)
 
     #
+    def _irs_desc_add_1_store(self, irs_d, d, seq):
+        tmp_d = dict(d)
+        tmp_d.update(irs_d)
+        not_dna = sum(1 for c in str(seq.seq) if c not in 'ATCG')
+        d_1 = self._irs_desc_add_1(tmp_d, seq, not_dna, store=True)
+        d.update(d_1)
+        return d
+
     def _irs_desc_add_1(self, irs_d, seq, not_dna, store=False, ira=None, irb=None):
         # Addition to method _irs_desc().
         seq_length = irs_d['length']
@@ -256,6 +274,9 @@ class ExtractData:
             if ira and irb:
                 d['not_dna'] = [sum(1 for c in str(ira.extract(seq).seq) if c not in 'ATCG'),
                                 sum(1 for c in str(irb.extract(seq).seq) if c not in 'ATCG')]
+
+        if store:
+            irs_d.update(d)
         return d
 
     def ir_data(self, cdb):
@@ -340,6 +361,7 @@ for key, m_sufix, cls_method in (
         ('NCBI SRA count', 'sra_count', ExtractData.sra_count),
         ('annotation ncbi', 'annotation_ncbi', ExtractData.annotation),
         ('annotation ge_seq', 'annotation_ge_seq', ExtractData.annotation),
+        ('annotation airpg', 'annotation_airpg', ExtractData.airpg),
         ('annotation small_d', 'annotation_small_d', ExtractData.small_d),
         ('annotation small_d_P', 'annotation_small_d_P', ExtractData.small_d_P),
         ('annotation small_d_D', 'annotation_small_d_D', ExtractData.small_d_D),
