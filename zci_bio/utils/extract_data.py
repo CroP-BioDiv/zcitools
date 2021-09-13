@@ -240,7 +240,7 @@ class ExtractData:
         # IRn is annotated as complement(10932..85748). It should be 85751..109342.
         # Copy/paste error?
         if len(irb) > 3 * len(ira) / 2 or len(ira) > 3 * len(irb) / 2:
-            return dict(type='???')
+            return self._irs_desc_add_1_store(irs_d, dict(type='???'), seq)
         print(f'  calculate diff')
         diff = diff_check_memory(ira, irb)
         return self._irs_desc_add_1_store(irs_d, dict(type=diff.in_short(), diff=diff.get_opcodes()), seq)
