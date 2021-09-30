@@ -1,9 +1,10 @@
-import os.path
+import os
 from functools import wraps
 import time
 from datetime import datetime
 from Bio.SeqFeature import FeatureLocation, CompoundLocation
 from Bio import SeqIO
+from Bio.SeqUtils import GC
 from zci_bio.utils.entrez import Entrez
 from zci_bio.utils.diff_sequences import diff_check_memory
 from zci_bio.chloroplast.utils import find_chloroplast_irs, ir_loc, cycle_distance_lt
@@ -61,7 +62,11 @@ class ExtractData:
     def genbank_data(self, seq, seq_ident, key):
         annotations = seq.annotations
 
-        vals = dict(length=len(seq.seq))
+        genes = [f for f in seq.features if f.type == 'gene' and 'gene' in f.qualifiers]
+        vals = dict(length=len(seq.seq),
+                    gc=GC(seq.seq),
+                    num_genes=len(genes),
+                    num_unique_genes=len(set(f.qualifiers['gene'][0] for f in genes)))
         if not_dna := [i for i, c in enumerate(str(seq.seq)) if c not in 'ATCG']:
             vals['not_dna'] = not_dna
 
@@ -73,6 +78,7 @@ class ExtractData:
         if refs[0].title != 'Direct Submission':
             vals['article_title'] = refs[0].title
             vals['journal'] = refs[0].journal
+            vals['authors'] = refs[0].authors
             if refs[0].pubmed_id:
                 vals['pubmed_id'] = int(refs[0].pubmed_id)
         if refs[-1].title == 'Direct Submission':
@@ -404,10 +410,25 @@ def _format_time(seconds):
 if __name__ == '__main__':
     import argparse
     from common_utils.properties_db import PropertiesDB
+    from common_utils.exceptions import ZCItoolsValueError
 
-    _methods = ('annotation', 'small_d', 'small_d_P', 'small_d_D', 'small_d_all',
-                'chloroplot', 'pga', 'pga_sb', 'plann', 'plann_sb', 'org_annotate',
-                'ir_data')
+    _arg_2_method_key = dict(
+        genbank_data=('genbank_data', 'NCBI GenBank data'),
+        ncbi=('annotation', 'annotation ncbi'),
+        ge_seq=('annotation', 'annotation ge_seq'),
+        airpg=('airpg', 'annotation airpg'),
+        small_d=('small_d', 'annotation small_d'),
+        small_d_P=('small_d_P', 'annotation small_d_P'),
+        small_d_D=('small_d_D', 'annotation small_d_D'),
+        small_d_all=('small_d_all', 'annotation small_d_all'),
+        chloroplot=('chloroplot', 'annotation chloroplot'),
+        pga=('pga', 'annotation pga'),
+        pga_sb=('pga_sb', 'annotation pga_sb'),
+        plann=('plann', 'annotation plann'),
+        plann_sb=('plann_sb', 'annotation plann_sb'),
+        org_annotate=('org_annotate', 'annotation org_annotate'),
+        ir_data=None,
+    )
     parser = argparse.ArgumentParser(description="""
 Calls ExtractData method on given sequence
 
@@ -419,20 +440,55 @@ python3 extract_data.py plann -c sequences <sequence_accession_number>
 Make Plann IRs location on sequence in stored in Common DB.
 File is searched with path 'sequences' and given ident (accession number).
 """, formatter_class=argparse.RawTextHelpFormatter)
-    parser.add_argument('method_name', choices=_methods, help='Method name')
+    parser.add_argument('method_name', choices=sorted(_arg_2_method_key.keys()), help='Method name')
+
+    # Process one sequence (file or cached)
     parser.add_argument(
         '-c', '--common-db',
         help='Common DB path. If specified, seq_filename is used as ident inside Common DB specified with given path.')
-    parser.add_argument('seq_filename', help='Sequence filename')
+    parser.add_argument('-f', '--seq_filename', help='Sequence filename')
     parser.add_argument('-l', '--look-for-diff', action='store_true', help='Search for diff in properties DB.')
+
+    # Process whole
+    parser.add_argument('-C', '--process-common-db', action='store_true', help='Process Common DB files')
+    parser.add_argument('-s', '--starts-with', help='Common DB filename starts with')
+    parser.add_argument('-F', '--force-update', action='store_true', help='Update all common DB entities, not only missing in properties')
     params = parser.parse_args()
 
+    #
     if params.method_name == 'ir_data':
         from common_utils.common_db import CommonDB
         ed = ExtractData(properties_db=PropertiesDB())
         ed.ir_data(CommonDB.get_zci_db(tuple(params.common_db.split('/'))))
+
+    elif params.process_common_db:
+        if not params.common_db:
+            raise ZCItoolsValueError('Common DB is not set!!!')
+
+        import tempfile
+        from common_utils.common_db import CommonDB
+        cdb = CommonDB.get_zci_db(tuple(params.common_db.split('/')))
+        properties_db = PropertiesDB()
+        ed = ExtractData(properties_db=properties_db, look_for_diff=params.look_for_diff)
+        method_name, key2 = _arg_2_method_key[params.method_name]
+
+        # Find idents to process
+        seq_idents_2_paths = dict((p[-1], p) for p in cdb.get_all_record_ident(startswith=params.starts_with))
+        if not params.force_update:
+            use_idents = properties_db.not_stored_keys1(set(seq_idents_2_paths.keys()), key2)
+            seq_idents_2_paths = dict((k, v) for k, v in seq_idents_2_paths.items() if k in use_idents)
+
+        # Process sequences
+        tmp_dir = tempfile.gettempdir()
+        for seq_ident, cds_path in sorted(seq_idents_2_paths.items()):
+            print(seq_ident)
+            seq_filename = cdb.get_record(cds_path, tmp_dir, info=False)
+            data = getattr(ed, method_name)(seq_ident=seq_ident, key=key2, seq_filename=seq_filename)
+            if data:
+                properties_db.set_property(seq_ident, key2, data)
+            os.remove(seq_filename)
+
     else:
-        #
         seq_filename = params.seq_filename
         tmp_file = None
 
@@ -446,7 +502,8 @@ File is searched with path 'sequences' and given ident (accession number).
         #
         if seq_filename:
             ed = ExtractData(properties_db=PropertiesDB(), look_for_diff=params.look_for_diff)
-            ir_desc = getattr(ed, params.method_name)(key=f'annotation {params.method_name}', seq_filename=seq_filename)
+            method_name, key = _arg_2_method_key[params.method_name]
+            ir_desc = getattr(ed, method_name)(key=key, seq_filename=seq_filename)
             print(ir_desc)
 
             if tmp_file:

@@ -80,7 +80,10 @@ class PropertiesDB:
         k1 = ','.join(f"'{k}'" for k in keys1)
         sql = f"SELECT key1 FROM properties WHERE key1 IN ({k1}) AND key2 = '{key2}'"
         cursor = self.db().execute(sql)
-        return set(keys1) - set(r[0] for r in cursor.fetchall())
+        to_remove = set(r[0] for r in cursor.fetchall())
+        if isinstance(keys1, set):
+            return keys1 - to_remove
+        return set(keys1) - to_remove
 
     def get_properties_keys1(self, keys1, key2):
         k1 = ','.join(f"'{k}'" for k in keys1)

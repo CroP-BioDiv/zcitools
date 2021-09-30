@@ -24,17 +24,28 @@ def _distance(func):
     return func_wrapper
 
 
+def branch_splits(ete_tree):  # ETE3
+    # Returns list of tuples (node, set_of_names_1, set_of_names_2)
+    cached_content = ete_tree.get_cached_content()
+    all_leaves = cached_content[ete_tree]
+    num_l = len(all_leaves)
+    return [(n, set(x.name for x in side1), set(x.name for x in (all_leaves - side1)))
+            for n, side1 in cached_content.items()
+            if 0 != len(side1) != num_l]
+
+
 class PhylogeneticTree:
     # Tree based on Ete3
-    def __init__(self, newick_filename, outgroup, rename_nodes=None):
+    def __init__(self, newick_filename, outgroup, rename_nodes=None, newick_format=0):
         self.newick_filename = newick_filename
         self.outgroup = outgroup
         self.num_leaves = [0, 0]        # unrooted, rooted
         self.node_names = [None, None]  # unrooted, rooted
         self.rename_nodes = rename_nodes  # Callable that returns new name
+        self.newick_format = newick_format
 
     def _load_tree(self, tree_idx):
-        tree = import_ete3_Tree()(self.newick_filename)
+        tree = import_ete3_Tree()(self.newick_filename, format=self.newick_format)
         if self.rename_nodes:
             for node in tree.traverse():
                 node.name = self.rename_nodes(node.name)

@@ -25,7 +25,7 @@ def airpg(seq_rec, min_ir_length=1000, ret_features=False):
     except Exception as r:
         return None
 
-    # Note: NC_039346 has one repeat of length 2bp, and airpg doesn't locate it good.
+    # Note: NC_039346 has one repeat of length 2bp. Airpg finds only one repeat.
     if not ira or not irb:
         return
 

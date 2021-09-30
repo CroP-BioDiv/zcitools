@@ -176,3 +176,31 @@ ncbi.update_taxonomy_database()
                 raise err
             if p_id == max_taxid:
                 break
+
+
+class GroupOfSpecies:
+    def __init__(self, taxids):  # , ranks=None, names=None):
+        # Find all taxids, species and parent clades
+        all_taxids = set(taxids)
+        ncbi_taxonomy = get_ncbi_taxonomy()
+        gl = ncbi_taxonomy.get_lineage
+        self.taxid_2_lineage = dict((t, gl(t)) for t in all_taxids)
+        all_taxids.update(itertools.chain.from_iterable(self.taxid_2_lineage.values()))
+        self.taxid_2_rank = ncbi_taxonomy.get_rank(all_taxids)
+        # self.taxid_2_name = ncbi_taxonomy.get_taxid_translator(all_taxids)
+
+    def group_by_rank(self, rank, return_species=False):
+        group_taxids = set(t for t, r in self.taxid_2_rank.items() if r == rank)
+        groups = defaultdict(list)
+        for taxid, linage in self.taxid_2_lineage.items():
+            group = list(group_taxids & set(linage))
+            assert len(group) == 1, group
+            groups[group[0]].append(taxid)
+        if not return_species:
+            return groups
+        #
+        species_2_group = dict()
+        for group, taxids in groups.items():
+            for t in taxids:
+                species_2_group[t] = group
+        return groups, species_2_group
