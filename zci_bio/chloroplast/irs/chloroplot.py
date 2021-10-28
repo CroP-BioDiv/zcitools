@@ -99,6 +99,17 @@ def _loc(ir_parts):
         # 4 chr1 114236 133179  SSC SSC: 18943 123708
         # 5 chr1 133179 159347  IRB            146263
         return ir_parts[1][0], (ir_parts[1][1] + ir_parts[0][1])
+
+    if ir_parts[-1][0] > ir_parts[-1][1]:
+        # ??? NC_057051
+        #    chr  start    end name        text center
+        # 1 chr1      0   8826  IRB    IRB: 106   8773
+        # 2 chr1   8826  14076  SSC   SSC: 5250  11451
+        # 3 chr1  14076  14182  IRA    IRA: 106  14129
+        # 4 chr1  14182 173226  LSC LSC: 159044  93704
+        # 5 chr1 173226 164506  IRB             168866
+        return tuple(ir_parts[0])
+
     return ir_parts[1][0], ir_parts[0][1]
 
 

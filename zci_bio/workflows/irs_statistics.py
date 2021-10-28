@@ -29,6 +29,9 @@ class IRsStatistics(BaseWorkflow):
         params['methods'] = methods
         #
         params['plastids'] = int(params.get('plastids', 0))
+        params['remove_irl'] = int(params.get('remove_irl', 0))
+        if taxa_ranks := params.get('taxa_ranks'):
+            params['taxa_ranks'] = taxa_ranks.split(',')
         if 'max_update_date' in params:
             params['max_update_date'] = datetime.date.fromisoformat(params['max_update_date'])
         return params
@@ -40,9 +43,10 @@ class IRsStatistics(BaseWorkflow):
         plastids = '-P' if self.parameters['plastids'] else ''
         if max_update_date := self.parameters.get('max_update_date', ''):
             max_update_date = f'--max-update-date {max_update_date}'
+        remove_irl = '--remove-irl' if int(self.parameters.get('remove_irl', '0')) else ''
         methods = self.parameters['methods']
 
-        actions = [('01_chloroplast_list', f"ncbi_chloroplast_list {taxons} {plastids} {max_update_date}")]
+        actions = [('01_chloroplast_list', f"ncbi_chloroplast_list {taxons} {plastids} {max_update_date} {remove_irl}")]
 
         # Collect data
         # Methods that use NCBI sequences from common step

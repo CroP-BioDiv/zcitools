@@ -299,6 +299,16 @@ def _fetch_complete_chloroplasts(organisms, args, max_taxid):
             max_d = date(*map(int, args.max_update_date.split('-')))
             data = [d for d in data if _to_date(d['UpdateDate']) <= max_d]
         rows.extend(data)
+
+    if args.remove_irl:
+        from zci_bio.utils.ncbi_taxonomy import get_ncbi_taxonomy
+        ncbi_taxonomy = get_ncbi_taxonomy()
+        irl_taxid = ncbi_taxonomy.name_2_taxid('IRL clade')
+        parents = ncbi_taxonomy._nt().get_lineage_translator([int(r['TaxId']) for r in rows])
+        prev_len = len(rows)
+        rows = [r for r in rows if irl_taxid not in parents[int(r['TaxId'])]]
+        print(f'Removed IRL clade sequences: {prev_len - len(rows)}!')
+
     return _filter_summary_data(rows, max_taxid)
 
 

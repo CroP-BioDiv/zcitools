@@ -91,6 +91,7 @@ class NCBIChloroplastList(CreateStepCommand):
         parser.add_argument('-o', '--outgroup', action='append', help='Outgroup(s)')
         parser.add_argument('-t', '--taxon', action='append', help='General taxon(s)')
         parser.add_argument('--max-update-date', help='Set max update date. ISO format (yyyy-mm-dd)')
+        parser.add_argument('--remove-irl', action='store_true', help='Remove IRL clade species')
         parser.add_argument('-P', '--fetch-plastids', action='store_true', help='Fetch sequences declared as plastids.')
 
     def run(self, step_data):
