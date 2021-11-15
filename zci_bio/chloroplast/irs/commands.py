@@ -1,4 +1,4 @@
-from step_project.base_commands import CreateStepFromStepCommand
+from step_project.base_commands import CreateStepFromStepCommand, NonProjectCommand
 from common_utils.exceptions import ZCItoolsValueError
 
 
@@ -62,3 +62,24 @@ class IRsAnalyse(CreateStepFromStepCommand):
 
         return analyse_irs(step_data, self._input_step(no_data_check=True), seqs, ge_seq, chloe,
                            args.methods, args.ranks, args.names)
+
+
+#
+class IRsDiffStat(NonProjectCommand):
+    _COMMAND = 'irs_diff_stat'
+    _COMMAND_GROUP = 'Chloroplast'
+    _HELP = "Find statistics of diffs between IRs."
+
+    @staticmethod
+    def set_arguments(parser):
+        # Input data
+        parser.add_argument('-i', '--seq-ident', action='append', help='Sequence identifier')
+        parser.add_argument('-t', '--table-step', help='Table step to look for sequence identifiers')
+        parser.add_argument('-s', '--sequences-step', help='Sequences step to look for sequence identifiers')
+        # Processing paramters
+        parser.add_argument('-M', '--merge-distance', type=int, default=30, help='Merge regions if ')
+        parser.add_argument('-F', '--first-n', type=int, help='Process only first n sequences')
+
+    def run(self):
+        from .diff_stats import diff_stats
+        diff_stats(self.project, self.args)

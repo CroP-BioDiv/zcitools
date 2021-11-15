@@ -17,8 +17,8 @@ METHODS_USE_SEQUENCES = ('ncbi', 'airpg', 'small_d', 'small_d_P', 'small_d_D', '
                          'pga', 'pga_sb', 'plann', 'plann_sb', 'org_annotate')
 METHODS_SEPARATE_PATH = ('ge_seq', 'chloe')
 _column_types_acc = [
-    ('Accession', 'seq_ident'), ('Organism', 'str'),
-    ('Creted', 'date'), ('Published', 'date'),
+    ('Organism', 'str'), ('Accession', 'seq_ident'),
+    ('Created', 'date'), ('Published', 'date'),
     ('Length', 'int'), ('not_dna', 'int')]
 _column_types_method = [
     ('Method', 'str'),
@@ -144,7 +144,7 @@ def analyse_irs(step_data, table_step, seqs_step, ge_seq_step, chloe_step, metho
             first_date=(first_date := gb.get('first_date')),
             update_date=(update_date := gb.get('update_date')),
             not_dna=(not_dna := len(gb.get('not_dna', []))),
-            _seq_row=[seq_ident, organism, first_date, update_date, length, len(gb.get('not_dna', []))]))
+            _seq_row=[organism, seq_ident, first_date, update_date, length, len(gb.get('not_dna', []))]))
         for seq_ident, gb in gb_data.items())
     assert all(x in acc_data for x in seq_idents), [x for x in seq_idents if x not in acc_data]
 
@@ -177,14 +177,19 @@ def analyse_irs(step_data, table_step, seqs_step, ge_seq_step, chloe_step, metho
     # All data
     _excel_columns = grouped_columns + [c for c, _ in (_column_types_acc + _column_types_method)] + ['Same']
     rows = []
+    table_rows = []
+    not_compact_names = [''] * len(grouped_columns)
     for node_names, objects in g_data:
         nn = node_names
+        not_compact_names = [a or b for a, b in zip(nn, not_compact_names)]
         for o in objects:
             seq_row = o['_seq_row']
             d_sr = [''] * len(seq_row)
             same_m = _group_same_irs(o, methods)
             rows.extend(((nn + seq_row) if i == 0 else (empty_row_part + d_sr)) + [m] + o[m]['_method_row'] + [sm]
                         for i, (m, sm) in enumerate(zip(methods, same_m)))
+            table_rows.extend(not_compact_names + seq_row + [m] + o[m]['_method_row'] + [sm]
+                              for i, (m, sm) in enumerate(zip(methods, same_m)))
             nn = empty_row_part
     sheets = [('All methods', _excel_columns, rows)]
 
@@ -255,10 +260,11 @@ def analyse_irs(step_data, table_step, seqs_step, ge_seq_step, chloe_step, metho
     sheets_2_excel('chloroplast_irs_analysis.xls', sheets)
 
     # Store step data. This finishes step
-    table_rows = [data['_seq_row'] + list(chain(*(data[m]['_method_row'] for m in methods)))
-                  for seq_ident, data in acc_data.items()]
-    columns = list(chain(*([(f'{method}_{n}', t) for n, t in _column_types_method] for m in methods)))
-    step.set_table_data(table_rows, _column_types_acc + columns)
+    # table_rows = [data['_seq_row'] + list(chain(*(data[m]['_method_row'] for m in methods)))
+    #               for seq_ident, data in acc_data.items()]
+    # columns = list(chain(*([(f'{m}_{n}', t) for n, t in _column_types_method] for m in methods)))
+    columns = [(c, 'str') for c in grouped_columns] + _column_types_acc + _column_types_method + [('Same', 'str')]
+    step.set_table_data(table_rows, columns)
     step.save()
 
     return step
@@ -334,7 +340,7 @@ def _group_same_irs(obj, methods):
                 ind = len(same)
             by_method.append(ind)
         else:
-            by_method.append('-')
+            by_method.append(None)
     return by_method
 
 
@@ -386,6 +392,6 @@ def _irs_2_row(irs_data):
     if irs_data is None:    # No data, method was not called?
         return ['?'] * 8
     if 'ira' not in irs_data:  # No annotation
-        return ['-'] * 8
+        return [None] * 8
     #
     return irs_data['ira'] + irs_data['irb'] + irs_data['ir_lengths'] + [irs_data['diff_len'], irs_data['type']]

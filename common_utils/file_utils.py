@@ -123,17 +123,26 @@ def read_file_as_list(filename):
 
 
 # CSV
-def write_csv(filename, columns, rows):
+def write_csv(filename, columns, rows, delimiter=';', quotechar='"'):
     with open(filename, 'w', newline='') as outcsv:
-        writer = csv.writer(outcsv, delimiter=';', quotechar='"')
+        writer = csv.writer(outcsv, delimiter=delimiter, quotechar=quotechar)
         writer.writerow([n for n, _ in columns])  # Header
         writer.writerows(rows)
 
 
-def read_csv(filename):
+def read_csv(filename, delimiter=None, quotechar='"'):
+    if not delimiter:
+        with open(filename, 'r') as _in:
+            line = next(_in)
+            for c in line:  # Check first line
+                if c in ';,:':
+                    delimiter = c
+                    break
+            else:
+                delimiter = ';'
     if os.path.isfile(filename):
         with open(filename, 'r') as incsv:
-            reader = csv.reader(incsv, delimiter=';', quotechar='"')
+            reader = csv.reader(incsv, delimiter=delimiter, quotechar=quotechar)
             next(reader)  # Skip header
             return list(reader)
     else:

@@ -184,7 +184,8 @@ class ExtractData:
             d = dict(length=len(seq.seq),
                      ira=ir_loc(ira.location.parts),
                      irb=ir_loc(irb.location.parts))
-            #
+            # Sequences NC_035878 and NC_045527 have molecule_type = RNA?!?!
+            seq.annotations['molecule_type'] = 'DNA'
             ira_s = ira.extract(seq)
             irb_s = irb.extract(seq)
             if ira.strand == irb.strand:
@@ -204,7 +205,8 @@ class ExtractData:
             ira, irb = irs
             d['ira'] = [ira[0], ira[1]]
             d['irb'] = [irb[0], irb[1]]
-            #
+            # Sequences NC_035878 and NC_045527 have molecule_type = RNA?!?!
+            seq.annotations['molecule_type'] = 'DNA'
             ira = self._feature(seq, *ira, 1)
             irb = self._feature(seq, *irb, -1)
             if desc := self._irs_desc(seq, seq_ident, key, ira.extract(seq), irb.extract(seq), d):
@@ -341,6 +343,30 @@ class ExtractData:
                     self.properties_db.set_property(seq_ident, a_method, irs_d)
             print()
 
+    def diff_stats(self, seq_idents):
+        from zci_bio.chloroplast.irs.diff_stats import analyse_diff
+        like = 'annotation %'
+        for seq_ident in sorted(seq_idents):
+            print(seq_ident)
+            # print(f'{seq_ident}: ', end='', flush=True)
+            annots = self.properties_db.get_properties_key2_like(seq_ident, like)
+            for a_method, irs_d in sorted(annots.items(), key=lambda x: max(x[1].get('ir_lengths', [0]))):
+                # Test
+                if a_method.endswith('_sb') or 'small_d' in a_method:
+                    continue
+                # print('.', end='', flush=True)
+                if 'diff' in irs_d:  # 'max_indel' not in irs_d and
+                    print('  ', a_method.split()[1], max(irs_d['ir_lengths']), irs_d['ira'], irs_d['irb'])
+                    new_data = analyse_diff(irs_d)
+                    print('    ', ' '.join(f'{n}{m.lower()}' for m, n in new_data['diff_simple']))
+                    # print('  ', ' '.join(map(str, new_data['equal_lengths'])))
+                    self.properties_db.set_property(seq_ident, a_method, {**irs_d, **new_data})
+                elif 'ira' in irs_d:
+                    print('  *', a_method.split()[1], max(irs_d['ir_lengths']), irs_d['ira'], irs_d['irb'])
+                else:
+                    print('  ', a_method.split()[1], '-')
+            # print()
+
 
 # Add cache methods into ExtractData class
 # Note: these methods are not decorators, but quite similar
@@ -416,6 +442,7 @@ if __name__ == '__main__':
         genbank_data=('genbank_data', 'NCBI GenBank data'),
         ncbi=('annotation', 'annotation ncbi'),
         ge_seq=('annotation', 'annotation ge_seq'),
+        chloe=('annotation', 'annotation chloe'),
         airpg=('airpg', 'annotation airpg'),
         small_d=('small_d', 'annotation small_d'),
         small_d_P=('small_d_P', 'annotation small_d_P'),
@@ -428,6 +455,7 @@ if __name__ == '__main__':
         plann_sb=('plann_sb', 'annotation plann_sb'),
         org_annotate=('org_annotate', 'annotation org_annotate'),
         ir_data=None,
+        diff_stats=None,
     )
     parser = argparse.ArgumentParser(description="""
 Calls ExtractData method on given sequence
@@ -446,7 +474,7 @@ File is searched with path 'sequences' and given ident (accession number).
     parser.add_argument(
         '-c', '--common-db',
         help='Common DB path. If specified, seq_filename is used as ident inside Common DB specified with given path.')
-    parser.add_argument('-f', '--seq_filename', help='Sequence filename')
+    parser.add_argument('-f', '--seq-filename', help='Sequence filename')
     parser.add_argument('-l', '--look-for-diff', action='store_true', help='Search for diff in properties DB.')
 
     # Process whole
@@ -460,6 +488,16 @@ File is searched with path 'sequences' and given ident (accession number).
         from common_utils.common_db import CommonDB
         ed = ExtractData(properties_db=PropertiesDB())
         ed.ir_data(CommonDB.get_zci_db(tuple(params.common_db.split('/'))))
+
+    elif params.method_name == 'diff_stats':
+        from common_utils.common_db import CommonDB
+        seq_idents = set()
+        if params.common_db:
+            cdb = CommonDB.get_zci_db(tuple(params.common_db.split('/')))
+            seq_idents.update(p[-1] for p in cdb.get_all_record_ident(startswith=params.starts_with))
+        if params.seq_filename:
+            seq_idents.add(params.seq_filename)
+        ExtractData(properties_db=PropertiesDB()).diff_stats(seq_idents)
 
     elif params.process_common_db:
         if not params.common_db:

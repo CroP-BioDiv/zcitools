@@ -110,3 +110,10 @@ class PropertiesDB:
     def get_keys1_key2_like(self, key2):
         cursor = self.db().execute("SELECT DISTINCT(key1) FROM properties WHERE key2 LIKE ?", (key2,))
         return set(k[0] for k in cursor.fetchall())
+
+    def get_properties_keys2(self, key1, keys2):
+        k2 = ','.join(f"'{k}'" for k in keys2)
+        sql = f"SELECT key2, data_type, data FROM properties WHERE key1 = '{key1}' AND key2 IN ({k2})"
+        cursor = self.db().execute(sql)
+        return dict((k, (m(data) if (m := self._from_db_methods.get(data_type)) else data))
+                    for k, data_type, data in cursor.fetchall())

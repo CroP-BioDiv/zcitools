@@ -29,6 +29,7 @@ _type_format = dict(
     decimal=lambda x: Decimal(x),
     date=lambda x: date.fromisoformat(x[:10]),
 )
+_cvs_delimiter = ','
 
 
 def _check_columns(columns):
@@ -96,7 +97,7 @@ Table data is stored in table.csv with header, separator ;, quote character ".
 
         # Write csv
         if self._rows:
-            write_csv(self._get_table_filename(), self._columns, self._rows)
+            write_csv(self._get_table_filename(), self._columns, self._rows, delimiter=_cvs_delimiter)
 
     # Retrieve data methods
     def has_column(self, column_name):
@@ -191,6 +192,10 @@ Table data is stored in table.csv with header, separator ;, quote character ".
         from common_utils.import_method import import_pandas
         df = import_pandas().DataFrame(self.get_rows(), columns=self.get_column_names())
         df.to_excel(filename, index=False, header=header)
+
+    def to_sqlite(self, db_filename):
+        from common_utils.step_database import create_db_from_step
+        create_db_from_step(db_filename, self)
 
 
 class TableGroupedStep(TableStep):

@@ -30,6 +30,7 @@ def find_chloroplast_irs(seq, check_length=True):
             diff_2 = (ira.parts[0].start - irb.parts[-1].end) % len(seq)
             if diff_1 > diff_2:
                 ira, irb = irb, ira
+                ira.strand, irb.strand = irb.strand, ira.strand
             return SeqFeature(location=ira), SeqFeature(location=irb)
         return
 

@@ -2,7 +2,25 @@ import sqlite3
 from collections import defaultdict
 from .value_data_types import data_type_sqlite
 from .exceptions import ZCItoolsValueError
+from .file_utils import silent_remove_file
 # from .misc import time_it
+
+
+def create_table_from_step(cursor, step, table_name):
+    # Create table
+    c_dts = step.get_column_with_data_types()
+    cls = ', '.join(f'{c} {data_type_sqlite[dt]}' for c, dt in c_dts)
+    cursor.execute(f'CREATE TABLE {table_name} ({cls})')
+    # Insert data
+    cursor.executemany(f'INSERT INTO {table_name} VALUES ({",".join(["?"] * len(c_dts))})', step.get_rows())
+
+
+def create_db_from_step(db_filename, step, table_name='t1'):
+    silent_remove_file(db_filename)
+    conn = sqlite3.connect(db_filename)
+    create_table_from_step(conn.cursor(), step, table_name=table_name)
+    conn.commit()  # ?
+    conn.close()
 
 
 class StepDatabase:
@@ -26,12 +44,7 @@ class StepDatabase:
             for c, dt in c_dts:
                 self.column_2_tables[c].append((table_name, dt))
 
-            # Create table
-            cls = ', '.join(f'{c} {data_type_sqlite[dt]}' for c, dt in c_dts)
-            self.cursor.execute(f'CREATE TABLE {table_name} ({cls})')
-            # Insert data
-            self.cursor.executemany(
-                f'INSERT INTO {table_name} VALUES ({",".join(["?"] * len(c_dts))})', step.get_rows())
+            create_table_from_step(self.cursor, step, table_name)
 
             # Change table name
             table_name = chr(ord(table_name) + 1)

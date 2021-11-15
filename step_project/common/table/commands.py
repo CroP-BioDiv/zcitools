@@ -39,6 +39,20 @@ class TableToExcel(ProjectCommand):
         step.to_excel(self.args.filename)
 
 
+class TableToSqlite(ProjectCommand):
+    _COMMAND = 'table_to_sqlite'
+    _HELP = "Creates sqlite database with table data."
+
+    @staticmethod
+    def set_arguments(parser):
+        parser.add_argument('step_name', help='Table step')
+        parser.add_argument('filename', help='Output sqlite database filename')
+
+    def run(self):
+        step = self.project.read_step(self.args.step_name)
+        step.to_sqlite(self.args.filename)
+
+
 class SQLSelect(ProjectCommand):
     _COMMAND = 'select'
     _HELP = "SQL select query on table steps"
