@@ -24,7 +24,10 @@ _column_types_method = [
     ('Method', 'str'),
     ('IRa_start', 'int'), ('IRa_end', 'int'), ('IRb_start', 'int'), ('IRb_end', 'int'),
     ('IRa_len', 'int'), ('IRb_len', 'int'), ('diff_len', 'int'), ('diff_type', 'str'),
+    ('IR_type', 'str'), ('IR_wraps', 'int'),
     ('replace_num', 'int'), ('replace_sum', 'int'), ('indel_num', 'int'), ('indel_sum', 'int')]
+_irs_null_row = [None] * (len(_column_types_method) - 1)
+_irs_null_row[_column_types_method.index(('IR_type', 'str')) - 1] = 'no'
 
 
 class _ByYear:
@@ -391,9 +394,9 @@ def _longer_ir(ir1, ir2):
 
 def _irs_2_row(irs_data):
     if irs_data is None:    # No data, method was not called?
-        return ['?'] * 12
+        return ['?'] * (len(_column_types_method) - 1)
     if 'ira' not in irs_data:  # No annotation
-        return [None] * 12
+        return _irs_null_row
     #
     dt = irs_data.get('type', '')
     num_sum = [0] * 4
@@ -402,4 +405,7 @@ def _irs_2_row(irs_data):
             num_sum[0], num_sum[1] = map(int, f[2:].split(','))
         elif f[0] == 'I':
             num_sum[2], num_sum[3] = map(int, f[2:].split(','))
-    return irs_data['ira'] + irs_data['irb'] + irs_data['ir_lengths'] + [irs_data['diff_len'], dt] + num_sum
+    ir_type = ('exact' if dt == '+' else 'differs')
+    ir_wraps = (irs_data['ira'][1] < irs_data['ira'][0]) or (irs_data['irb'][1] < irs_data['irb'][0])
+    return irs_data['ira'] + irs_data['irb'] + irs_data['ir_lengths'] + \
+        [irs_data['diff_len'], dt, ir_type, int(ir_wraps)] + num_sum

@@ -130,6 +130,7 @@ class BaseWorkflow:
         # Run actions that have all dependencies satisfied
         to_finish = set()
         re_run = True
+        something_done = False
         while re_run:
             # Note: after each calculation check actions, project structure can change!
             for action in self.actions():
@@ -140,6 +141,7 @@ class BaseWorkflow:
                         if run_step and action.has_run_switch():
                             cmd_args.append('-r')
                         self.project.run_command_with_args(*cmd_args)
+                        something_done = True
                         break
                 if step_status in ('in_process', 'can_be_completed'):
                     to_finish.add(action.step_name)
@@ -153,6 +155,8 @@ There are steps to finish!
 Check for INSTRUCTION.txt and calculate.zip in step(s):
 {to_finish}
 """)
+        elif something_done:
+            self.cmd_summary()
 
     def cmd_graph(self):
         node_styles = dict(not_in='dotted', completed='solid', in_process='dashed', can_be_completed='dashed,filled')
