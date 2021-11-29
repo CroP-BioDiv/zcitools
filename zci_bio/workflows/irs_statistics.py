@@ -86,7 +86,6 @@ class IRsStatistics(BaseWorkflow):
 
         #
         methods = self.parameters['methods']
-        max_l = max(len(m) for m in methods)
         it_2_idx = dict(exact=0, differs=1, no=2)
         m_2_it = dict((m, [0, 0, 0]) for m in methods)
         m_2_wraps = dict((m, [0, 0]) for m in methods)
@@ -94,23 +93,37 @@ class IRsStatistics(BaseWorkflow):
         m_2_dl, dl_splits = _idx_data(methods, (0, 10, 100))
         m_2_blocks, block_splits = _idx_data(methods, (1, 10, 100))
         m_2_ddd, ddd_splits = _idx_data(methods, (1, 10, 100))
-        for method, ir_type, ir_wraps, diff_len, replace_num, replace_sum, indel_num, indel_sum in results.select(
-                ('Method', 'IR_type', 'IR_wraps', 'diff_len', 'replace_num', 'replace_sum', 'indel_num', 'indel_sum')):
-            m_2_it[method][it_2_idx[ir_type]] += 1
+        #
+        m_2_dna = dict((m, [0, 0, 0]) for m in methods)
+        m_2_dna_irs = dict((m, [0, 0]) for m in methods)  # Can't be "No IRs"!
+        #
+        for method, ir_type, ir_wraps, diff_len, replace_num, replace_sum, indel_num, indel_sum, \
+            not_dna, not_dna_irs in \
+            results.select(('Method', 'IR_type', 'IR_wraps', 'diff_len', 'replace_num', 'replace_sum',
+                            'indel_num', 'indel_sum', 'not_dna', 'not_dna_irs')):
+            ir_type_idx = it_2_idx[ir_type]
+            m_2_it[method][ir_type_idx] += 1
             if ir_type != 'no':       # With IRs
                 m_2_wraps[method][int(ir_wraps)] += 1
                 m_2_dl[method][_idx(diff_len, dl_splits)] += 1
             if ir_type == 'differs':  # Not exact IRs
                 m_2_blocks[method][_idx(replace_num + indel_num, block_splits)] += 1
                 m_2_ddd[method][_idx(replace_sum + indel_sum, block_splits)] += 1
+            if not_dna:
+                m_2_dna[method][ir_type_idx] += 1
+                if not_dna_irs:
+                    m_2_dna_irs[method][ir_type_idx] += 1
 
         #
+        ir_types = ('Exact IRs', 'IRs differ', 'No IRs')
         text = "Summary\n"
-        text += self._data_table(m_2_it, 'Number of Sequences with Annotated IRs', ('Exact IRs', 'IRs differ', 'No IRs'))
+        text += self._data_table(m_2_it, 'Number of Sequences with Annotated IRs', ir_types)
         text += self._data_table(m_2_wraps, 'IR wraps', ('No', 'Yes'))
         text += self._data_table(m_2_dl, 'IR difference in length', _idx_labels(dl_splits, measure=' bp'))
         text += self._data_table(m_2_blocks, 'IR indel/replace number of blocks', _idx_labels(block_splits))
         text += self._data_table(m_2_ddd, 'IR indel/replace number of bps', _idx_labels(ddd_splits))
+        text += self._data_table(m_2_dna, 'DNA whole', ir_types)
+        text += self._data_table(m_2_dna_irs, 'DNA IRs', ir_types[:-1])
         return dict(text=text)
 
     def _data_table(self, data, title, labels):
@@ -138,12 +151,12 @@ def _idx(x, lens):
 
 def _idx_labels(lens, measure=''):
     lens = [str(l) for l in lens]
-    max_l = len(lens[-1]) + 1
+    max_l = len(lens[-1])
     labels = []
     for l in lens:
         if l == '0':
             labels.append(f'   {l.rjust(max_l)}')
         else:
             labels.append(f'<= {l.rjust(max_l)}')
-    labels.append(f'>   {lens[-1]}')
+    labels.append(f'>  {lens[-1]}')
     return [l + measure for l in labels] if measure else labels
