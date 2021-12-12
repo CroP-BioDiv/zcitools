@@ -25,6 +25,7 @@ _column_types_method = [
     ('IRa_start', 'int'), ('IRa_end', 'int'), ('IRb_start', 'int'), ('IRb_end', 'int'),
     ('IRa_len', 'int'), ('IRb_len', 'int'), ('diff_len', 'int'), ('diff_type', 'str'),
     ('IR_type', 'str'), ('IR_wraps', 'int'),
+    ('SSC_len', 'int'), ('LSC_len', 'int'),
     ('replace_num', 'int'), ('replace_sum', 'int'), ('indel_num', 'int'), ('indel_sum', 'int'),
     ('not_dna_ira', 'int'), ('not_dna_irb', 'int'), ('not_dna_irs', 'int')]
 _irs_null_row = [None] * (len(_column_types_method) - 1)
@@ -410,4 +411,6 @@ def _irs_2_row(irs_data):
     ir_wraps = (irs_data['ira'][1] < irs_data['ira'][0]) or (irs_data['irb'][1] < irs_data['irb'][0])
     not_dna = irs_data.get('not_dna', [0, 0])
     return irs_data['ira'] + irs_data['irb'] + irs_data['ir_lengths'] + \
-        [irs_data['diff_len'], dt, ir_type, int(ir_wraps)] + num_sum + not_dna + [sum(not_dna)]
+        [irs_data['diff_len'], dt, ir_type, int(ir_wraps)] + \
+        [irs_data['ssc_length'], irs_data['lsc_length']] + \
+        num_sum + not_dna + [sum(not_dna)]

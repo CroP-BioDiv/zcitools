@@ -269,6 +269,10 @@ class ExtractData:
         irb_l = cycle_distance_lt(*irs_d['irb'], seq_length)
         d = dict(ir_lengths=[ira_l, irb_l], diff_len=abs(ira_l - irb_l))
 
+        a_s, a_e = irs_d['ira']
+        b_s, b_e = irs_d['irb']
+        d['ssc_length'], d['lsc_length'] = sorted([(b_s - a_e) % seq_l, (a_s - b_e) % seq_l])
+
         if diff := irs_d.get('diff'):
             # ToDo: <a>,equal,<a>,equal by few bases
             max_diff = max(max(src_e - src_s, tgt_e - tgt_s)
@@ -367,6 +371,26 @@ class ExtractData:
                     print('  ', a_method.split()[1], '-')
             # print()
 
+    def lsc_ssc_lengths(self, seq_idents):
+        like = 'annotation %'
+        for seq_ident in sorted(seq_idents):
+            print(f'{seq_ident}: ', end='', flush=True)
+            annots = self.properties_db.get_properties_key2_like(seq_ident, like)
+            for a_method, irs_d in sorted(annots.items(), key=lambda x: max(x[1].get('ir_lengths', [0]))):
+                if 'ira' in irs_d and 'lsc_length' not in irs_d:
+                    print('.', end='', flush=True)
+                    seq_l = irs_d['length']
+                    a_s, a_e = irs_d['ira']
+                    b_s, b_e = irs_d['irb']
+                    irs_d['ssc_length'], irs_d['lsc_length'] = sorted([(b_s - a_e) % seq_l, (a_s - b_e) % seq_l])
+                    self.properties_db.set_property(seq_ident, a_method, irs_d)
+            print()
+
+    @with_seq
+    def not_ns(self, seq, seq_ident, key):
+        if not_ns := [i for i, c in enumerate(str(seq.seq)) if c not in 'ATCGN']:
+            print(seq_ident, len(not_ns))
+
 
 # Add cache methods into ExtractData class
 # Note: these methods are not decorators, but quite similar
@@ -456,6 +480,8 @@ if __name__ == '__main__':
         org_annotate=('org_annotate', 'annotation org_annotate'),
         ir_data=None,
         diff_stats=None,
+        lsc_ssc_lengths=None,
+        not_ns=('not_ns', None),
     )
     parser = argparse.ArgumentParser(description="""
 Calls ExtractData method on given sequence
@@ -489,7 +515,7 @@ File is searched with path 'sequences' and given ident (accession number).
         ed = ExtractData(properties_db=PropertiesDB())
         ed.ir_data(CommonDB.get_zci_db(tuple(params.common_db.split('/'))))
 
-    elif params.method_name == 'diff_stats':
+    elif params.method_name in ('diff_stats', 'lsc_ssc_lengths'):
         from common_utils.common_db import CommonDB
         seq_idents = set()
         if params.common_db:
@@ -497,7 +523,8 @@ File is searched with path 'sequences' and given ident (accession number).
             seq_idents.update(p[-1] for p in cdb.get_all_record_ident(startswith=params.starts_with))
         if params.seq_filename:
             seq_idents.add(params.seq_filename)
-        ExtractData(properties_db=PropertiesDB()).diff_stats(seq_idents)
+        ed = ExtractData(properties_db=PropertiesDB())
+        getattr(ed, params.method_name)(seq_idents)
 
     elif params.process_common_db:
         if not params.common_db:
@@ -519,10 +546,11 @@ File is searched with path 'sequences' and given ident (accession number).
         # Process sequences
         tmp_dir = tempfile.gettempdir()
         for seq_ident, cds_path in sorted(seq_idents_2_paths.items()):
-            print(seq_ident)
+            if key2:
+                print(seq_ident)
             seq_filename = cdb.get_record(cds_path, tmp_dir, info=False)
             data = getattr(ed, method_name)(seq_ident=seq_ident, key=key2, seq_filename=seq_filename)
-            if data:
+            if data and key2:
                 properties_db.set_property(seq_ident, key2, data)
             os.remove(seq_filename)
 

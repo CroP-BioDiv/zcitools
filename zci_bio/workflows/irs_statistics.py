@@ -1,4 +1,5 @@
 import datetime
+import itertools
 from collections import defaultdict
 from step_project.base_workflow import BaseWorkflow
 from common_utils.exceptions import ZCItoolsValueError
@@ -90,6 +91,7 @@ class IRsStatistics(BaseWorkflow):
         clade_2_family = defaultdict(set)
         clade_2_genus = defaultdict(set)
         clade_2_species = defaultdict(set)
+        clade_2_year = defaultdict(lambda: defaultdict(int))
         #
         methods = self.parameters['methods']
         it_2_idx = dict(exact=0, differs=1, no=2)
@@ -97,20 +99,22 @@ class IRsStatistics(BaseWorkflow):
         m_2_wraps = dict((m, [0, 0]) for m in methods)
         #
         m_2_dl, dl_splits = _idx_data(methods, (0, 10, 100))
-        m_2_blocks, block_splits = _idx_data(methods, (1, 10, 100))
-        m_2_ddd, ddd_splits = _idx_data(methods, (1, 10, 100))
+        # m_2_max_dl = defaultdict(int)
+        # m_2_blocks, block_splits = _idx_data(methods, (1, 10, 100))
+        m_2_ddd, ddd_splits = _idx_data(methods, (5, 20, 100))
         #
         m_2_dna = dict((m, [0, 0, 0]) for m in methods)
         m_2_dna_irs = dict((m, [0, 0]) for m in methods)  # Can't be "No IRs"!
         #
-        for clade, family, genus, species, method, ir_type, ir_wraps, diff_len, \
-                replace_num, replace_sum, indel_num, indel_sum, \
-                not_dna, not_dna_irs in \
-                results.select(('Clade', 'family', 'genus', 'Organism', 'Method', 'IR_type', 'IR_wraps',
-                                'diff_len', 'replace_num', 'replace_sum',
-                                'indel_num', 'indel_sum', 'not_dna', 'not_dna_irs')):
+        for clade, family, genus, species, published, \
+                method, ir_type, ir_wraps, diff_len, \
+                replace_num, replace_sum, indel_num, indel_sum, not_dna, not_dna_irs in \
+                results.select(('Clade', 'family', 'genus', 'Organism', 'Published',
+                                'Method', 'IR_type', 'IR_wraps', 'diff_len',
+                                'replace_num', 'replace_sum', 'indel_num', 'indel_sum', 'not_dna', 'not_dna_irs')):
             if method == methods[0]:
                 clade_2_num[clade] += 1
+                clade_2_year[clade][published.year] += 1
                 if not_dna:
                     clade_2_ns[clade] += 1
                 clade_2_family[clade].add(family)
@@ -121,9 +125,11 @@ class IRsStatistics(BaseWorkflow):
             if ir_type != 'no':       # With IRs
                 m_2_wraps[method][int(ir_wraps)] += 1
                 m_2_dl[method][_idx(diff_len, dl_splits)] += 1
+                # if diff_len < 20000:
+                #     m_2_max_dl[method] = max(m_2_max_dl.get(method, 0), diff_len)
             if ir_type == 'differs':  # Not exact IRs
-                m_2_blocks[method][_idx(replace_num + indel_num, block_splits)] += 1
-                m_2_ddd[method][_idx(replace_sum + indel_sum, block_splits)] += 1
+                # m_2_blocks[method][_idx(replace_num + indel_num, block_splits)] += 1
+                m_2_ddd[method][_idx(replace_sum + indel_sum, ddd_splits)] += 1
             if not_dna:
                 m_2_dna[method][ir_type_idx] += 1
                 if not_dna_irs:
@@ -134,6 +140,10 @@ class IRsStatistics(BaseWorkflow):
         for c, n in sorted(clade_2_num.items()):
             clades[c] = [n, len(clade_2_family[c]), len(clade_2_genus[c]), len(clade_2_species[c]), clade_2_ns[c]]
         clades['All'] = [sum(v[i] for v in clades.values()) for i in range(5)]
+        years = sorted(set(itertools.chain.from_iterable(v.keys() for v in clade_2_year.values())))
+        clade_2_year['All'] = dict((y, sum(v.get(y, 0) for v in clade_2_year.values())) for y in years)
+        clade_2_year = dict((k, [v[y] for y in years]) for k, v in clade_2_year.items())
+        clade_2_year['Cumulative'] = list(itertools.accumulate(clade_2_year['All']))
 
         #
         ir_types = ('Exact IRs', 'IRs differ', 'No IRs')
@@ -141,30 +151,39 @@ class IRsStatistics(BaseWorkflow):
         # text += self._dict_table(clade_2_num, 'Number of Sequences')
         # text += self._dict_table(clade_2_family, 'Number of Families')
         text += self._methods_table(clades, 'Number of Sequences', ('Sequences', 'Families', 'Genus', 'Species', "With N's"), methods=list(clades.keys()))
+        text += self._methods_table(clade_2_year, 'Number of Sequences per year', years, methods=list(clade_2_year.keys()))
+
         text += "\n\nAnnotated IRs, to sequence characteristics"
         text += self._methods_table(m_2_it, 'Number of Sequences with Annotated IRs', ir_types, ident='  ')
         text += self._methods_table(m_2_dna, "N's in sequence", ir_types, ident='  ')
         text += self._methods_table(m_2_dna_irs, "N's in IRs", ir_types[:-1], ident='  ')
         text += "\n\nFound IRs characteristics"
         text += self._methods_table(m_2_wraps, 'IR wraps', ('No', 'Yes'), ident='  ')
-        text += self._methods_table(m_2_dl, 'IR difference in length', _idx_labels(dl_splits, measure=' bp'), ident='  ')
-        text += self._methods_table(m_2_blocks, 'IR indel/replace number of blocks', _idx_labels(block_splits), ident='  ')
-        text += self._methods_table(m_2_ddd, 'IR indel/replace number of bps', _idx_labels(ddd_splits), ident='  ')
+        text += self._methods_table(m_2_dl, 'IR difference in length', _idx_labels(dl_splits), ident='  ')  # , measure=' bp'
+        # text += self._methods_table(dict((k, [v]) for k, v in m_2_max_dl.items()), 'Max IR difference in length', ('Max',), ident='  ')  # , measure=' bp'
+        # text += self._methods_table(m_2_blocks, 'IR indel/replace number of blocks', _idx_labels(block_splits), ident='  ')
+        text += self._methods_table(m_2_ddd, 'IR indel/replace number of bps', _idx_labels(ddd_splits), ident='  ', percentages=True)
         return dict(text=text)
 
     def _dict_table(self, _dict, title):
         lines = '\n'.join(f'  {k:<10} {n:>5}' for k, n in _dict.items())
         return f"\n{title}:\n{lines}\n  All {sum(_dict.values()):>12}\n"
 
-    def _methods_table(self, data, title, labels, methods=None, ident=''):
+    def _methods_table(self, data, title, labels, methods=None, ident='', percentages=False):
         if not methods:
             methods = self.parameters['methods']
         max_l = max(len(m) for m in methods)
         text = f"""\n{ident}{title}:
              {ident}{' '.join(m.rjust(max_l) for m in methods)}
 """
-        for idx, lab in enumerate(labels):
-            text += f"  {ident}{lab:<10} {' '.join(str(data[m][idx]).rjust(max_l) for m in methods)}\n"
+        if percentages:
+            _sum = dict((m, sum(data[m][idx] for idx in range(len(labels)))) for m in methods)
+            for idx, lab in enumerate(labels):
+                text += f"  {ident}{lab:<10} {' '.join(str(data[m][idx]).rjust(max_l) for m in methods)}\n"
+                text += f"  {ident}{' ' * 10} {' '.join(str(round(100 * data[m][idx] / _sum[m], 2)).rjust(max_l) for m in methods)}\n"
+        else:
+            for idx, lab in enumerate(labels):
+                text += f"  {ident}{lab:<10} {' '.join(str(data[m][idx]).rjust(max_l) for m in methods)}\n"
         return text
 
 
