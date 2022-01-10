@@ -114,13 +114,21 @@ class NCBITaxonomy:
     def get_exact_name_translation(self, name):
         # Check NCBITaxa.get_fuzzy_name_translation() implementation
         print(f"Trying exact search for {name}")
-        result = self._db().execute(f'SELECT taxid FROM species WHERE lower(spname) = "{name.lower()}" LIMIT 1;')
+        # Note: spname column is COLLATE NOCASE!
+        result = self._db().execute(f'SELECT taxid FROM species WHERE spname = "{name}" LIMIT 1;')
         taxid = result.fetchone()
         if taxid:
             taxid = int(taxid[0])
             print(f"   FOUND!  taxid {taxid}")
         else:
-            print(f"   Didn't find taxid for '{name}'")
+            print(f"   Didn't find taxid for '{name}' with exact search")
+            print(f"Trying synonym search for {name}")
+            result = self._db().execute(f'SELECT taxid FROM synonym WHERE spname = "{name}" LIMIT 1;')
+            if taxid := result.fetchone():
+                taxid = int(taxid[0])
+                print(f"   FOUND!  taxid {taxid}")
+            else:
+                print(f"   Didn't find taxid for '{name}' with synonym search")
 
         return taxid
 

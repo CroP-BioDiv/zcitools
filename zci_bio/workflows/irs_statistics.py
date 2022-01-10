@@ -97,6 +97,7 @@ class IRsStatistics(BaseWorkflow):
         it_2_idx = dict(exact=0, differs=1, no=2)
         m_2_it = dict((m, [0, 0, 0]) for m in methods)
         m_2_wraps = dict((m, [0, 0]) for m in methods)
+        m_year_2_ir_type = dict((m, defaultdict(lambda: [0, 0, 0])) for m in methods)  # method -> (year -> 3 ints)
         #
         m_2_dl, dl_splits = _idx_data(methods, (0, 10, 100))
         # m_2_max_dl = defaultdict(int)
@@ -122,8 +123,9 @@ class IRsStatistics(BaseWorkflow):
                 clade_2_species[clade].add(species)
             ir_type_idx = it_2_idx[ir_type]
             m_2_it[method][ir_type_idx] += 1
+            m_year_2_ir_type[method][published.year][ir_type_idx] += 1
             if ir_type != 'no':       # With IRs
-                m_2_wraps[method][int(ir_wraps)] += 1
+                m_2_wraps[method][1 - int(ir_wraps)] += 1
                 m_2_dl[method][_idx(diff_len, dl_splits)] += 1
                 # if diff_len < 20000:
                 #     m_2_max_dl[method] = max(m_2_max_dl.get(method, 0), diff_len)
@@ -144,6 +146,8 @@ class IRsStatistics(BaseWorkflow):
         clade_2_year['All'] = dict((y, sum(v.get(y, 0) for v in clade_2_year.values())) for y in years)
         clade_2_year = dict((k, [v[y] for y in years]) for k, v in clade_2_year.items())
         clade_2_year['Cumulative'] = list(itertools.accumulate(clade_2_year['All']))
+        for m, my in m_year_2_ir_type.items():
+            clade_2_year[m] = ['/'.join(map(str, my[y])) for y in years]
 
         #
         ir_types = ('Exact IRs', 'IRs differ', 'No IRs')
@@ -158,7 +162,7 @@ class IRsStatistics(BaseWorkflow):
         text += self._methods_table(m_2_dna, "N's in sequence", ir_types, ident='  ')
         text += self._methods_table(m_2_dna_irs, "N's in IRs", ir_types[:-1], ident='  ')
         text += "\n\nFound IRs characteristics"
-        text += self._methods_table(m_2_wraps, 'IR wraps', ('No', 'Yes'), ident='  ')
+        text += self._methods_table(m_2_wraps, 'IR wraps', ('Yes', 'No'), ident='  ')
         text += self._methods_table(m_2_dl, 'IR difference in length', _idx_labels(dl_splits), ident='  ')  # , measure=' bp'
         # text += self._methods_table(dict((k, [v]) for k, v in m_2_max_dl.items()), 'Max IR difference in length', ('Max',), ident='  ')  # , measure=' bp'
         # text += self._methods_table(m_2_blocks, 'IR indel/replace number of blocks', _idx_labels(block_splits), ident='  ')

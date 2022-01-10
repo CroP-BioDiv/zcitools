@@ -170,11 +170,6 @@ class _Node:
             if self.parent_node:
                 self.parent_node.set_depth(depth)
 
-    def nodes_under(self):
-        if self.is_leaf:
-            return (self, None)
-        return (self, [n.nodes_under() for n in sorted(self.children, key=lambda x: x.name)])
-
     @staticmethod
     def dummy_node(is_leaf=False, depth=0, name='-'):
         return _Node(is_leaf, 0, None, None, depth, name)
@@ -236,7 +231,7 @@ class GroupByTaxonomy:
         if node := self.nodes.get(taxid):
             assert node.is_leaf == is_leaf, (node.is_leaf, is_leaf, taxid, parent_taxid, depth)
             assert node.taxid == taxid, (node.taxid, is_leaf, taxid, parent_taxid, depth)
-            assert node.depth == depth, (node.parent_taxid, is_leaf, taxid, parent_taxid, depth)
+            assert node.depth == depth, (node.depth, is_leaf, taxid, parent_taxid, depth)
             return node
         parent = self.nodes[parent_taxid] if parent_taxid is not None else None
         self.nodes[taxid] = node = _Node(is_leaf, taxid, parent, rank, depth, self.taxid_2_name[taxid])

@@ -271,7 +271,7 @@ class ExtractData:
 
         a_s, a_e = irs_d['ira']
         b_s, b_e = irs_d['irb']
-        d['ssc_length'], d['lsc_length'] = sorted([(b_s - a_e) % seq_l, (a_s - b_e) % seq_l])
+        d['ssc_length'], d['lsc_length'] = sorted([(b_s - a_e) % seq_length, (a_s - b_e) % seq_length])
 
         if diff := irs_d.get('diff'):
             # ToDo: <a>,equal,<a>,equal by few bases
