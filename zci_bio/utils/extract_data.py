@@ -241,7 +241,8 @@ class ExtractData:
                 if irs_d['ira'] == data.get('ira') and irs_d['irb'] == data.get('irb'):
                     print(f'  found diff: {data["type"]}')
                     return dict((k, v) for k, v in data.items()
-                                if k in ('type', 'diff', 'ir_lengths', 'diff_len', 'max_indel_length', 'not_dna'))
+                                if k in ('type', 'diff', 'ir_lengths', 'diff_len', 'max_indel_length', 'not_dna',
+                                         'ssc_length', 'lsc_length'))
 
         # Problem:
         # Original NCBI annotation of NC_031898, has IR lengths 23595 and 74817.

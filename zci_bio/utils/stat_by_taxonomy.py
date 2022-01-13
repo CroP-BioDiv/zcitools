@@ -186,7 +186,7 @@ class GroupByTaxonomy:
     def __init__(self, objects, ranks=None, names=None, taxid_method=None, taxid_attr=None):
         if taxid_method:
             object_taxids = [taxid_method(o) for o in objects]
-        elif taxid_attr:
+        elif taxid_attr is not None:
             object_taxids = [o[taxid_attr] for o in objects]
         else:
             assert False, '?'
