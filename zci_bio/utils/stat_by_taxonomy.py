@@ -194,7 +194,7 @@ class GroupByTaxonomy:
 
         # Find all taxids, species and parent clades
         all_taxids = set(object_taxids)
-        ncbi_taxonomy = get_ncbi_taxonomy()
+        self.ncbi_taxonomy = ncbi_taxonomy = get_ncbi_taxonomy()
         gl = ncbi_taxonomy.get_lineage
         taxid_2_lineage = dict((t, gl(t)) for t in all_taxids)
         all_taxids.update(chain.from_iterable(taxid_2_lineage.values()))

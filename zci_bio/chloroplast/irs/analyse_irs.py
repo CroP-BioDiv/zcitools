@@ -181,7 +181,7 @@ def analyse_irs(step_data, table_step, seqs_step, ge_seq_step, chloe_step, metho
     empty_row_part = [''] * len(grouped_columns)
 
     # All data
-    _excel_columns = grouped_columns + [c for c, _ in (_column_types_acc + _column_types_method)] + ['Same']
+    _excel_columns = grouped_columns + [c for c, _ in (_column_types_acc + _column_types_method)] + ['Same', 'Similar']
     rows = []
     table_rows = []
     not_compact_names = [''] * len(grouped_columns)
@@ -192,10 +192,11 @@ def analyse_irs(step_data, table_step, seqs_step, ge_seq_step, chloe_step, metho
             seq_row = o['_seq_row']
             d_sr = [''] * len(seq_row)
             same_m = _group_same_irs(o, methods)
-            rows.extend(((nn + seq_row) if i == 0 else (empty_row_part + d_sr)) + [m] + o[m]['_method_row'] + [sm]
-                        for i, (m, sm) in enumerate(zip(methods, same_m)))
-            table_rows.extend(not_compact_names + seq_row + [m] + o[m]['_method_row'] + [sm]
-                              for i, (m, sm) in enumerate(zip(methods, same_m)))
+            similar_m = _group_similar_irs(o, methods)
+            rows.extend(((nn + seq_row) if i == 0 else (empty_row_part + d_sr)) + [m] + o[m]['_method_row'] + [sm, sim]
+                        for i, (m, sm, sim) in enumerate(zip(methods, same_m, similar_m)))
+            table_rows.extend(not_compact_names + seq_row + [m] + o[m]['_method_row'] + [sm, sim]
+                              for i, (m, sm, sim) in enumerate(zip(methods, same_m, similar_m)))
             nn = empty_row_part
     sheets = [('All methods', _excel_columns, rows)]
 
@@ -224,16 +225,11 @@ def analyse_irs(step_data, table_step, seqs_step, ge_seq_step, chloe_step, metho
         rows = []
         for node_names, objects in _g_data:
             # Taxonomy and lengths
-            lengths = [o['length'] for o in objects]
-            _min = min(lengths)
-            _max = max(lengths)
-            avg = round(statistics.mean(lengths), 1)
-            std = round(statistics.stdev(lengths), 1) if len(lengths) > 1 else 0
-            row_p = node_names + [len(lengths), _min, _max, _max - _min, avg, std]
+            row_p = node_names + _lengths_row(objects)
             dummy_p = [''] * len(row_p)
 
             # Methods
-            num_seqs = len(lengths)
+            num_seqs = len(objects)
             for idx, m in enumerate(methods):
                 if ir_lengths := [max(o[m]['ir_lengths']) for o in objects if 'ira' in o[m]]:
                     num = len(ir_lengths)
@@ -262,18 +258,51 @@ def analyse_irs(step_data, table_step, seqs_step, ge_seq_step, chloe_step, metho
     #
     sheets.append(('Overall stats', ['Stat'] + methods, _stat_rows(methods, acc_data)))
 
+    # Figure data
+    rank = 'family'
+    if rank in grouped_columns:
+        n_methods = [m for m in methods if m != 'airpg']
+        group_idx = grouped_columns.index(rank)
+        num_species_below = group_bt.ncbi_taxonomy.num_species_below
+        fp = extract_data.properties_db.fetch_property
+        #
+        rows = []
+        for nodes, objects in group_bt.sorted_nodes_objects(objects_sort=(lambda d: d['organism']), lowest_rank=rank):
+            _min_d = min(o['first_date'] for o in objects)
+            not_dna = sum(1 for o in objects if o['not_dna'])
+            similar = [0] * len(n_methods)
+            for o in objects:
+                similar[max(_group_similar_irs(o, n_methods)) - 1] += 1
+
+            rows.append([n.name for n in nodes] +
+                        [fp(nodes[-1].name, 'NCBI num species', num_species_below, nodes[-1].taxid)] +
+                        _lengths_row(objects) + [_min_d, not_dna] + similar)
+
+        columns = grouped_columns[:(group_idx + 1)] + \
+            ['Num species', 'Num sequences', 'Min length', 'Max length', 'Length diff', 'Avg length', 'Std length',
+             'Min date', 'Num non DNA'] + \
+            [f'With {i}' for i in range(1, len(n_methods) + 1)]
+        sheets.append(('Figure data', columns, rows))
+
     # Excel: method sheets
     sheets_2_excel('chloroplast_irs_analysis.xls', sheets)
 
     # Store step data. This finishes step
-    # table_rows = [data['_seq_row'] + list(chain(*(data[m]['_method_row'] for m in methods)))
-    #               for seq_ident, data in acc_data.items()]
-    # columns = list(chain(*([(f'{m}_{n}', t) for n, t in _column_types_method] for m in methods)))
-    columns = [(c, 'str') for c in grouped_columns] + _column_types_acc + _column_types_method + [('Same', 'str')]
+    columns = [(c, 'str') for c in grouped_columns] + _column_types_acc + _column_types_method + \
+        [('Same', 'str'), ('Similar', 'int')]
     step.set_table_data(table_rows, columns)
     step.save()
 
     return step
+
+
+def _lengths_row(objects):
+    lengths = [o['length'] for o in objects]
+    _min = min(lengths)
+    _max = max(lengths)
+    avg = round(statistics.mean(lengths), 1)
+    std = round(statistics.stdev(lengths), 1) if len(lengths) > 1 else 0
+    return [len(lengths), _min, _max, _max - _min, avg, std]
 
 
 def _stat_rows(methods, acc_data):
@@ -348,6 +377,25 @@ def _group_same_irs(obj, methods):
         else:
             by_method.append(None)
     return by_method
+
+
+def _group_similar_irs(obj, methods, diff_length=20):
+    # Not perfect clustering, but works. Note: indexes not located IRs also, as max index
+    same = []
+    by_method = []
+    for m in methods:
+        if ira := obj[m].get('ira'):
+            s, e = ira
+            for ind, (o_s, o_e) in enumerate(same):
+                if abs(s - o_s) + abs(e - o_e) <= diff_length:
+                    by_method.append(ind + 1)
+                    break
+            else:
+                same.append(ira)
+                by_method.append(len(same))  # Indexed form 1!
+        else:
+            by_method.append(None)
+    return [(b or (len(same) + 1)) for b in by_method]  # Set max index to None's
 
 
 def _cm(acc_data, m1, m2):
