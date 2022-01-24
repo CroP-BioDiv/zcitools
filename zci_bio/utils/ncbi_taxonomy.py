@@ -154,7 +154,9 @@ class NCBITaxonomy:
         return species, without_sp
 
     def num_species_below(self, taxid):
-        result = self._db().execute(f"SELECT COUNT(*) FROM species WHERE INSTR(track, ',{taxid},') > 0;")
+        print('Num species for', taxid)
+        result = self._db().execute(
+            f"SELECT COUNT(*) FROM species WHERE rank = 'species' AND INSTR(track, ',{taxid},') > 0;")
         return int(result.fetchone()[0])
 
     #

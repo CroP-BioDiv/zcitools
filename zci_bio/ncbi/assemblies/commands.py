@@ -90,9 +90,12 @@ class NCBIChloroplastList(CreateStepCommand):
         parser.add_argument('-f', '--family', help='Family (ToDo)')
         parser.add_argument('-o', '--outgroup', action='append', help='Outgroup(s)')
         parser.add_argument('-t', '--taxon', action='append', help='General taxon(s)')
-        parser.add_argument('--max-update-date', help='Set max update date. ISO format (yyyy-mm-dd)')
-        parser.add_argument('--remove-irl', action='store_true', help='Remove IRL clade species')
         parser.add_argument('-P', '--fetch-plastids', action='store_true', help='Fetch sequences declared as plastids.')
+        parser.add_argument('--max-update-date', help='Set max update date. ISO format (yyyy-mm-dd)')
+        parser.add_argument('--remove-clade', action='append', help='Remove sequences from given clade')
+        parser.add_argument('--mark-clade', action='append', help='Add boolean column from given clade')
+        parser.add_argument('--check-taxids', action='store_true',
+                            help='Raise an error if local database does not contan all fetched taxids')
 
     def run(self, step_data):
         from .fetch_genome_assemblies import fetch_chloroplast_list

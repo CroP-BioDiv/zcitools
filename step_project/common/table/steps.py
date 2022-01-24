@@ -122,13 +122,17 @@ Table data is stored in table.csv with header, separator ;, quote character ".
 
     def get_rows(self):
         if self._rows is None:
-            self._rows = read_csv(self._get_table_filename())
-            for i, (_, dt) in enumerate(self._columns):
-                if ff := _type_format.get(dt):
-                    for r in self._rows:
-                        if r[i]:
-                            r[i] = ff(r[i])
-            _check_rows(self._columns, self._rows)
+            filename = self._get_table_filename()
+            if os.path.isfile(filename):
+                self._rows = read_csv(filename)
+                for i, (_, dt) in enumerate(self._columns):
+                    if ff := _type_format.get(dt):
+                        for r in self._rows:
+                            if r[i]:
+                                r[i] = ff(r[i])
+                _check_rows(self._columns, self._rows)
+            else:
+                self._rows = []
         return self._rows
 
     def num_rows(self):

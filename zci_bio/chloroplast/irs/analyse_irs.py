@@ -16,6 +16,7 @@ METHOD_NAMES = ('ncbi', 'airpg', 'ge_seq', 'small_d', 'small_d_P', 'small_d_D', 
 METHODS_USE_SEQUENCES = ('ncbi', 'airpg', 'small_d', 'small_d_P', 'small_d_D', 'small_d_all', 'chloroplot',
                          'pga', 'pga_sb', 'plann', 'plann_sb', 'org_annotate')
 METHODS_SEPARATE_PATH = ('ge_seq', 'chloe')
+METHOD_NAMES_RESEARCH = ('chloe', 'chloroplot', 'ge_seq', 'org_annotate', 'pga', 'plann', 'airpg')
 _column_types_acc = [
     ('Organism', 'str'), ('Accession', 'seq_ident'),
     ('Created', 'date'), ('Published', 'date'),
@@ -338,9 +339,9 @@ def _stat_rows(methods, acc_data):
             [title] + [''] * len(methods),
             ['Num annotated'] + [d['annot'] for d in per_method],
             ['% annotated'] + [round(100 * d['annot'] / num_seqs, 2) for d in per_method],
-            ['Min IR length'] + [min(d['lengths']) for d in per_method],
-            ['Max IR length'] + [max(d['lengths']) for d in per_method],
-            ['Avg IR length'] + [round(statistics.mean(d['lengths']), 1) for d in per_method],
+            ['Min IR length'] + [min(d['lengths'], default=0)for d in per_method],
+            ['Max IR length'] + [max(d['lengths'], default=0) for d in per_method],
+            ['Avg IR length'] + [round(statistics.mean(d['lengths']), 1) if d['lengths'] else 0 for d in per_method],
             ['Num wraps'] + [d['wraps'] for d in per_method],
             ['Num on start'] + [d['on_start'] for d in per_method],
             ['Num with not DNA'] + [d['not_dna'] for d in per_method],

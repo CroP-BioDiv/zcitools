@@ -36,7 +36,7 @@ class WfAction(namedtuple('WfAction', 'step_name, prev_steps, cmd, additional_re
 
 class BaseWorkflow:
     _WORKFLOW = None  # Name of workflow
-    _COMMAND_METHODS = dict(run='cmd_run', graph='cmd_graph', summary='cmd_summary')
+    _COMMAND_METHODS = dict(run='cmd_run', graph='cmd_graph', summary='cmd_summary', actions='cmd_actions')
 
     def __init__(self, project, parameters):
         self.project = project
@@ -181,3 +181,7 @@ Check for INSTRUCTION.txt and calculate.zip in step(s):
             write_str_in_file('workflow_summary.txt', text)
 
         # if text := summary.get('table'):
+
+    def cmd_actions(self):
+        for action in self.actions():
+            print(f"{action.step_name:<22} {' '.join(action.cmd)}")

@@ -8,6 +8,7 @@ from collections import defaultdict
 from step_project.common.table.steps import TableStep, Rows2Table
 from common_utils.file_utils import write_str_in_file, write_csv, get_settings
 from common_utils.value_data_types import fromisoformat, table_data_2_excel
+from common_utils.exceptions import ZCItoolsValueError
 from ...utils.ncbi_taxonomy import get_ncbi_taxonomy
 
 _instructions = """
@@ -173,7 +174,7 @@ def _to_date(d):
         return date(*map(int, d.split('/')))
 
 
-_fetch_columns = [
+_f_columns = [
     ('AccessionId', 'int'), ('ncbi_ident', 'seq_ident'),
     ('tax_id', 'int'), ('length', 'int'),
     ('create_date', 'date'), ('update_date', 'date'),
@@ -184,6 +185,7 @@ _fetch_columns = [
 def fetch_chloroplast_list(project, step_data, args):
     # Create table step data
     step = TableStep(project, step_data, remove_data=True)
+    _fetch_columns = _f_columns + [(f"clade_{c.replace(' ', '_')}", 'int') for c in args.mark_clade or []]
     max_taxid = None
     if args.family:
         # step.set_step_name_prefix(args.family)  # No need for this
@@ -284,6 +286,7 @@ def fetch_chloroplast_list(project, step_data, args):
 
 def _fetch_complete_chloroplasts(organisms, args, max_taxid):
     from ...utils.entrez import Entrez
+
     ts = ' OR '.join(f'"{t}"[Organism]' for t in organisms)
     titles = ['chloroplast']
     if args.fetch_plastids:
@@ -300,16 +303,29 @@ def _fetch_complete_chloroplasts(organisms, args, max_taxid):
             data = [d for d in data if _to_date(d['UpdateDate']) <= max_d]
         rows.extend(data)
 
-    if args.remove_irl:
-        from zci_bio.utils.ncbi_taxonomy import get_ncbi_taxonomy
-        ncbi_taxonomy = get_ncbi_taxonomy()
-        irl_taxid = ncbi_taxonomy.name_2_taxid('IRL clade')
-        parents = ncbi_taxonomy._nt().get_lineage_translator([int(r['TaxId']) for r in rows])
-        prev_len = len(rows)
-        rows = [r for r in rows if irl_taxid not in parents[int(r['TaxId'])]]
-        print(f'Removed IRL clade sequences: {prev_len - len(rows)}!')
+    ncbi_taxonomy = get_ncbi_taxonomy()
+    parents = ncbi_taxonomy._nt().get_lineage_translator([int(r['TaxId']) for r in rows])
 
-    return _filter_summary_data(rows, max_taxid)
+    if not_in := [r for r in rows if int(r['TaxId']) not in parents]:
+        if args.check_taxids:
+            raise ZCItoolsValueError(f"Fetch cpDNA genomes. Taxid not known!!! {not_in}")
+        prev_len = len(rows)
+        rows = [r for r in rows if r not in not_in]
+        print(f'Removed sequences with problematic taxids: {prev_len - len(rows)}!')
+
+    for clade in (args.remove_clade or []):
+        remove_taxid = ncbi_taxonomy.name_2_taxid(clade)
+        prev_len = len(rows)
+        rows = [r for r in rows if remove_taxid not in parents[int(r['TaxId'])]]
+        print(f'Removed {clade} sequences: {prev_len - len(rows)}!')
+
+    rows = _filter_summary_data(rows, max_taxid)
+
+    if args.mark_clade:
+        mark_taxids = [ncbi_taxonomy.name_2_taxid(clade) for clade in args.mark_clade]
+        rows = [row + [int(t in _p) for t in mark_taxids] for row in rows if (_p := parents[row[2]])]
+
+    return rows
 
 
 def _set_summary_data_for_genomes(rows, desc, summary_data):

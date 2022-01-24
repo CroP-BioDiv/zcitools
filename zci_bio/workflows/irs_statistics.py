@@ -5,6 +5,10 @@ from step_project.base_workflow import BaseWorkflow
 from common_utils.exceptions import ZCItoolsValueError
 
 
+def _cmd_switch(switch, data):
+    return list(itertools.chain(*([switch, d] for d in (data or []))))
+
+
 class IRsStatistics(BaseWorkflow):
     _WORKFLOW = 'irs_statistics'
 
@@ -16,24 +20,25 @@ class IRsStatistics(BaseWorkflow):
     @staticmethod
     def format_parameters(params):
         # Methods
-        from ..chloroplast.irs.analyse_irs import METHOD_NAMES
-        methods = set()
-        not_known_methods = set()
-        for m in params['methods'].lower().split(','):
-            if m == 'all':
-                methods.update(METHOD_NAMES)
-            elif m in METHOD_NAMES:
-                methods.add(m)
-            else:
-                not_known_methods.add(m)
-        if not_known_methods:
+        from ..chloroplast.irs.analyse_irs import METHOD_NAMES, METHOD_NAMES_RESEARCH
+        ms = params['methods'].lower().split(',')
+        if 'all' in ms:
+            methods = METHOD_NAMES
+        elif 'research' in ms:
+            methods = METHOD_NAMES_RESEARCH
+        elif not_known_methods := set(m for m in ms if m not in METHOD_NAMES):
             raise ZCItoolsValueError(f'Not know method(s): {", ".join(not_known_methods)}!')
+        else:
+            methods = []
+            for m in ms:
+                if m not in methods:  # Removes duplicates, but prevents order
+                    methods.append(m)
         params['methods'] = methods
         #
+        for att in ('taxons', 'taxa_ranks', 'taxa_names', 'remove_clades'):
+            if val := params.get(att):
+                params[att] = val.split(',')
         params['plastids'] = int(params.get('plastids', 0))
-        params['remove_irl'] = int(params.get('remove_irl', 0))
-        if taxa_ranks := params.get('taxa_ranks'):
-            params['taxa_ranks'] = taxa_ranks.split(',')
         if 'max_update_date' in params:
             params['max_update_date'] = datetime.date.fromisoformat(params['max_update_date'])
         return params
@@ -41,14 +46,16 @@ class IRsStatistics(BaseWorkflow):
     def _actions(self):
         from ..chloroplast.irs.analyse_irs import METHODS_USE_SEQUENCES, METHODS_SEPARATE_PATH
 
-        taxons = ' '.join(f'-t {t}' for t in self.parameters['taxons'].split(','))
-        plastids = '-P' if self.parameters['plastids'] else ''
-        if max_update_date := self.parameters.get('max_update_date', ''):
-            max_update_date = f'--max-update-date {max_update_date}'
-        remove_irl = '--remove-irl' if int(self.parameters.get('remove_irl', '0')) else ''
         methods = self.parameters['methods']
 
-        actions = [('01_chloroplast_list', f"ncbi_chloroplast_list {taxons} {plastids} {max_update_date} {remove_irl}")]
+        cmd = ['ncbi_chloroplast_list']  # , '--check-taxids']
+        cmd += _cmd_switch('-t', self.parameters['taxons'])
+        cmd += _cmd_switch('--remove-clade', self.parameters.get('remove_clades'))
+        if self.parameters['plastids']:
+            cmd.append('-P')
+        if max_update_date := self.parameters.get('max_update_date'):
+            cmd.extend(['--max-update-date', str(max_update_date)])
+        actions = [('01_chloroplast_list', cmd)]
 
         # Collect data
         # Methods that use NCBI sequences from common step
@@ -65,11 +72,10 @@ class IRsStatistics(BaseWorkflow):
                 actions.append((f'03_{m}', f"{m} 02_{m}"))
 
         # Analysis
-        cmd = f"analyse_irs 01_chloroplast_list 02_seqs {' '.join(stats)}"
-        if ranks := self.parameters.get('taxa_ranks'):
-            cmd += ' ' + ' '.join(f'-r {r}' for r in ranks)
-        if names := self.parameters.get('taxons'):
-            cmd += ' ' + ' '.join(f'-n {n}' for n in names.split(','))
+        cmd = ['analyse_irs', '01_chloroplast_list', '02_seqs']
+        cmd += _cmd_switch('-m', methods)
+        cmd += _cmd_switch('-r', self.parameters.get('taxa_ranks'))
+        cmd += _cmd_switch('-n', self.parameters.get('taxa_names') or self.parameters.get('taxons'))
         actions.append(('04_stats', cmd))
 
         # Summary, result, ...
@@ -96,6 +102,7 @@ class IRsStatistics(BaseWorkflow):
         methods = self.parameters['methods']
         it_2_idx = dict(exact=0, differs=1, no=2)
         m_2_it = dict((m, [0, 0, 0]) for m in methods)
+        m_2_it_10k = dict((m, [0, 0]) for m in methods)
         m_2_wraps = dict((m, [0, 0]) for m in methods)
         m_year_2_ir_type = dict((m, defaultdict(lambda: [0, 0, 0])) for m in methods)  # method -> (year -> 3 ints)
         #
@@ -105,13 +112,13 @@ class IRsStatistics(BaseWorkflow):
         m_2_ddd, ddd_splits = _idx_data(methods, (5, 20, 100))
         #
         m_2_dna = dict((m, [0, 0, 0]) for m in methods)
-        m_2_dna_irs = dict((m, [0, 0]) for m in methods)  # Can't be "No IRs"!
+        # m_2_dna_irs = dict((m, [0, 0]) for m in methods)  # Can't be "No IRs"!
         #
         for clade, family, genus, species, published, \
-                method, ir_type, ir_wraps, diff_len, \
+                method, ir_type, ir_wraps, IRa_len, IRb_len, diff_len, \
                 replace_num, replace_sum, indel_num, indel_sum, not_dna, not_dna_irs in \
                 results.select(('Clade', 'family', 'genus', 'Organism', 'Published',
-                                'Method', 'IR_type', 'IR_wraps', 'diff_len',
+                                'Method', 'IR_type', 'IR_wraps', 'IRa_len', 'IRb_len', 'diff_len',
                                 'replace_num', 'replace_sum', 'indel_num', 'indel_sum', 'not_dna', 'not_dna_irs')):
             if method == methods[0]:
                 clade_2_num[clade] += 1
@@ -127,6 +134,8 @@ class IRsStatistics(BaseWorkflow):
             if ir_type != 'no':       # With IRs
                 m_2_wraps[method][1 - int(ir_wraps)] += 1
                 m_2_dl[method][_idx(diff_len, dl_splits)] += 1
+                if max(IRa_len, IRb_len) >= 10000:
+                    m_2_it_10k[method][ir_type_idx] += 1
                 # if diff_len < 20000:
                 #     m_2_max_dl[method] = max(m_2_max_dl.get(method, 0), diff_len)
             if ir_type == 'differs':  # Not exact IRs
@@ -134,8 +143,8 @@ class IRsStatistics(BaseWorkflow):
                 m_2_ddd[method][_idx(replace_sum + indel_sum, ddd_splits)] += 1
             if not_dna:
                 m_2_dna[method][ir_type_idx] += 1
-                if not_dna_irs:
-                    m_2_dna_irs[method][ir_type_idx] += 1
+                # if not_dna_irs:
+                #     m_2_dna_irs[method][ir_type_idx] += 1
 
         #
         clades = dict()
@@ -159,8 +168,9 @@ class IRsStatistics(BaseWorkflow):
 
         text += "\n\nAnnotated IRs, to sequence characteristics"
         text += self._methods_table(m_2_it, 'Number of Sequences with Annotated IRs', ir_types, ident='  ')
+        text += self._methods_table(m_2_it_10k, 'Number of Sequences with Annotated IRs, length >= 10 kb', ir_types[:-1], ident='  ')
         text += self._methods_table(m_2_dna, "N's in sequence", ir_types, ident='  ')
-        text += self._methods_table(m_2_dna_irs, "N's in IRs", ir_types[:-1], ident='  ')
+        # text += self._methods_table(m_2_dna_irs, "N's in IRs", ir_types[:-1], ident='  ')
         text += "\n\nFound IRs characteristics"
         text += self._methods_table(m_2_wraps, 'IR wraps', ('Yes', 'No'), ident='  ')
         text += self._methods_table(m_2_dl, 'IR difference in length', _idx_labels(dl_splits), ident='  ')  # , measure=' bp'
@@ -184,7 +194,7 @@ class IRsStatistics(BaseWorkflow):
             _sum = dict((m, sum(data[m][idx] for idx in range(len(labels)))) for m in methods)
             for idx, lab in enumerate(labels):
                 text += f"  {ident}{lab:<10} {' '.join(str(data[m][idx]).rjust(max_l) for m in methods)}\n"
-                text += f"  {ident}{' ' * 10} {' '.join(str(round(100 * data[m][idx] / _sum[m], 2)).rjust(max_l) for m in methods)}\n"
+                text += f"  {ident}{' ' * 10} {' '.join(str(round(100 * data[m][idx] / s, 2)).rjust(max_l) if (s := _sum[m]) else '-' for m in methods)}\n"
         else:
             for idx, lab in enumerate(labels):
                 text += f"  {ident}{lab:<10} {' '.join(str(data[m][idx]).rjust(max_l) for m in methods)}\n"
