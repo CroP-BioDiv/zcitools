@@ -74,14 +74,15 @@ def parse_output(lines):
             if fields[4] == 'IRB':
                 irbs.append((int(fields[2]), int(fields[3])))
     if iras and irbs:
-        ira, irb = _loc(iras), _loc(irbs)
-        return (ira, irb) if ((irb[0] - ira[1]) % seq_length < (ira[0] - irb[1]) % seq_length) else (irb, ira)
+        ira, irb = _loc(iras, seq_length), _loc(irbs, seq_length)
+        if ira and irb:
+            return (ira, irb) if ((irb[0] - ira[1]) % seq_length < (ira[0] - irb[1]) % seq_length) else (irb, ira)
 
 
-def _loc(ir_parts):
+def _loc(ir_parts, seq_length):
     assert 1 <= len(ir_parts) <= 2, ir_parts
     if len(ir_parts) == 1:
-        return tuple(ir_parts[0])
+        return _loc_check(*ir_parts[0], seq_length)
     # Of type:
     #    chr  start    end name       text center
     # 1 chr1      0      3  IRB IRB: 24645 139014
@@ -98,7 +99,7 @@ def _loc(ir_parts):
         # 3 chr1  88174 114236  IRA IRA: 26062 101205
         # 4 chr1 114236 133179  SSC SSC: 18943 123708
         # 5 chr1 133179 159347  IRB            146263
-        return ir_parts[1][0], (ir_parts[1][1] + ir_parts[0][1])
+        return _loc_check(ir_parts[1][0], (ir_parts[1][1] + ir_parts[0][1]), seq_length)
 
     if ir_parts[-1][0] > ir_parts[-1][1]:
         # ??? NC_057051
@@ -110,7 +111,12 @@ def _loc(ir_parts):
         # 5 chr1 173226 164506  IRB             168866
         return tuple(ir_parts[0])
 
-    return ir_parts[1][0], ir_parts[0][1]
+    return _loc_check(ir_parts[1][0], ir_parts[0][1], seq_length)
+
+
+def _loc_check(start, end, seq_length):
+    if (end - start) % seq_length < seq_length // 2:
+        return start, end
 
 
 if __name__ == '__main__':

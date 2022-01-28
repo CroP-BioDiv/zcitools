@@ -40,12 +40,18 @@ def remove_directory(_dir, create):
         os.makedirs(_dir)
 
 
-def _loc(ir):
+def _loc(ir, seq_len):
     ir = ir.location.parts
     assert len(ir) <= 2, ir
     if ir[0].strand > 0:
-        return (int(ir[0].start), int(ir[-1].end))
-    return (int(ir[-1].start), int(ir[0].end))
+        return _loc_check(int(ir[0].start), int(ir[-1].end), seq_len)
+    return _loc_check(int(ir[-1].start), int(ir[0].end), seq_len)
+
+
+def _loc_check(start, end, seq_length):
+    # Some (probably only) complement regions can be wrongly oriented
+    if (end - start) % seq_length < seq_length // 2:
+        return start, end
 
 
 def pga(seq_filename, leave_tmp_file=False):
@@ -81,7 +87,11 @@ def pga(seq_filename, leave_tmp_file=False):
                         if f.type == 'repeat_region' and f.qualifiers.get('rpt_type', ('inverted',))[0] == 'inverted']:
             if len(rep_regs) == 2:
                 ira, irb = rep_regs
-                res_irs = _loc(ira), _loc(irb)
+                seq_len = len(seq.seq)
+                ira = _loc(ira, seq_len)
+                irb = _loc(irb, seq_len)
+                if ira and irb:
+                    res_irs = ira, irb
                 break
 
         if 'readline() on closed filehandle' not in err:
