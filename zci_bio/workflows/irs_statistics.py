@@ -109,7 +109,8 @@ class IRsStatistics(BaseWorkflow):
         m_2_dl, dl_splits = _idx_data(methods, (0, 10, 100))
         # m_2_max_dl = defaultdict(int)
         # m_2_blocks, block_splits = _idx_data(methods, (1, 10, 100))
-        m_2_ddd, ddd_splits = _idx_data(methods, (5, 20, 100))
+        # m_2_ddd, ddd_splits = _idx_data(methods, (5, 20, 100))
+        m_2_ddd, ddd_splits = _idx_data(methods, (10, 100))
         #
         m_2_dna = dict((m, [0, 0, 0]) for m in methods)
         # m_2_dna_irs = dict((m, [0, 0]) for m in methods)  # Can't be "No IRs"!
@@ -132,14 +133,14 @@ class IRsStatistics(BaseWorkflow):
             m_2_it[method][ir_type_idx] += 1
             m_year_2_ir_type[method][published.year][ir_type_idx] += 1
             if ir_type != 'no':       # With IRs
-                m_2_wraps[method][1 - int(ir_wraps)] += 1
-                m_2_dl[method][_idx(diff_len, dl_splits)] += 1
+                m_2_wraps[method][int(ir_wraps)] += 1
                 if max(IRa_len, IRb_len) >= 10000:
                     m_2_it_10k[method][ir_type_idx] += 1
                 # if diff_len < 20000:
                 #     m_2_max_dl[method] = max(m_2_max_dl.get(method, 0), diff_len)
             if ir_type == 'differs':  # Not exact IRs
                 # m_2_blocks[method][_idx(replace_num + indel_num, block_splits)] += 1
+                m_2_dl[method][_idx(diff_len, dl_splits)] += 1
                 m_2_ddd[method][_idx(replace_sum + indel_sum, ddd_splits)] += 1
             if not_dna:
                 m_2_dna[method][ir_type_idx] += 1
@@ -172,8 +173,8 @@ class IRsStatistics(BaseWorkflow):
         text += self._methods_table(m_2_dna, "N's in sequence", ir_types, ident='  ')
         # text += self._methods_table(m_2_dna_irs, "N's in IRs", ir_types[:-1], ident='  ')
         text += "\n\nFound IRs characteristics"
-        text += self._methods_table(m_2_wraps, 'IR wraps', ('Yes', 'No'), ident='  ')
-        text += self._methods_table(m_2_dl, 'IR difference in length', _idx_labels(dl_splits), ident='  ')  # , measure=' bp'
+        text += self._methods_table(m_2_wraps, 'IR wraps', ('No', 'Yes'), ident='  ', percentages=True)
+        text += self._methods_table(m_2_dl, 'IR difference in length', _idx_labels(dl_splits), ident='  ', percentages=True)  # , measure=' bp'
         # text += self._methods_table(dict((k, [v]) for k, v in m_2_max_dl.items()), 'Max IR difference in length', ('Max',), ident='  ')  # , measure=' bp'
         # text += self._methods_table(m_2_blocks, 'IR indel/replace number of blocks', _idx_labels(block_splits), ident='  ')
         text += self._methods_table(m_2_ddd, 'IR indel/replace number of bps', _idx_labels(ddd_splits), ident='  ', percentages=True)

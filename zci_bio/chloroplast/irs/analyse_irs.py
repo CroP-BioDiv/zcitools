@@ -1,6 +1,7 @@
 from collections import defaultdict
 from datetime import datetime
 import statistics
+import numpy as np
 from itertools import chain
 from step_project.common.table.steps import TableStep
 from zci_bio.sequences.steps import SequencesStep
@@ -9,7 +10,7 @@ from zci_bio.utils.extract_data import ExtractData
 from zci_bio.utils.stat_by_taxonomy import GroupByTaxonomy
 from common_utils.value_data_types import sheets_2_excel
 from common_utils.properties_db import PropertiesDB
-# from ..utils import cycle_distance_lt
+
 
 METHOD_NAMES = ('ncbi', 'airpg', 'ge_seq', 'small_d', 'small_d_P', 'small_d_D', 'small_d_all',
                 'chloe', 'chloroplot', 'pga', 'pga_sb', 'plann', 'plann_sb', 'org_annotate')
@@ -238,15 +239,18 @@ def analyse_irs(step_data, table_step, seqs_step, ge_seq_step, chloe_step, metho
                     _min = min(ir_lengths)
                     _max = max(ir_lengths)
                     avg = round(statistics.mean(ir_lengths), 1)
-                    # ToDo: grupirati po duljini, nekako????
+                    bs = boxplot_stats(ir_lengths)
                 else:
                     num = perc = 0
                     _min = _max = avg = None
-                rows.append((row_p if idx == 0 else dummy_p) + [m, num, perc, _min, _max, avg])
+                    bs = _boxplot_empty
+                #
+                rows.append((row_p if idx == 0 else dummy_p) + [m, num, perc, _min, _max, avg] + bs)
 
         columns = grouped_columns[:(group_idx + 1)] + \
             ['Num sequences', 'Min length', 'Max length', 'Length span', 'Avg length', 'Std length',
-             'Method', 'Num annotated', '% annotated', 'Min IR length', 'Max IR length', 'Avg IR length']
+             'Method', 'Num annotated', '% annotated', 'Min IR length', 'Max IR length', 'Avg IR length'] + \
+            _boxplot_columns
         sheets.append((('All summed' if group_idx == -1 else f'By {rank}'), columns, rows))
 
     # # Comparison
@@ -284,6 +288,13 @@ def analyse_irs(step_data, table_step, seqs_step, ge_seq_step, chloe_step, metho
              'Min date', 'Num non DNA'] + \
             [f'With {i}' for i in range(1, len(n_methods) + 1)]
         sheets.append(('Figure data', columns, rows))
+
+    # Sequence data, no clade grouping
+    rows = []
+    for node_names, objects in group_bt.sorted_nodes_objects(objects_sort=(lambda d: d['organism']),
+                                                             return_names=True, compact_names=False):
+        rows.extend((node_names + o['_seq_row']) for o in objects)
+    sheets.append(('Sequences ', grouped_columns + [c for c, _ in _column_types_acc], rows))
 
     # Excel: method sheets
     sheets_2_excel('chloroplast_irs_analysis.xls', sheets)
@@ -353,11 +364,17 @@ def _stat_rows(methods, acc_data):
                 ['Max different length'] + [d['max_diff_len'] for d in per_method],
                 ['Max indel length'] + [d['max_indel_len'] for d in per_method],
             ])
+        #
+        box_s = [boxplot_stats(d['lengths']) for d in per_method]
+        for idx, bl in enumerate(_boxplot_columns):
+            rows.append([bl] + [d[idx] for d in box_s])
     #
     e_row = [''] * (len(methods) + 1)
     _add_stat('Annotated sequences', True, lambda ir_data: 'ira' in ir_data and ir_data['type'][0] != '?')
     rows.append(e_row)
     _add_stat('Exact IRs', False, lambda ir_data: ir_data.get('type') == '+')
+    rows.append(e_row)
+    _add_stat('IRs differ', True, lambda ir_data: 'ira' in ir_data and ir_data['type'] != '+' and ir_data['type'][0] != '?')
     rows.append(e_row)
     rows.append(['Num sequences', num_seqs] + e_row[2:])
     return rows
@@ -463,3 +480,34 @@ def _irs_2_row(irs_data):
         [irs_data['diff_len'], dt, ir_type, int(ir_wraps)] + \
         [irs_data['ssc_length'], irs_data['lsc_length']] + \
         num_sum + not_dna + [sum(not_dna)]
+
+
+#
+# check matplotlib method boxplot_stats(), implemented in matplotlib/cbook/__init__.py
+_boxplot_columns = ['Median', 'IRQ', 'Outliers', 'Q1', 'Q3', 'LoVal', 'HiVal', 'LoOutliers', 'HiOutliers']
+_boxplot_empty = [None] * 9
+
+
+def boxplot_stats(x, whis=1.5):
+    x = np.asarray(x)
+
+    # medians and quartiles
+    q1, med, q3 = np.percentile(x, [25, 50, 75])
+    iqr = q3 - q1
+
+    # get high extreme
+    hival = q3 + whis * iqr
+    wiskhi = x[x <= hival]
+    whishi = q3 if (len(wiskhi) == 0 or np.max(wiskhi) < q3) else np.max(wiskhi)
+
+    # get low extreme
+    loval = q1 - whis * iqr
+    wisklo = x[x >= loval]
+    whislo = q1 if (len(wisklo) == 0 or np.min(wisklo) > q1) else np.min(wisklo)
+
+    # compute number of outliers
+    num_lo = np.count_nonzero(x < whislo)
+    num_hi = np.count_nonzero(x > whishi)
+
+    # np.mean(x)
+    return [med, iqr, num_lo + num_hi, q1, q3, loval, hival, num_lo, num_hi]
