@@ -102,6 +102,7 @@ class IRsStatistics(BaseWorkflow):
         methods = self.parameters['methods']
         it_2_idx = dict(exact=0, differs=1, no=2)
         m_2_it = dict((m, [0, 0, 0]) for m in methods)
+        m_2_no_yes = dict((m, [0, 0]) for m in methods)
         m_2_it_10k = dict((m, [0, 0]) for m in methods)
         m_2_wraps = dict((m, [0, 0]) for m in methods)
         m_year_2_ir_type = dict((m, defaultdict(lambda: [0, 0, 0])) for m in methods)  # method -> (year -> 3 ints)
@@ -131,6 +132,7 @@ class IRsStatistics(BaseWorkflow):
                 clade_2_species[clade].add(species)
             ir_type_idx = it_2_idx[ir_type]
             m_2_it[method][ir_type_idx] += 1
+            m_2_no_yes[method][int(ir_type != 'no')] += 1  # 0-No, 1-Yes
             m_year_2_ir_type[method][published.year][ir_type_idx] += 1
             if ir_type != 'no':       # With IRs
                 m_2_wraps[method][int(ir_wraps)] += 1
@@ -160,7 +162,7 @@ class IRsStatistics(BaseWorkflow):
             clade_2_year[m] = ['/'.join(map(str, my[y])) for y in years]
 
         #
-        ir_types = ('Exact IRs', 'IRs differ', 'No IRs')
+        ir_types = ('Identical', 'Different', 'No IRs')
         text = "Summary\n"
         # text += self._dict_table(clade_2_num, 'Number of Sequences')
         # text += self._dict_table(clade_2_family, 'Number of Families')
@@ -168,9 +170,10 @@ class IRsStatistics(BaseWorkflow):
         text += self._methods_table(clade_2_year, 'Number of Sequences per year', years, methods=list(clade_2_year.keys()))
 
         text += "\n\nAnnotated IRs, to sequence characteristics"
-        text += self._methods_table(m_2_it, 'Number of Sequences with Annotated IRs', ir_types, ident='  ')
+        text += self._methods_table(m_2_it, 'Number of Sequences with Annotated IRs', ir_types, ident='  ', percentages=True)
+        text += self._methods_table(m_2_no_yes, 'Number of Annotated IRs', ('No', 'Yes'), ident='  ', percentages=True)
         text += self._methods_table(m_2_it_10k, 'Number of Sequences with Annotated IRs, length >= 10 kb', ir_types[:-1], ident='  ')
-        text += self._methods_table(m_2_dna, "N's in sequence", ir_types, ident='  ')
+        text += self._methods_table(m_2_dna, "N's in sequence", ir_types, ident='  ', percentages=True)
         # text += self._methods_table(m_2_dna_irs, "N's in IRs", ir_types[:-1], ident='  ')
         text += "\n\nFound IRs characteristics"
         text += self._methods_table(m_2_wraps, 'IR wraps', ('No', 'Yes'), ident='  ', percentages=True)
@@ -195,7 +198,7 @@ class IRsStatistics(BaseWorkflow):
             _sum = dict((m, sum(data[m][idx] for idx in range(len(labels)))) for m in methods)
             for idx, lab in enumerate(labels):
                 text += f"  {ident}{lab:<10} {' '.join(str(data[m][idx]).rjust(max_l) for m in methods)}\n"
-                text += f"  {ident}{' ' * 10} {' '.join(str(round(100 * data[m][idx] / s, 2)).rjust(max_l) if (s := _sum[m]) else '-' for m in methods)}\n"
+                text += f"  {ident}{' ' * 10} {' '.join(str(round(100 * data[m][idx] / s, 3)).rjust(max_l) if (s := _sum[m]) else '-' for m in methods)}\n"
         else:
             for idx, lab in enumerate(labels):
                 text += f"  {ident}{lab:<10} {' '.join(str(data[m][idx]).rjust(max_l) for m in methods)}\n"
