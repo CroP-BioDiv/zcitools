@@ -103,7 +103,7 @@ class IRsStatistics(BaseWorkflow):
         it_2_idx = dict(exact=0, differs=1, no=2)
         m_2_it = dict((m, [0, 0, 0]) for m in methods)
         m_2_no_yes = dict((m, [0, 0]) for m in methods)
-        m_2_it_10k = dict((m, [0, 0]) for m in methods)
+        m_2_it_10k = dict((m, [0, 0, 0]) for m in methods)
         m_2_wraps = dict((m, [0, 0]) for m in methods)
         m_year_2_ir_type = dict((m, defaultdict(lambda: [0, 0, 0])) for m in methods)  # method -> (year -> 3 ints)
         #
@@ -113,6 +113,7 @@ class IRsStatistics(BaseWorkflow):
         # m_2_ddd, ddd_splits = _idx_data(methods, (5, 20, 100))
         m_2_ddd, ddd_splits = _idx_data(methods, (10, 100))
         #
+        m_2_ns = dict((m, [0, 0, 0]) for m in methods)
         m_2_dna = dict((m, [0, 0, 0]) for m in methods)
         # m_2_dna_irs = dict((m, [0, 0]) for m in methods)  # Can't be "No IRs"!
         #
@@ -138,16 +139,22 @@ class IRsStatistics(BaseWorkflow):
                 m_2_wraps[method][int(ir_wraps)] += 1
                 if max(IRa_len, IRb_len) >= 10000:
                     m_2_it_10k[method][ir_type_idx] += 1
+                else:
+                    m_2_it_10k[method][2] += 1
                 # if diff_len < 20000:
                 #     m_2_max_dl[method] = max(m_2_max_dl.get(method, 0), diff_len)
+            else:
+                m_2_it_10k[method][2] += 1
             if ir_type == 'differs':  # Not exact IRs
                 # m_2_blocks[method][_idx(replace_num + indel_num, block_splits)] += 1
                 m_2_dl[method][_idx(diff_len, dl_splits)] += 1
                 m_2_ddd[method][_idx(replace_sum + indel_sum, ddd_splits)] += 1
             if not_dna:
-                m_2_dna[method][ir_type_idx] += 1
+                m_2_ns[method][ir_type_idx] += 1
                 # if not_dna_irs:
                 #     m_2_dna_irs[method][ir_type_idx] += 1
+            else:
+                m_2_dna[method][ir_type_idx] += 1
 
         #
         clades = dict()
@@ -172,8 +179,9 @@ class IRsStatistics(BaseWorkflow):
         text += "\n\nAnnotated IRs, to sequence characteristics"
         text += self._methods_table(m_2_it, 'Number of Sequences with Annotated IRs', ir_types, ident='  ', percentages=True)
         text += self._methods_table(m_2_no_yes, 'Number of Annotated IRs', ('No', 'Yes'), ident='  ', percentages=True)
-        text += self._methods_table(m_2_it_10k, 'Number of Sequences with Annotated IRs, length >= 10 kb', ir_types[:-1], ident='  ')
-        text += self._methods_table(m_2_dna, "N's in sequence", ir_types, ident='  ', percentages=True)
+        text += self._methods_table(m_2_it_10k, 'Number of Sequences with Annotated IRs, length >= 10 kb', ir_types, ident='  ', percentages=True)
+        text += self._methods_table(m_2_ns, "N's in sequence", ir_types, ident='  ', percentages=True)
+        text += self._methods_table(m_2_dna, "All DNA sequences", ir_types, ident='  ', percentages=True)
         # text += self._methods_table(m_2_dna_irs, "N's in IRs", ir_types[:-1], ident='  ')
         text += "\n\nFound IRs characteristics"
         text += self._methods_table(m_2_wraps, 'IR wraps', ('No', 'Yes'), ident='  ', percentages=True)

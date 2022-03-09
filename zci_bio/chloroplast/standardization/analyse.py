@@ -27,7 +27,7 @@ def analyse_genomes(step_data, annotations_step):
     annotations_step.propagate_step_name_prefix(step)
     AnalyseGenomes(step, annotations_step).run()
     step.save()
-    step.to_excel('chloroplast_analysis.xls')  # Store data for a check
+    step.to_excel('chloroplast_analysis.xlsx')  # Store data for a check
     return step
 
 

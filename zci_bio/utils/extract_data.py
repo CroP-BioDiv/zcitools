@@ -164,6 +164,17 @@ class ExtractData:
             self._seq_record(seq_ident, seq_filename), seq_ident, key,
             lambda: org_annotate(self._seq_filename(seq_ident, seq_filename)))
 
+    @with_seq_ident
+    def zci_method(self, seq_ident, key, seq_filename):
+        try:
+            from irs_annotate import annotate_filename
+        except ImportError:
+            print('\nError: irs_annotate.py is not part of ZCI tools project.\nSet PYTHONPATH!!!\n\n')
+            raise
+        return self._from_indices(
+            self._seq_record(seq_ident, seq_filename), seq_ident, key,
+            lambda: annotate_filename(self._seq_filename(seq_ident, seq_filename)))
+
     #
     def _small_d_annotation(self, seq, seq_ident, key, no_prepend_workaround=True, no_dna_fix=True):
         from zci_bio.chloroplast.irs.small_d import small_d
@@ -430,6 +441,7 @@ for key, m_sufix, cls_method in (
         ('annotation plann', 'annotation_plann', ExtractData.plann),
         ('annotation plann_sb', 'annotation_plann_sb', ExtractData.plann_sb),
         ('annotation org_annotate', 'annotation_org_annotate', ExtractData.org_annotate),
+        ('annotation zci', 'annotation_zci', ExtractData.zci_method),
         ):
     # Caching
     # Interface: method_name(seq_ident=None, seq=None)
@@ -479,6 +491,7 @@ if __name__ == '__main__':
         plann=('plann', 'annotation plann'),
         plann_sb=('plann_sb', 'annotation plann_sb'),
         org_annotate=('org_annotate', 'annotation org_annotate'),
+        zci=('zci_method', 'annotation zci'),
         ir_data=None,
         diff_stats=None,
         lsc_ssc_lengths=None,

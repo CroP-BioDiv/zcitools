@@ -261,7 +261,7 @@ class NormalizationResult:
         step.save_summary_data(dict(G=self.G_tree_diffs.to_dict()))  # , N=self.N_tree_diffs.to_dict()))
         write_str_in_file(step.step_file('summary.txt'), text)
         print(text)
-        step.to_excel('normalization_result.xls', header=False)
+        step.to_excel('normalization_result.xlsx', header=False)
         #
         self._set_graph_values()
         self._create_graph(show=True)

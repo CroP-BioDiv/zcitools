@@ -114,6 +114,7 @@ def diff_check_memory(a, b):
             print('Using difflib!')
             return Diff_difflib(a, b)
         return Diff_Levenshtein(a, b)
+    return Diff_difflib(a, b)
 
 
 if __name__ == '__main__':

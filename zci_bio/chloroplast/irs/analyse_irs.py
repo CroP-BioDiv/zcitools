@@ -13,9 +13,9 @@ from common_utils.properties_db import PropertiesDB
 
 
 METHOD_NAMES = ('ncbi', 'airpg', 'ge_seq', 'small_d', 'small_d_P', 'small_d_D', 'small_d_all',
-                'chloe', 'chloroplot', 'pga', 'pga_sb', 'plann', 'plann_sb', 'org_annotate')
+                'chloe', 'chloroplot', 'pga', 'pga_sb', 'plann', 'plann_sb', 'org_annotate', 'zci')
 METHODS_USE_SEQUENCES = ('ncbi', 'airpg', 'small_d', 'small_d_P', 'small_d_D', 'small_d_all', 'chloroplot',
-                         'pga', 'pga_sb', 'plann', 'plann_sb', 'org_annotate')
+                         'pga', 'pga_sb', 'plann', 'plann_sb', 'org_annotate', 'zci')
 METHODS_SEPARATE_PATH = ('ge_seq', 'chloe')
 METHOD_NAMES_RESEARCH = ('chloe', 'chloroplot', 'ge_seq', 'org_annotate', 'pga', 'plann', 'airpg')
 _column_types_acc = [
@@ -297,7 +297,7 @@ def analyse_irs(step_data, table_step, seqs_step, ge_seq_step, chloe_step, metho
     sheets.append(('Sequences ', grouped_columns + [c for c, _ in _column_types_acc], rows))
 
     # Excel: method sheets
-    sheets_2_excel('chloroplast_irs_analysis.xls', sheets)
+    sheets_2_excel('chloroplast_irs_analysis.xlsx', sheets)
 
     # Store step data. This finishes step
     columns = [(c, 'str') for c in grouped_columns] + _column_types_acc + _column_types_method + \

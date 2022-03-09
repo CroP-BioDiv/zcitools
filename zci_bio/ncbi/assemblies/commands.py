@@ -110,7 +110,7 @@ class NCBIChloroplastListToExcel(ProjectCommand):
     @staticmethod
     def set_arguments(parser):
         parser.add_argument('-s', '--step-name', default='01_chloroplast_list', help='Table step name with list of sequences.')
-        parser.add_argument('-o', '--output-filename', default='chloroplast_list.xls', help='Output excel filename')
+        parser.add_argument('-o', '--output-filename', default='chloroplast_list.xlsx', help='Output excel filename')
         parser.add_argument('-c', '--num-columns', default=2, help='Number of columns')
 
     def run(self):
