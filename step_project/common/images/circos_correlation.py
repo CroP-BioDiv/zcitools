@@ -105,7 +105,7 @@ def create_circos_correlation(project, step_data, params):
     colors = dict((lc, 'green') for lc in cm._columns_lower)  # ToDo: some defaults
     colors['plus_'] = 'blue'
     colors['minus_'] = 'red'
-    for col_def in params.group_color:
+    for col_def in params.group_color or []:
         col_fields = col_def.split(',', 1)
         if len(col_fields) == 2 and cm.check_column(col_fields[0]):
             colors[cm.check_column(col_fields[0])] = col_fields[1]

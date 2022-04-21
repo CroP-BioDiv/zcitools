@@ -171,31 +171,36 @@ class IRsStatistics(BaseWorkflow):
         #
         ir_types = ('Identical', 'Different', 'No IRs')
         text = "Summary\n"
-        # text += self._dict_table(clade_2_num, 'Number of Sequences')
-        # text += self._dict_table(clade_2_family, 'Number of Families')
-        text += self._methods_table(clades, 'Number of Sequences', ('Sequences', 'Families', 'Genus', 'Species', "With N's"), methods=list(clades.keys()))
-        text += self._methods_table(clade_2_year, 'Number of Sequences per year', years, methods=list(clade_2_year.keys()))
+        sheets = []
+        text += self._methods_table(clades, 'Number of Sequences', ('Sequences', 'Families', 'Genus', 'Species', "With N's"),
+                                    sheets=('Overall', sheets), methods=list(clades.keys()))
+        text += self._methods_table(clade_2_year, 'Number of Sequences per year', years,
+                                    sheets=('Published', sheets), methods=list(clade_2_year.keys()))
 
         text += "\n\nAnnotated IRs, to sequence characteristics"
-        text += self._methods_table(m_2_it, 'Number of Sequences with Annotated IRs', ir_types, ident='  ', percentages=True)
-        text += self._methods_table(m_2_no_yes, 'Number of Annotated IRs', ('No', 'Yes'), ident='  ', percentages=True)
-        text += self._methods_table(m_2_it_10k, 'Number of Sequences with Annotated IRs, length >= 10 kb', ir_types, ident='  ', percentages=True)
-        text += self._methods_table(m_2_ns, "N's in sequence", ir_types, ident='  ', percentages=True)
-        text += self._methods_table(m_2_dna, "All DNA sequences", ir_types, ident='  ', percentages=True)
+        text += self._methods_table(m_2_it, 'Number of Sequences with Annotated IRs', ir_types,
+                                    sheets=('Type', sheets), ident='  ', percentages=True)
+        text += self._methods_table(m_2_no_yes, 'Number of Annotated IRs', ('No', 'Yes'),
+                                    sheets=('Annotated', sheets), ident='  ', percentages=True)
+        text += self._methods_table(m_2_it_10k, 'Number of Sequences with Annotated IRs, length >= 10 kb', ir_types,
+                                    sheets=('>=10kb', sheets), ident='  ', percentages=True)
+        text += self._methods_table(m_2_ns, "N's in sequence", ir_types,
+                                    sheets=('Ambiguous', sheets), ident='  ', percentages=True)
+        text += self._methods_table(m_2_dna, "All DNA sequences", ir_types,
+                                    sheets=('No Amb.', sheets), ident='  ', percentages=True)
         # text += self._methods_table(m_2_dna_irs, "N's in IRs", ir_types[:-1], ident='  ')
         text += "\n\nFound IRs characteristics"
-        text += self._methods_table(m_2_wraps, 'IR wraps', ('No', 'Yes'), ident='  ', percentages=True)
-        text += self._methods_table(m_2_dl, 'IR difference in length', _idx_labels(dl_splits), ident='  ', percentages=True)  # , measure=' bp'
+        text += self._methods_table(m_2_wraps, 'IR wraps', ('No', 'Yes'),
+                                    sheets=('Wraps', sheets), ident='  ', percentages=True)
+        text += self._methods_table(m_2_dl, 'IR difference in length', _idx_labels(dl_splits),
+                                    sheets=('Diff lengths', sheets), ident='  ', percentages=True)  # , measure=' bp'
         # text += self._methods_table(dict((k, [v]) for k, v in m_2_max_dl.items()), 'Max IR difference in length', ('Max',), ident='  ')  # , measure=' bp'
         # text += self._methods_table(m_2_blocks, 'IR indel/replace number of blocks', _idx_labels(block_splits), ident='  ')
-        text += self._methods_table(m_2_ddd, 'IR indel/replace number of bps', _idx_labels(ddd_splits), ident='  ', percentages=True)
-        return dict(text=text)
+        text += self._methods_table(m_2_ddd, 'IR indel/replace number of bps', _idx_labels(ddd_splits),
+                                    sheets=('Diffs', sheets), ident='  ', percentages=True)
+        return dict(text=text, sheets=sheets)
 
-    def _dict_table(self, _dict, title):
-        lines = '\n'.join(f'  {k:<10} {n:>5}' for k, n in _dict.items())
-        return f"\n{title}:\n{lines}\n  All {sum(_dict.values()):>12}\n"
-
-    def _methods_table(self, data, title, labels, methods=None, ident='', percentages=False):
+    def _methods_table(self, data, title, labels, methods=None, ident='', percentages=False, sheets=None):
         if not methods:
             methods = self.parameters['methods']
         max_l = max(len(m) for m in methods)
@@ -210,6 +215,16 @@ class IRsStatistics(BaseWorkflow):
         else:
             for idx, lab in enumerate(labels):
                 text += f"  {ident}{lab:<10} {' '.join(str(data[m][idx]).rjust(max_l) for m in methods)}\n"
+
+        if sheets:
+            if percentages:
+                rows = list(itertools.chain.from_iterable([
+                    [lab] + [data[m][idx] for m in methods],
+                    [''] + [round(100 * data[m][idx] / s, 3) for m in methods]] for idx, lab in enumerate(labels)))
+            else:
+                rows = [([lab] + [data[m][idx] for m in methods]) for idx, lab in enumerate(labels)]
+            sheets[1].append((sheets[0], [title] + methods, rows))
+
         return text
 
 

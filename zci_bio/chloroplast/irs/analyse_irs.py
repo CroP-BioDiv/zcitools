@@ -2,7 +2,7 @@ from collections import defaultdict
 from datetime import datetime
 import statistics
 import numpy as np
-from itertools import chain
+from itertools import chain, combinations
 from step_project.common.table.steps import TableStep
 from zci_bio.sequences.steps import SequencesStep
 from zci_bio.sequences.fetch import do_fetch_sequences
@@ -253,12 +253,28 @@ def analyse_irs(step_data, table_step, seqs_step, ge_seq_step, chloe_step, metho
             _boxplot_columns
         sheets.append((('All summed' if group_idx == -1 else f'By {rank}'), columns, rows))
 
-    # # Comparison
-    # sheets.append((
-    #   'Comparisons',
-    #   [''] + methods[1:],
-    #   [[m] + [''] * idx +
-    #    [_cm(acc_data, m, x) for x in methods[idx + 1:]] for idx, m in enumerate(methods[:-1])]))
+    # Comparison
+    c_methods = methods[:-1]
+    num_seqs = len(acc_data)
+    _same, _longer = _compare_methods(acc_data, c_methods)
+    data_longer = [([m] + [None] * len(c_methods)) for m in c_methods]
+    data_longer_perc = [[None] * len(methods) for m in c_methods]
+    data_same = [([m] + [None] * len(c_methods)) for m in c_methods]
+    # data_same_perc = [[None] * len(methods) for m in c_methods]
+    for idx1, m1 in enumerate(c_methods):
+        for idx2, m2 in enumerate(c_methods):
+            if idx1 != idx2:
+                data_longer[idx1][idx2 + 1] = _longer[(m1, m2)]
+                data_longer_perc[idx1][idx2 + 1] = round(100 * _longer[(m1, m2)] / num_seqs, 2)
+                data_longer[idx2][idx1 + 1] = _longer[(m2, m1)]
+                data_longer_perc[idx2][idx1 + 1] = round(100 * _longer[(m2, m1)] / num_seqs, 2)
+                if idx1 > idx2:
+                    data_same[idx1][idx2 + 1] = _same[(m2, m1)]
+                    # data_same_perc[idx1][idx2 + 1] = round(100 * _same[(m2, m1)] / num_seqs, 2)
+    _sep = [[None] * len(methods)]
+    sheets.append(('Comparisons',
+                   [''] + c_methods,
+                   data_longer + _sep + data_same + _sep + list(chain(*zip(data_longer, data_longer_perc)))))
 
     #
     sheets.append(('Overall stats', ['Stat'] + methods, _stat_rows(methods, acc_data)))
@@ -416,48 +432,20 @@ def _group_similar_irs(obj, methods, diff_length=20):
     return [(b or (len(same) + 1)) for b in by_method]  # Set max index to None's
 
 
-def _cm(acc_data, m1, m2):
-    c = _compare_methods(acc_data, m1, m2)
-    return ','.join(str(c[k]) for k in ('same', 'in_1', 'in_2', 'longer_1', 'longer_2', 'not_same'))
-
-
-def _compare_methods(acc_data, m1, m2):
-    comp = dict(same=0, in_1=0, in_2=0, longer_1=0, longer_2=0, not_same=0)
+def _compare_methods(acc_data, methods):
+    same = defaultdict(int)    # (m1, m2) -> int
+    longer = defaultdict(int)  # (m1, m2) -> int
+    x = (0,)
     for data in acc_data.values():
-        d1 = data[m1]
-        d2 = data[m2]
-        if d1 == d2:
-            comp['same'] += 1
-        elif 'ira' in d1:
-            if 'ira' in d2:
-                # larger_1=0, larger_2=0, not_same=0
-                if _longer(d1, d2):
-                    comp['longer_1'] += 1
-                elif _longer(d2, d1):
-                    comp['longer_2'] += 1
-                else:
-                    comp['not_same'] += 1
+        ir_lens = [(m, max(data[m].get('ir_lengths', x))) for m in methods]
+        for (m1, l1), (m2, l2) in combinations(ir_lens, 2):
+            if abs(l1 - l2) <= 10:
+                same[(m1, m2)] += 1
+            elif l1 > l2:
+                longer[(m1, m2)] += 1
             else:
-                comp['in_1'] += 1
-        elif 'ira' in d2:
-            comp['in_2'] += 1
-    return comp
-
-
-def _longer(d1, d2):
-    # Returns True if d1 IRs have larger span than d2
-    return _longer_ir(d1['ira'], d2['ira']) and _longer_ir(d1['irb'], d2['irb'])
-
-
-def _longer_ir(ir1, ir2):
-    s1, e1 = ir1
-    s2, e2 = ir2
-    if s1 < e1:
-        return s1 <= s2 < e2 <= e1
-    # s1 > e1 -> wraps
-    if s2 < e2:
-        return s1 <= s2
-    return s1 <= s2 and e2 <= e1
+                longer[(m2, m1)] += 1
+    return same, longer
 
 
 def _irs_2_row(irs_data):

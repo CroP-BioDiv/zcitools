@@ -5,6 +5,7 @@ from collections import namedtuple
 from common_utils.exceptions import ZCItoolsValueError
 from common_utils.cache import cache
 from common_utils.file_utils import remove_directory, merge_zip_files, write_str_in_file
+from common_utils.value_data_types import sheets_2_excel
 from .common.graph.project_graph import create_graph_from_data
 
 _have_run_switch = ('align_genomes', 'mr_bayes', 'raxml')
@@ -180,7 +181,8 @@ Check for INSTRUCTION.txt and calculate.zip in step(s):
             print(text)
             write_str_in_file('workflow_summary.txt', text)
 
-        # if text := summary.get('table'):
+        if sheets := summary.get('sheets'):
+            sheets_2_excel('workflow_summary.xlsx', sheets)
 
     def cmd_actions(self):
         for action in self.actions():

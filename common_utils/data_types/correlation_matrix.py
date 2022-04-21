@@ -4,8 +4,8 @@ from common_utils.exceptions import ZCItoolsValueError
 
 class CorrelationMatrix:
     def __init__(self, columns, list_values=None):
-        self._columns = columns
-        self._columns_lower = [c.lower() for c in columns]
+        self._columns = [c.replace(' ', '_') for c in columns]
+        self._columns_lower = [c.lower().replace(' ', '_') for c in columns]
         self._values = dict()  # tuple(sorted(c1, c2)) -> value. Note: value can be missing
         if list_values:
             assert len(columns) - 1 == len(list_values), (len(columns), len(list_values))
@@ -44,7 +44,7 @@ class CorrelationMatrix:
 
     @staticmethod
     def from_excel(filename, triangular='L'):
-        df = import_pandas().read_excel(filename, sheetname='Sheet1')
+        df = import_pandas().read_excel(filename, sheet_name='Sheet1')
         columns = list(df.columns[1:])
         if triangular.upper() == 'L':
             list_values = [list(df[c1][i+1:]) for i, c1 in enumerate(columns[:-1])]
