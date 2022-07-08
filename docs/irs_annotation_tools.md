@@ -9,7 +9,7 @@ Create a directory for a whole research. Make it working directory.
 
 **Step 2. dataset directories**
 
-Create a dataset directory/ies. Researches were done on datasets IR, IRL and union dataset, with sequences published before 2021-12-31.
+Create a dataset directories. Researches were done on datasets IR, IRL and union dataset, with chloroplast sequences published before 2021-12-31.
 
 Create project for dataset IR:
 ```
@@ -35,17 +35,11 @@ Make dataset project directory working one. Run workflow in it with command `zci
 * fetch additional data for methods that need them (02_chloe, 03_chloe, 02_ge_seq, 03_ge_seq),
 * run all annotation methods on all sequences and store results in subdirectory 04_stats and excel files (chloroplast_irs_analysis.xlsx, workflow_summary.xlsx).
 
-[GeSeq (Annotation of Organellar Genomes)](https://chlorobox.mpimp-golm.mpg.de/geseq.html) is a web-based tool.
-Data has to be posted and results downloaded 'by the hand'.
-Follow printed instructions, or same one from the file `02_ge_seq/INSTRUCTIONS.txt`.
-
-After downloading GeSeq results, make `zcit.py workflow run`.
-Note: this runs steps so that [demanding calculations](project.md#running_calculations) have to be calculated on a dedicated server.
-In case of that, please consult [demanding calculations](project.md#running_calculations). To sun steps locally run command `zcit.py workflow run -r`.
-
-
 **Notes:**
-
+* [GeSeq (Annotation of Organellar Genomes)](https://chlorobox.mpimp-golm.mpg.de/geseq.html) is a web-based tool.
+  Data has to be posted and results downloaded 'by the hand'.
+  Follow printed instructions, or same one from the file `02_ge_seq/INSTRUCTIONS.txt`.
+  After downloading GeSeq results, make `zcit.py workflow run`.
 * In each stage of the calculation it is possible to visually research status with command `zcit.py workflow graph`.
 * Workflow uses external annotation tool executable. These has to be installed and on the `PATH`. Check
-[stand-alone wrapper](https://github.com/CroP-BioDiv/irs_wrappers) project for details.
+  [stand-alone wrapper](https://github.com/CroP-BioDiv/irs_wrappers) project for details.
