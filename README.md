@@ -17,3 +17,4 @@ Project structure is described on [page](docs/project.md).
 Pages describing research papers reproduction:
 
 * [Towards the Well-Tempered Chloroplast DNA Sequences](https://www.mdpi.com/2223-7747/10/7/1360); reproduction [steps](docs/well_tempered.md).
+* Chloroplast genome annotation tools: Challenges and recommendations; reproduction [steps](docs/irs_annotation_tools.md).
