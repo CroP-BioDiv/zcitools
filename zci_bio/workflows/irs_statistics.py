@@ -120,9 +120,9 @@ class IRsStatistics(BaseWorkflow):
         for clade, family, genus, species, published, \
                 method, ir_type, ir_wraps, IRa_len, IRb_len, diff_len, \
                 replace_num, replace_sum, indel_num, indel_sum, not_dna, not_dna_irs in \
-                results.select(('Clade', 'family', 'genus', 'Organism', 'Published',
-                                'Method', 'IR_type', 'IR_wraps', 'IRa_len', 'IRb_len', 'diff_len',
-                                'replace_num', 'replace_sum', 'indel_num', 'indel_sum', 'not_dna', 'not_dna_irs')):
+                results.select(('Clade', 'family', 'genus', 'species', 'published',
+                                'method', 'IR_type', 'IR_wrapped', 'IRa_len', 'IRb_len', 'diff_len',
+                                'replace_num', 'replace_sum', 'indel_num', 'indel_sum', 'no._ambiguous', 'not_dna_irs')):
             if method == methods[0]:
                 clade_2_num[clade] += 1
                 clade_2_year[clade][published.year] += 1

@@ -19,14 +19,14 @@ METHODS_USE_SEQUENCES = ('ncbi', 'airpg', 'small_d', 'small_d_P', 'small_d_D', '
 METHODS_SEPARATE_PATH = ('ge_seq', 'chloe')
 METHOD_NAMES_RESEARCH = ('chloe', 'chloroplot', 'ge_seq', 'org_annotate', 'pga', 'plann', 'airpg')
 _column_types_acc = [
-    ('Organism', 'str'), ('Accession', 'seq_ident'),
-    ('Created', 'date'), ('Published', 'date'),
-    ('Length', 'int'), ('not_dna', 'int')]
+    ('species', 'str'), ('accession', 'seq_ident'),
+    ('created', 'date'), ('published', 'date'),
+    ('length', 'int'), ('no._ambiguous', 'int')]
 _column_types_method = [
-    ('Method', 'str'),
+    ('method', 'str'),
     ('IRa_start', 'int'), ('IRa_end', 'int'), ('IRb_start', 'int'), ('IRb_end', 'int'),
     ('IRa_len', 'int'), ('IRb_len', 'int'), ('diff_len', 'int'), ('diff_type', 'str'),
-    ('IR_type', 'str'), ('IR_wraps', 'int'),
+    ('IR_type', 'str'), ('IR_wrapped', 'int'),
     ('SSC_len', 'int'), ('LSC_len', 'int'),
     ('replace_num', 'int'), ('replace_sum', 'int'), ('indel_num', 'int'), ('indel_sum', 'int'),
     ('not_dna_ira', 'int'), ('not_dna_irb', 'int'), ('not_dna_irs', 'int')]
@@ -187,6 +187,9 @@ def analyse_irs(step_data, table_step, seqs_step, ge_seq_step, chloe_step, metho
     rows = []
     table_rows = []
     not_compact_names = [''] * len(grouped_columns)
+
+    a_2_n = lambda m: 'ncbi' if m == 'airpg' else m
+
     for node_names, objects in g_data:
         nn = node_names
         not_compact_names = [a or b for a, b in zip(nn, not_compact_names)]
@@ -195,27 +198,27 @@ def analyse_irs(step_data, table_step, seqs_step, ge_seq_step, chloe_step, metho
             d_sr = [''] * len(seq_row)
             same_m = _group_same_irs(o, methods)
             similar_m = _group_similar_irs(o, methods)
-            rows.extend(((nn + seq_row) if i == 0 else (empty_row_part + d_sr)) + [m] + o[m]['_method_row'] + [sm, sim]
+            rows.extend(((nn + seq_row) if i == 0 else (empty_row_part + d_sr)) + [a_2_n(m)] + o[m]['_method_row'] + [sm, sim]
                         for i, (m, sm, sim) in enumerate(zip(methods, same_m, similar_m)))
             table_rows.extend(not_compact_names + seq_row + [m] + o[m]['_method_row'] + [sm, sim]
                               for i, (m, sm, sim) in enumerate(zip(methods, same_m, similar_m)))
             nn = empty_row_part
-    sheets = [('All methods', _excel_columns, rows)]
+    sheets = [('Results', _excel_columns, rows)]
 
-    # One sheet per method
-    _excel_columns = grouped_columns + [c for c, _ in (_column_types_acc + _column_types_method[1:])]
-    sheets.extend(
-        (m, _excel_columns,
-         list(chain(*([(node_names if i == 0 else empty_row_part) + o['_seq_row'] + o[m]['_method_row']
-                       for i, o in enumerate(objects)]
-                      for node_names, objects in g_data)))) for m in methods)
+    # # One sheet per method
+    # _excel_columns = grouped_columns + [c for c, _ in (_column_types_acc + _column_types_method[1:])]
+    # sheets.extend(
+    #     (m, _excel_columns,
+    #      list(chain(*([(node_names if i == 0 else empty_row_part) + o['_seq_row'] + o[m]['_method_row']
+    #                    for i, o in enumerate(objects)]
+    #                   for node_names, objects in g_data)))) for m in methods)
 
-    # By year
-    by_year_fd = _ByYear(methods, ((d['first_date'], (d[m] for m in methods)) for d in acc_data.values()))
-    by_year_ud = _ByYear(methods, ((d['update_date'], (d[m] for m in methods)) for d in acc_data.values()))
-    columns = by_year_fd.get_columns()
-    sheets.append(('Year created', columns, by_year_fd.get_rows()))
-    sheets.append(('Year published', columns, by_year_ud.get_rows()))
+    # # By year
+    # by_year_fd = _ByYear(methods, ((d['first_date'], (d[m] for m in methods)) for d in acc_data.values()))
+    # by_year_ud = _ByYear(methods, ((d['update_date'], (d[m] for m in methods)) for d in acc_data.values()))
+    # columns = by_year_fd.get_columns()
+    # sheets.append(('Year created', columns, by_year_fd.get_rows()))
+    # sheets.append(('Year published', columns, by_year_ud.get_rows()))
 
     # By taxonomy
     for group_idx, rank in [(-1, 'all')] + list(enumerate(grouped_columns)):
@@ -245,7 +248,7 @@ def analyse_irs(step_data, table_step, seqs_step, ge_seq_step, chloe_step, metho
                     _min = _max = avg = None
                     bs = _boxplot_empty
                 #
-                rows.append((row_p if idx == 0 else dummy_p) + [m, num, perc, _min, _max, avg] + bs)
+                rows.append((row_p if idx == 0 else dummy_p) + [a_2_n(m), num, perc, _min, _max, avg] + bs)
 
         columns = grouped_columns[:(group_idx + 1)] + \
             ['Num sequences', 'Min length', 'Max length', 'Length span', 'Avg length', 'Std length',
@@ -257,9 +260,9 @@ def analyse_irs(step_data, table_step, seqs_step, ge_seq_step, chloe_step, metho
     c_methods = methods[:-1]
     num_seqs = len(acc_data)
     _same, _longer = _compare_methods(acc_data, c_methods)
-    data_longer = [([m] + [None] * len(c_methods)) for m in c_methods]
+    data_longer = [([a_2_n(m)] + [None] * len(c_methods)) for m in c_methods]
     data_longer_perc = [[None] * len(methods) for m in c_methods]
-    data_same = [([m] + [None] * len(c_methods)) for m in c_methods]
+    data_same = [([a_2_n(m)] + [None] * len(c_methods)) for m in c_methods]
     # data_same_perc = [[None] * len(methods) for m in c_methods]
     for idx1, m1 in enumerate(c_methods):
         for idx2, m2 in enumerate(c_methods):
@@ -273,11 +276,11 @@ def analyse_irs(step_data, table_step, seqs_step, ge_seq_step, chloe_step, metho
                     # data_same_perc[idx1][idx2 + 1] = round(100 * _same[(m2, m1)] / num_seqs, 2)
     _sep = [[None] * len(methods)]
     sheets.append(('Comparisons',
-                   [''] + c_methods,
+                   [''] + [a_2_n(m) for m in c_methods],
                    data_longer + _sep + data_same + _sep + list(chain(*zip(data_longer, data_longer_perc)))))
 
     #
-    sheets.append(('Overall stats', ['Stat'] + methods, _stat_rows(methods, acc_data)))
+    sheets.append(('Overall stats', ['Stat'] + [a_2_n(m) for m in methods], _stat_rows(methods, acc_data)))
 
     # Figure data
     rank = 'family'
@@ -305,12 +308,12 @@ def analyse_irs(step_data, table_step, seqs_step, ge_seq_step, chloe_step, metho
             [f'With {i}' for i in range(1, len(n_methods) + 1)]
         sheets.append(('Figure data', columns, rows))
 
-    # Sequence data, no clade grouping
-    rows = []
-    for node_names, objects in group_bt.sorted_nodes_objects(objects_sort=(lambda d: d['organism']),
-                                                             return_names=True, compact_names=False):
-        rows.extend((node_names + o['_seq_row']) for o in objects)
-    sheets.append(('Sequences ', grouped_columns + [c for c, _ in _column_types_acc], rows))
+    # # Sequence data, no clade grouping
+    # rows = []
+    # for node_names, objects in group_bt.sorted_nodes_objects(objects_sort=(lambda d: d['organism']),
+    #                                                          return_names=True, compact_names=False):
+    #     rows.extend((node_names + o['_seq_row']) for o in objects)
+    # sheets.append(('Sequences ', grouped_columns + [c for c, _ in _column_types_acc], rows))
 
     # Excel: method sheets
     sheets_2_excel('chloroplast_irs_analysis.xlsx', sheets)
